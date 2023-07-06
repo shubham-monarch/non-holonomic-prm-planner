@@ -44,11 +44,15 @@ generate_messages(
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/planner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
     
     )
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/constants.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/planner.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/vector2d.h
+    
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})

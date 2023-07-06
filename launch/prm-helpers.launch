@@ -1,0 +1,10 @@
+<launch>
+
+
+<node name="polygon_publisher" ns="autodrive" pkg="polygon_publisher" type="polygon_provider_new_csv.py" />
+<node name="global_costmap_publisher" ns="autodrive" pkg="global_costmap_publisher" type="costmap_publisher_offline.py" output="screen"/>
+
+<node name="tf_broadcaster" pkg="hybrid_astar" type="tf_broadcaster" />
+
+<node name="rviz" pkg="rviz" type="rviz" args="-d $(find autodrive_bringup)/config/hybrid_astar.rviz" />
+</launch>
