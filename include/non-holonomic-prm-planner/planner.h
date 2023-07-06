@@ -2,11 +2,16 @@
 #define PRM_H
 
 #include <ros/ros.h>
+
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <tf/transform_datatypes.h>
 #include <std_msgs/String.h>
+
+#include <non-holonomic-prm-planner/constants.h>
+
+
 
 namespace PRM{
 
@@ -25,7 +30,6 @@ namespace PRM{
 
         private:
 
-            //void setMapCb(const nav_msgs::OccupancyGridConstPtr &map_);
             void setMapCb(nav_msgs::OccupancyGridConstPtr map_);
 
             void setStartCb(const geometry_msgs::PoseWithCovarianceStampedConstPtr &initial);
@@ -42,7 +46,8 @@ namespace PRM{
 
             geometry_msgs::PoseWithCovarianceStamped latest_start_pose_;
             geometry_msgs::PoseStamped latest_goal_pose_;
-  
+
+            nav_msgs::OccupancyGridConstPtr grid_;
 
         
     };

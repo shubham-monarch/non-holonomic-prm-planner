@@ -3,6 +3,8 @@
 
 #include <string>
 
+
+
 namespace PRM{
 
 
@@ -16,12 +18,16 @@ namespace PRM{
 
 
         struct MapMetaData {
-            static float cellSize, originX, originY;
-            static unsigned int height, width;
+            
+            
+            inline static float cell_size_, origin_x_, origin_y_;
+            inline static unsigned int height_, width_;
+            
+
         };
         
 
-        static const std::string map_topic = "/autodrive/occupancy_grid";
+        static const std::string &map_topic = "/autodrive/occupancy_grid";
 
         
 

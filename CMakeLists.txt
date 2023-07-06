@@ -52,7 +52,6 @@ set(HEADERS
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})
-#add_dependencies(PRM non-holonomic-prm-planner_generate_messages_cpp)
 add_dependencies(PRM ${catkin_EXPORTED_TARGETS})
 
 ## Declare a catkin package
