@@ -1,4 +1,5 @@
 #include <non-holonomic-prm-planner/planner.h>
+#include <non-holonomic-prm-planner/simple_roadmap.h>
 
 PRM::Planner::Planner():map_ready_{false}
 {
@@ -40,6 +41,8 @@ void PRM::Planner::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     ROS_DEBUG("origin: (%f, %f)", map_->info.origin.position.x, map_->info.origin.position.y);
     
     map_ready_ = true;
+
+    
 }
             
 

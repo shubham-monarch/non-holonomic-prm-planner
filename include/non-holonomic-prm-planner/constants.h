@@ -12,7 +12,8 @@ namespace PRM{
     namespace Constants{
         
         static const bool manual = true;
-
+        
+        static const std::string &map_frame_id = "map";
 
 
 
@@ -30,7 +31,7 @@ namespace PRM{
         static const std::string &map_topic = "/autodrive/occupancy_grid";
 
         
-
+        
 
 
 

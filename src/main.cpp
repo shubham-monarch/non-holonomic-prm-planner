@@ -1,4 +1,4 @@
-#include <non-holonomic-prm-planner/planner.h>
+#include <non-holonomic-prm-planner/simple_roadmap.h>
 #include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 
 #include <ros/console.h>
@@ -12,10 +12,10 @@ int main(int argc, char** argv) {
 
     //PRM::Planner prm_;
 
-    PRM::CollisionDetectionPolygon cdp_;
-    cdp_.initialize();
-    
+    ///PRM::CollisionDetectionPolygon cdp_;
+    //cdp_.initialize();
 
+    PRM::SimpleRoadmap simple_prm_;
 
     ros::spin();
 
