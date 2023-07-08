@@ -18,7 +18,24 @@ namespace PRM{
             wx = origin_x_ + (mx + 0.5) * resolution_;
             wy = origin_y_ + (my + 0.5) * resolution_;
         
-        }
+        };
+
+
+        //delta ==> steering angle
+        //TODO: Check delta != (2n + 1)*pi/2
+        static inline float calculateR(const float a2, const float wb, const float delta_){
+
+            // R(delta_) = sqrt(a2 * a2 + l* l * cot(delta) * cot(delta))
+
+            const float t1_ = a2 * a2; 
+
+            const float t2_ = pow(wb, 2)  * (1.f / pow(std::tan(delta_), 2));
+
+
+            const float R_ = sqrt(t1_ + t2_);
+
+            return R_; 
+        } 
 
         
 

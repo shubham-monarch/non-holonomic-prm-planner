@@ -3,9 +3,7 @@
 
 #include <ros/ros.h>
 
-//#include <non-holonomic-prm-planner/simple_roadmap.h>
 #include <non-holonomic-prm-planner/helper.h>
-#include <non-holonomic-prm-planner/constants.h>
 
 
 namespace PRM{
@@ -22,7 +20,7 @@ namespace PRM{
 
 
 
-
+            
 
 
 

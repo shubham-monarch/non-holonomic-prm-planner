@@ -1,57 +1,68 @@
-#include <non-holonomic-prm-planner/simple_roadmap.h>
+#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/constants.h>
+
 #include <random>
 
-PRM::SimpleRoadmap::SimpleRoadmap():map_ready_(false)
+PRM::SimplePRM::SimplePRM()
 {   
-    ROS_DEBUG("Initializing SimpleRoadmap!");
-    nodes_.clear();
 
-    map_sub_ = nh_.subscribe(Constants::map_topic, 1, &SimpleRoadmap::setMapCb, this);
+    ROS_WARN("SimplePRM constructor called");
+
+    
+}
+
+void PRM::SimplePRM::initialize()
+{
+
+    ros::Rate r_(5.0);
+    map_sub_ = nh_.subscribe(Constants::map_topic, 1, &SimplePRM::setMapCb, this);
+    
+    while(ros::ok() && !map_set_){
+
+        
+        ros::spinOnce(); 
+    
+        r_.sleep();
+    }
+
+    ROS_WARN("map_set_ is true!");
+
+    nodes_.clear();
 
     ros::Rate r(10);
     
-    while(!map_ready_) {
-        
-        //ROS_DEBUG("Map is not ready!");
-        ros::spinOnce();
-        r.sleep();
-    
-    }
+    r_min_ = Helper::calculateR(a_2_, l_, delta_max_);
+    max_res_ = sqrt(pow(r_min_,2) + pow(r_min_ - a_2_, 2));
 
-    ROS_INFO("Map is ready!");
-    
-    
-}
+    ROS_INFO("max_res_: %f", max_res_);
+    ROS_INFO("min_r_: %f", r_min_);
 
-PRM::SimpleRoadmap::SimpleRoadmap(nav_msgs::OccupancyGridConstPtr &map_)
-{
-
-    grid_ = map_; 
     nodes_.clear();
 
+
 }
 
-bool PRM::SimpleRoadmap::isObstacleFree(const Node &node_) const
+bool PRM::SimplePRM::isObstacleFree(const Node &node_) const
 {
 
     return true; 
 }
 
-bool PRM::SimpleRoadmap::plan(){
+bool PRM::SimplePRM::plan(){
+
+    ROS_INFO("Inside PRM::plan()");
 
     samplePoints();
 
     return true; 
 }
 
-void PRM::SimpleRoadmap::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
+void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
 {
 
     Constants::MapMetaData::origin_x_ = map_->info.origin.position.x;
     Constants::MapMetaData::origin_y_ = map_->info.origin.position.y;
     Constants::MapMetaData::cell_size_ = map_->info.resolution;
-
-    ROS_INFO("res: %f", Constants::MapMetaData::cell_size_);
     Constants::MapMetaData::height_ = map_->info.height;
     Constants::MapMetaData::width_ = map_->info.width;
     
@@ -62,16 +73,20 @@ void PRM::SimpleRoadmap::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     ROS_DEBUG("resolution: %f", map_->info.resolution);
     ROS_DEBUG("origin: (%f, %f)", map_->info.origin.position.x, map_->info.origin.position.y);
 
-    map_ready_ = true; 
+    map_set_ = true; 
     
-    plan();
     
 }
 
-bool PRM::SimpleRoadmap::samplePoints(){
+
+bool PRM::SimplePRM::samplePoints(){
+
+    ROS_INFO("Inside simplePRM::samplePoints!");
 
     const int width_ = grid_->info.width; 
     const int height_ = grid_->info.height;
+
+    ROS_INFO("grid_: (%f * %f)", height_, width_);
 
     std::random_device rd;
     std::mt19937 gen(rd());

@@ -1,5 +1,5 @@
 #include <non-holonomic-prm-planner/visualizations.h>
-#include <non-holonomic-prm-planner/simple_roadmap.h>
+#include <non-holonomic-prm-planner/simple_prm.h>
 #include <non-holonomic-prm-planner/constants.h>
 
 
@@ -66,13 +66,5 @@ void PRM::Visualize::visualizeSampledPoints(const std::vector<Node> &nodes_) {
     
     sampled_pts_pub_.publish(pose_array_);
 
-
-    
-    ROS_INFO("sampled_pts_pub.numSubscribers(): %d", sampled_pts_pub_.getNumSubscribers());
-    geometry_msgs::PoseArray dummy_; 
-    dummy_.header.frame_id = "map"; 
-    dummy_.header.stamp = ros::Time::now(); 
-
-    //sampled_pts_pub_.publish(dummy_);
     
 }

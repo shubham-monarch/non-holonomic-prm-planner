@@ -1,5 +1,4 @@
-#include <non-holonomic-prm-planner/simple_roadmap.h>
-#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
+#include <non-holonomic-prm-planner/simple_prm.h>
 
 #include <ros/console.h>
 
@@ -10,12 +9,11 @@ int main(int argc, char** argv) {
     
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
 
-    //PRM::Planner prm_;
+    std::shared_ptr<PRM::SimplePRM> simple_prm_ = std::make_shared<PRM::SimplePRM>();
+    
 
-    ///PRM::CollisionDetectionPolygon cdp_;
-    //cdp_.initialize();
-
-    PRM::SimpleRoadmap simple_prm_;
+    simple_prm_->initialize();
+    simple_prm_->plan();
 
     ros::spin();
 

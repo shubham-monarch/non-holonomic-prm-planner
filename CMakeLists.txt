@@ -43,9 +43,7 @@ generate_messages(
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/planner.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_roadmap.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_prm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     
     
@@ -53,10 +51,8 @@ set(SOURCES
     )
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/constants.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/planner.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/vector2d.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/simple_roadmap.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/simple_prm.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/visualizations.h
     
