@@ -33,6 +33,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 
+find_package(Eigen3 REQUIRED)
+
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
@@ -98,6 +100,8 @@ add_executable(non-holonomic-prm-planner src/main.cpp) # ${HEADERS} ${SOURCES})
 target_link_libraries(non-holonomic-prm-planner PRM)
 target_link_libraries(non-holonomic-prm-planner ${catkin_LIBRARIES})
 target_link_libraries(non-holonomic-prm-planner ${OMPL_LIBRARIES})
+target_link_libraries(non-holonomic-prm-planner Eigen3::Eigen)
+
 add_dependencies(non-holonomic-prm-planner ${catkin_EXPORTED_TARGETS})
 
 #install(TARGETS ${PROJECT_NAME} tf_broadcaster

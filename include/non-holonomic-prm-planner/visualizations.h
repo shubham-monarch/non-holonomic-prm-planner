@@ -4,7 +4,7 @@
 #include <ros/ros.h>
 
 #include <non-holonomic-prm-planner/helper.h>
-
+#include <geometry_msgs/PoseArray.h>
 
 namespace PRM{
     
@@ -18,6 +18,9 @@ namespace PRM{
 
             void visualizeSampledPoints(const std::vector<Node> &nodes_) ;
 
+            void visualizeSteeringCurve(const geometry_msgs::PoseArray &pose_array_);
+    
+
 
 
             
@@ -30,6 +33,11 @@ namespace PRM{
 
 
             ros::Publisher sampled_pts_pub_;
+            ros::Publisher steering_curve_pub_;
+
+            //functions
+            
+    
     };
 
 
