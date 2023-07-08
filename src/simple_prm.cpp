@@ -35,7 +35,7 @@ void PRM::SimplePRM::initialize()
     
     while(ros::ok() && !map_set_){
 
-        
+        ROS_DEBUG("Waiting for map!!");
         ros::spinOnce(); 
     
         r_.sleep();
@@ -67,8 +67,9 @@ bool PRM::SimplePRM::plan(){
 
     //generateSamplePoints();
     geometry_msgs::Pose pose_;
-    generateSteeringCurve(geometry_msgs::Pose(), 1.0);
-    
+    generateSteeringCurve(geometry_msgs::Pose(), 0.0);
+    //generateSteeringCurveFamily(pose_);
+
     //generateEdges();
     //generatePath();
 
@@ -191,13 +192,55 @@ Eigen::Matrix3f getHomogeneousTransformationMatrix(const Eigen::Vector2f &transl
 
 }
 
-
-//generate steering curve points for a particular delta
-void PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta_)
+//generate steering curves from -delta to delta
+void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 {
 
+    ROS_INFO("Inside generateSteeringCurveFamily function!");
+    
+    ros::Rate r_(10.0); 
+
+    float del_ = -Constants::Vehicle::delta_max_;
+    
+    ROS_INFO("del_max_: %f", Constants::Vehicle::delta_max_);
+
+    while(ros::ok() && del_ < Constants::Vehicle::delta_max_)
+    {   
+        ROS_INFO("del_: %f", del_);
+        del_ += 0.1;    
+
+        generateSteeringCurve(rp_, del_);
+
+        r_.sleep(); 
+    }
+
+    geometry_msgs::PoseArray pose_array_ob_; 
+    pose_array_ob_.header.frame_id = "map"; 
+    pose_array_ob_.header.stamp = ros::Time::now();
+    pose_array_ob_.poses = std::move(steering_curve_family_poses_);
+
+    visualize_.visualizeSteeringCurve(pose_array_ob_);
+    
+// /    return true;
+
+
+}
+
+
+//generate steering curve points for a particular delta
+bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta_)
+{
+
+    if(delta_ > Constants::Vehicle::delta_max_) {
+        
+        ROS_ERROR("del_max: %f delta_: %f", Constants::Vehicle::delta_max_, delta_);
+        ROS_ERROR("***** DELTA_ > DELTA_MAX!! ===> Something is wrong!");
+        return false;
+
+    }
+
     //delta_ = 0.577;
-    delta_ = 0.1;
+    ////delta_ = 0.1;
 
     ROS_INFO("Inside generateSteeringCurve function!");
     //homogenous co-ordinates
@@ -222,17 +265,43 @@ void PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
     std::cout << "P_oa: " << std::endl;
     std::cout << P_oa_ << std::endl;
 
-    float R_ = getR(delta_);
+    float R_;
+    if(std::fabs(delta_) > 0.001) 
+    {
+        R_ = getR(delta_);
 
+    } 
     ROS_WARN("R_: %f", R_);
 
     std::vector<Eigen::Vector2f> V_ab_;
-    //assuming δ > 0 
+    V_ab_.reserve(1000);
+    //assuming δ > 0
+    float y_;  
     for (float x_ = 0.f ;  ; x_ += 0.1f)
     {
         
-        float y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+        float y_ ; 
+        if(delta_ > 0.f){
+
+
+            y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
         
+        }
+
+        else if(delta_ < 0.f){
+
+            y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+        
+
+        }
+
+        else if(delta_== 0.f){
+            
+            ROS_WARN("delta_ is 0.0f");
+            y_ = 0.f;
+
+        }
+
         if(std::isnan(y_)) {
             
             ROS_WARN("Last x_ value: %f", x_);
@@ -242,27 +311,34 @@ void PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
         //Eigen::Vector2f v(x_, y_);
 
         //ROS_INFO("R: %f" , R_);
+        ROS_INFO("delta_: %f", delta_);
         ROS_WARN("(x_,y_) => (%f,%f)", x_, y_);
-        ROS_INFO("a2_: %f" , Constants::Vehicle::a2_);
-        ROS_INFO("x_ + a2_: %f", x_ + Constants::Vehicle::a2_);
+        //ROS_INFO("a2_: %f" , Constants::Vehicle::a2_);
+        //ROS_INFO("x_ + a2_: %f", x_ + Constants::Vehicle::a2_);
         
         
         V_ab_.emplace_back(x_,y_);
 
+        if(V_ab_.size() > 800) {
+
+            ROS_ERROR("V_ab_.size() ==> %d > 800", (int)V_ab_.size());
+            break;
+        }
+
 
     }
 
-    for(auto t: V_ab_) std::cout << t(0) << " " << t(1) << std::endl;
+    //for(auto t: V_ab_) std::cout << t(0) << " " << t(1) << std::endl;
 
     ///return;
 
-    int sz_ = (int)V_ab_.size(); 
+    const int sz_ = (int)V_ab_.size(); 
 
     //std::vector<Eigen::Matrix3f> V_ob_;
 
     std::vector<geometry_msgs::Pose> poses_ob_;
 
-    poses_ob_.reserve(1000);
+    poses_ob_.reserve(sz_ + 100);
 
     for(const auto &t: V_ab_){
         
@@ -271,17 +347,17 @@ void PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
         const Mat3f &P_ob_ = P_ab_ * P_oa_;
 
         geometry_msgs::Pose pose_ob_;  //pose of b in world frame
-        pose_ob_.position.x = P_ob_(0,2); 
-        pose_ob_.position.y = P_ob_(1,2);
+        //pose_ob_.position.x = P_ob_(0,2); 
+        //pose_ob_.position.y = P_ob_(1,2);
 
-        //pose_ob_.position.x = t(0) + rp_.position.x;  
-        //pose_ob_.position.y = t(1) + rp_.position.y;
+        pose_ob_.position.x = t(0) + rp_.position.x;  
+        pose_ob_.position.y = t(1) + rp_.position.y;
 
         poses_ob_.push_back(pose_ob_);    
 
     }
 
-    ROS_INFO("poses_ob_.size(): %d", poses_ob_.size());
+   // ROS_INFO("poses_ob_.size(): %d", poses_ob_.size());
 
     geometry_msgs::PoseArray pose_array_ob_; 
     pose_array_ob_.header.frame_id = "map"; 
@@ -290,6 +366,12 @@ void PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
 
     visualize_.visualizeSteeringCurve(pose_array_ob_);
     
+    //const std::vector<geometry_msgs::Pose> v_ = std::move(pose_array_ob_.poses);
+    
+    //steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), std::make_move_iterator(pose_array_ob_.poses.begin()),     std::make_move_iterator(pose_array_ob_.poses.end()));
+    
+    
+    return true;
 
 }   
 

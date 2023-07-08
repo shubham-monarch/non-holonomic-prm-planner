@@ -135,7 +135,7 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Alpha: 1
-      Arrow Length: 10
+      Arrow Length: 0.10000000149011612
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
@@ -148,7 +148,7 @@ Visualization Manager:
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /sampled_points
+      Topic: /steering_curve
       Unreliable: false
       Value: true
   Enabled: true
@@ -178,7 +178,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -0.024999991059303284
+      Angle: 3.159999370574951
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -188,10 +188,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 0.39361512660980225
+      Scale: -67.2170181274414
       Target Frame: <Fixed Frame>
-      X: -209.2073211669922
-      Y: 557.0797119140625
+      X: -932.4408569335938
+      Y: -244.0608673095703
     Saved: ~
 Window Geometry:
   Displays:

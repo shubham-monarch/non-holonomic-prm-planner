@@ -44,9 +44,10 @@ namespace PRM{
 
             //**  functions
             void initializeVehicleParams();
-            void generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float delta_);
+            bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float delta_);
 
-
+            void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
+        
 
 
             //*** variables
@@ -66,6 +67,8 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
             
+            std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
+
             //symbols used
             //δ ==> delta ==> steering angle
 
