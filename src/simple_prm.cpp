@@ -67,8 +67,8 @@ bool PRM::SimplePRM::plan(){
 
     //generateSamplePoints();
     geometry_msgs::Pose pose_;
-    generateSteeringCurve(geometry_msgs::Pose(), 0.0);
-    //generateSteeringCurveFamily(pose_);
+    //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
+    generateSteeringCurveFamily(pose_);
 
     //generateEdges();
     //generatePath();
@@ -197,6 +197,13 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 {
 
     ROS_INFO("Inside generateSteeringCurveFamily function!");
+
+    if((int)steering_curve_family_poses_.size() > 0) {
+
+        ROS_WARN("steering_curve_family_poses.size() > 0 ==> Something might be wrong!");
+        steering_curve_family_poses_.clear();
+
+    }
     
     ros::Rate r_(10.0); 
 
@@ -213,6 +220,8 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 
         r_.sleep(); 
     }
+
+
 
     geometry_msgs::PoseArray pose_array_ob_; 
     pose_array_ob_.header.frame_id = "map"; 
@@ -366,9 +375,8 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
 
     visualize_.visualizeSteeringCurve(pose_array_ob_);
     
-    //const std::vector<geometry_msgs::Pose> v_ = std::move(pose_array_ob_.poses);
     
-    //steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), std::make_move_iterator(pose_array_ob_.poses.begin()),     std::make_move_iterator(pose_array_ob_.poses.end()));
+    steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), std::make_move_iterator(pose_array_ob_.poses.begin()),     std::make_move_iterator(pose_array_ob_.poses.end()));
     
     
     return true;
