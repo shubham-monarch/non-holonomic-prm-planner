@@ -33,6 +33,13 @@ namespace PRM{
 
         static const std::string &map_topic = "/autodrive/occupancy_grid";
 
+        namespace Planner{
+
+            static const float theta_sep_ = 5.f * M_PI / 180.f;  //5 degree separation
+
+
+        };
+
         namespace Vehicle {
             
             static const float delta_max_ = 40 *M_PI / 180.0;  //max steering angle in radians
