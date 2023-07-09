@@ -25,7 +25,7 @@ namespace PRM{
             
             
             inline static float cell_size_, origin_x_, origin_y_;
-            inline static unsigned int height_, width_;
+            inline static unsigned int height_, width_, res_;
             
 
         };

@@ -16,13 +16,13 @@ namespace PRM{
             
             Visualize();
 
-            void visualizeSampledPoints(const std::vector<Node2d> &nodes2d_) ;
+            void visualizeSampledPoints(const geometry_msgs::PoseArray &poses_) ;
 
             void visualizeSteeringCurve(const geometry_msgs::PoseArray &pose_array_) ;
     
             void visualizePointPose(const geometry_msgs::PoseStamped &point_) ;
 
-
+            
             
 
 

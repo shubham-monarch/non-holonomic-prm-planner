@@ -13,8 +13,7 @@ int main(int argc, char** argv) {
     
 
     simple_prm_->initialize();
-    simple_prm_->plan();
-
+    simple_prm_->generateRoadMap();
     ros::spin();
 
     return 0;

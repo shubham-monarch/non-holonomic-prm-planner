@@ -45,11 +45,10 @@ namespace PRM{
 
             
             void setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_);
-            bool isMapSet();
-
             void initialize();
-            bool plan();
-            
+            bool generateRoadMap();
+
+
         private: 
 
 
@@ -67,7 +66,7 @@ namespace PRM{
             
             bool connectConfigurationToRobot(geometry_msgs::Pose rp_, geometry_msgs::Pose configuration_)   ;
 
-
+           
             //==== variables =====
             Visualize visualize_;
             bool map_set_;
@@ -76,7 +75,8 @@ namespace PRM{
 
 
             //** planner tuning params
-            static const int N_ = 10;  //number of initial poses
+            int N_ = 100;  //number of initial poses
+            
             
             
             //core planner vars
