@@ -34,6 +34,25 @@ namespace PRM{
     
         
     };
+
+    //kdtree adapter
+    struct Node2dAdapter {
+        
+        typedef float ElementType;
+
+        const Node2d& obj;
+
+        explicit Node2dAdapter(const Node2d& obj) : obj(obj) {}
+
+        inline ElementType operator[](size_t index) const {
+            switch (index) {
+                case 0: return obj.x_;
+                case 1: return obj.y_;
+                //case 2: return obj.z;
+                default: throw std::out_of_range("Invalid index for MyClassAdapter");
+            }
+        }
+    };
     
         
     class SimplePRM{
@@ -53,6 +72,8 @@ namespace PRM{
 
 
             // ===== functions ====
+
+            bool buildKDtree();
 
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     

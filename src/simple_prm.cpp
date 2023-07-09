@@ -61,11 +61,20 @@ bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 }
 
 
-bool PRM::SimplePRM::generateRoadMap(){
+bool PRM::SimplePRM::buildKDtree()
+{
 
+    
+
+
+}
+
+bool PRM::SimplePRM::generateRoadMap()
+{
    // ROS_INFO("Inside PRM::plan()");
 
     generateSamplePoints();
+    //buildKDtree();
     //geometry_msgs::Pose pose_;
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);

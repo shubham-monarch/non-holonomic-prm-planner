@@ -34,6 +34,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 
 find_package(Eigen3 REQUIRED)
+find_package(FLANN REQUIRED)
+
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
@@ -92,6 +94,7 @@ find_package(Boost 1.56 REQUIRED)
 include_directories(include ${catkin_INCLUDE_DIRS})
 include_directories(include ${OMPL_INCLUDE_DIRS})
 include_directories(include ${Boost_INCLUDE_DIRS})
+include_directories(${FLANN_INCLUDE_DIRS})
 include_directories(include include)
 
 #add_executable(tf_broadcaster src/tf_broadcaster.cpp)
@@ -102,6 +105,7 @@ target_link_libraries(non-holonomic-prm-planner PRM)
 target_link_libraries(non-holonomic-prm-planner ${catkin_LIBRARIES})
 target_link_libraries(non-holonomic-prm-planner ${OMPL_LIBRARIES})
 target_link_libraries(non-holonomic-prm-planner Eigen3::Eigen)
+target_link_libraries(non-holonomic-prm-planner ${FLANN_LIBRARIES})
 
 add_dependencies(non-holonomic-prm-planner ${catkin_EXPORTED_TARGETS})
 
