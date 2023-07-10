@@ -7,8 +7,8 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
-        - /PoseArray1
-        - /PoseArray1/Status1
+        - /Steering Curve Family1
+        - /Steering Curve Family1/Status1
         - /Pose1
       Splitter Ratio: 0.5
     Tree Height: 719
@@ -38,7 +38,7 @@ Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.10000000149011612
-      Cell Size: 100
+      Cell Size: 10
       Class: rviz/Grid
       Color: 160; 160; 164
       Enabled: true
@@ -52,7 +52,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 1000
+      Plane Cell Count: 100000
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: poly_array_plugin/PolygonArray
@@ -137,23 +137,23 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Alpha: 1
-      Arrow Length: 0.10000000149011612
+      Arrow Length: 1
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
-      Color: 78; 154; 6
+      Color: 255; 255; 255
       Enabled: true
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
-      Name: PoseArray
+      Name: Steering Curve Family
       Queue Size: 10
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /steering_curve
+      Topic: /steering_curve_family
       Unreliable: false
       Value: true
-    - Alpha: 0.10000000149011612
+    - Alpha: 0.699999988079071
       Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
@@ -163,10 +163,10 @@ Visualization Manager:
       Head Radius: 0.10000000149011612
       Name: Pose
       Queue Size: 10
-      Shaft Length: 1
+      Shaft Length: 100
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /point_pose
+      Topic: /target_pt
       Unreliable: false
       Value: true
   Enabled: true
@@ -196,7 +196,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 3.160000801086426
+      Angle: 3.1300010681152344
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -206,10 +206,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: -105.94771575927734
+      Scale: 3.393178939819336
       Target Frame: <Fixed Frame>
-      X: -933.549072265625
-      Y: -242.3844757080078
+      X: -930.5303955078125
+      Y: -246.615966796875
     Saved: ~
 Window Geometry:
   Displays:

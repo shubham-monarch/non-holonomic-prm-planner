@@ -10,20 +10,28 @@ namespace PRM{
     
     struct Node2d; 
 
+    typedef std::shared_ptr<ros::Publisher> PubPtr;
+
     class Visualize {
 
         public: 
             
             Visualize();
 
-            void visualizeSampledPoints(const geometry_msgs::PoseArray &poses_) ;
+            template <typename T>
+            void publishT(std::string topic_,  T msg, int qs_ = 10, bool latch_ = true)
+            {
+                
+                std::shared_ptr<ros::Publisher> P_ = std::make_shared<ros::Publisher>();
+                *P_ = nh_.advertise<T>(topic_, qs_, latch_);
+                
+                P_->publish(msg);
+                
+                publisher_list_.push_back(P_);
 
-            void visualizeSteeringCurve(const geometry_msgs::PoseArray &pose_array_) ;
-    
-            void visualizePointPose(const geometry_msgs::PoseStamped &point_) ;
+                //P_.publish(msg);
 
-            
-            
+            }
 
 
 
@@ -31,12 +39,7 @@ namespace PRM{
 
             ros::NodeHandle nh_;
 
-
-            ros::Publisher sampled_pts_pub_;
-            ros::Publisher steering_curve_pub_;
-            ros::Publisher point_pose_pub_;
-
-            //functions
+            std::vector<PubPtr> publisher_list_;
             
     
     };

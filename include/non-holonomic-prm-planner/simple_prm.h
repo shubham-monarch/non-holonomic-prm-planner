@@ -78,6 +78,8 @@ namespace PRM{
             bool map_set_;
             nav_msgs::OccupancyGridConstPtr grid_;
 
+            template <typename T>
+            void publishT(std::string topic_name, T msg);
 
 
             //** planner tuning params
@@ -97,6 +99,9 @@ namespace PRM{
             kdTree::pointVec kd_pts_;
             
             kdTreePtr kdTree_;
+
+            std::vector<std::shared_ptr<ros::Publisher> > pub_list_;
+
     };
 
 

@@ -1,6 +1,5 @@
 #include <non-holonomic-prm-planner/simple_prm.h>
 #include <non-holonomic-prm-planner/constants.h>
-#include <non-holonomic-prm-planner/flags.h>
 #include <non-holonomic-prm-planner/utils.h>
 
 
@@ -74,6 +73,22 @@ bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
     return true; 
 }
 
+/*template <typename T>
+void PRM::SimplePRM::publishT(std::string topic_,  T msg)
+{
+    //ros::Publisher P_ = nh_.advertise<T>(topic_, 10); 
+
+    std::shared_ptr<ros::Publisher> P_ = std::make_shared<ros::Publisher>();
+    *P_ = nh_.advertise<T>(topic_, 10, true);
+    
+    P_->publish(msg);
+    
+    pub_list_.push_back(P_);
+
+    //P_.publish(msg);
+
+}*/
+
 
 bool PRM::SimplePRM::buildKDtree()
 {
@@ -83,6 +98,10 @@ bool PRM::SimplePRM::buildKDtree()
     //kdTree::KDTree tree_(kd_pts_);
     kdTree::pointVec points;
     kdTree::point_t pt;
+
+    geometry_msgs::PoseArray poses_; 
+    poses_.header.frame_id = "map"; 
+    poses_.header.stamp = ros::Time::now();
 
     pt = {0.0, 0.0};
     points.push_back(pt);
@@ -95,6 +114,18 @@ bool PRM::SimplePRM::buildKDtree()
     pt = {0.5, 0.5};
     points.push_back(pt);
 
+    for(const auto &t: points) {
+
+        geometry_msgs::Pose p_; 
+        p_.position.x  = t[0];
+        p_.position.y = t[1]; 
+
+        poses_.poses.push_back(p_);
+
+    }
+
+    //visualize_.publishT<geometry_msgs::PoseArray>("kdtree_points", poses_);
+
     kdTree::KDTree tree(points);
 
     std::cout << "nearest test\n";
@@ -106,7 +137,7 @@ bool PRM::SimplePRM::buildKDtree()
     std::cout << '\n';
 
     std::cout << "####" << std::endl;
-    
+
     //auto res2 = tree.neighborhood_points(pt, .55);
     auto res2 = tree.neighborhood_points(pt, 2);
 
@@ -116,6 +147,20 @@ bool PRM::SimplePRM::buildKDtree()
         }
         std::cout << '\n';
     }
+
+    geometry_msgs::PoseStamped pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now(); 
+
+    pose_.pose.position.x = 0.5;
+    pose_.pose.position.y = 0.5;
+    pose_.pose.orientation = Utils::getQuatFromYaw(0.f);
+
+    //publishT<geometry_msgs::PoseStamped>("target_pt", pose_);
+    
+    // /visualize_.publishT("target_pt_", pose_);
+
+    visualize_.publishT("target_pt", pose_);
 
     return true; 
 }
@@ -142,9 +187,14 @@ bool PRM::SimplePRM::generateRoadMap()
     N_ = 100;
 
     //std::vector<int> v(100 * 100* 100 * 100);
+    geometry_msgs::Pose rp_; 
+    rp_.position.x = Constants::MapMetaData::origin_x_; 
+    rp_.position.y = Constants::MapMetaData::origin_y_; 
+    
 
-    //generateSamplePoints();
-    buildKDtree();
+    generateSteeringCurveFamily(rp_);
+   // generateSamplePoints();
+    //buildKDtree();
     //geometry_msgs::Pose pose_;
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);
@@ -342,7 +392,9 @@ bool PRM::SimplePRM::generateSamplePoints()
 
     }   
 
-   visualize_.visualizeSampledPoints(pose_array_);
+   //visualize_.visualizeSampledPoints(pose_array_);
+
+    visualize_.publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
 
     return true; 
 
@@ -384,8 +436,9 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
     pose_array_ob_.header.stamp = ros::Time::now();
     pose_array_ob_.poses = std::move(steering_curve_family_poses_);
 
-    visualize_.visualizeSteeringCurve(pose_array_ob_);
-    
+    //visualize_.visualizeSteeringCurve(pose_array_ob_);
+    visualize_.publishT<geometry_msgs::PoseArray>("steering_curve_family", pose_array_ob_);
+
 // /    return true;
 
 
@@ -529,12 +582,8 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
     pose_array_ob_.header.stamp = ros::Time::now();
     pose_array_ob_.poses = std::move(poses_ob_);
 
-    if(FLAGS::STEERING_CURVE_VIS)
-    {
+    visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
 
-        visualize_.visualizeSteeringCurve(pose_array_ob_);
-    
-    }
    
     steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
                                         std::make_move_iterator(pose_array_ob_.poses.begin()),   \
@@ -663,20 +712,13 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
 
     }
 
-   // ROS_INFO("poses_ob_.size(): %d", poses_ob_.size());
-
     geometry_msgs::PoseArray pose_array_ob_; 
     pose_array_ob_.header.frame_id = "map"; 
     pose_array_ob_.header.stamp = ros::Time::now();
     pose_array_ob_.poses = std::move(poses_ob_);
 
-    if(FLAGS::STEERING_CURVE_VIS)
-    {
-
-        visualize_.visualizeSteeringCurve(pose_array_ob_);
+    visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
     
-    }
-   
     steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
                                         std::make_move_iterator(pose_array_ob_.poses.begin()),   \
                                         std::make_move_iterator(pose_array_ob_.poses.end()));
@@ -687,8 +729,8 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
     cp_stamped_.header.stamp = ros::Time::now();
     cp_stamped_.pose = cp_;
 
-
-    visualize_.visualizePointPose(cp_stamped_);
+    visualize_.publishT<geometry_msgs::PoseStamped>("point_pose", cp_stamped_);
+    //visualize_.visualizePointPose(cp_stamped_);
     return true;
 
 

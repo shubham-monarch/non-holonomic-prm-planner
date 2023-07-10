@@ -60,7 +60,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/simple_prm.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/visualizations.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/flags.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
     
     
