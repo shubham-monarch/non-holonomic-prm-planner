@@ -34,7 +34,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 
 find_package(Eigen3 REQUIRED)
-find_package(FLANN REQUIRED)
 
 
 ## Generate added messages and services with any dependencies listed here
@@ -49,6 +48,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_prm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
+    
     
     
     
@@ -60,12 +61,18 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/visualizations.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/flags.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
+    
     
     
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})
 add_dependencies(PRM ${catkin_EXPORTED_TARGETS})
+#add_library(KDTree SHARED KDTree.cpp)
+#target_include_directories(KDTree PUBLIC .)
+
+
 
 ## Declare a catkin package
 catkin_package(
@@ -94,7 +101,6 @@ find_package(Boost 1.56 REQUIRED)
 include_directories(include ${catkin_INCLUDE_DIRS})
 include_directories(include ${OMPL_INCLUDE_DIRS})
 include_directories(include ${Boost_INCLUDE_DIRS})
-include_directories(${FLANN_INCLUDE_DIRS})
 include_directories(include include)
 
 #add_executable(tf_broadcaster src/tf_broadcaster.cpp)
@@ -105,7 +111,8 @@ target_link_libraries(non-holonomic-prm-planner PRM)
 target_link_libraries(non-holonomic-prm-planner ${catkin_LIBRARIES})
 target_link_libraries(non-holonomic-prm-planner ${OMPL_LIBRARIES})
 target_link_libraries(non-holonomic-prm-planner Eigen3::Eigen)
-target_link_libraries(non-holonomic-prm-planner ${FLANN_LIBRARIES})
+#target_link_libraries(non-holonomic-prm-planner KDTree)
+
 
 add_dependencies(non-holonomic-prm-planner ${catkin_EXPORTED_TARGETS})
 

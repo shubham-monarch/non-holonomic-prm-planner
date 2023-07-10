@@ -5,6 +5,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 
 #include <non-holonomic-prm-planner/visualizations.h>
+#include <non-holonomic-prm-planner/KDTree.hpp>
 
 /**
  * Simple PRM implementation
@@ -22,39 +23,22 @@
 
 namespace PRM{
     
+    
+    typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;
+
     class Visualize;
 
-    //represents a sampled point with no heading information
+    //represents a sampled point with no heading information in the GRID and not WORLD
     struct Node2d {
 
         int x_, y_; 
         float theta_;
 
         Node2d(const int x, const int y) : x_(x), y_(y){}
-    
+        Node2d(){}
         
     };
 
-    //kdtree adapter
-    struct Node2dAdapter {
-        
-        typedef float ElementType;
-
-        const Node2d& obj;
-
-        explicit Node2dAdapter(const Node2d& obj) : obj(obj) {}
-
-        inline ElementType operator[](size_t index) const {
-            switch (index) {
-                case 0: return obj.x_;
-                case 1: return obj.y_;
-                //case 2: return obj.z;
-                default: throw std::out_of_range("Invalid index for MyClassAdapter");
-            }
-        }
-    };
-    
-        
     class SimplePRM{
 
         public:
@@ -65,7 +49,7 @@ namespace PRM{
             
             void setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_);
             void initialize();
-            bool generateRoadMap();
+            bool generateRoadMap();    
 
 
         private: 
@@ -87,6 +71,7 @@ namespace PRM{
             
             bool connectConfigurationToRobot(geometry_msgs::Pose rp_, geometry_msgs::Pose configuration_)   ;
 
+            long long int set_N();
            
             //==== variables =====
             Visualize visualize_;
@@ -96,21 +81,22 @@ namespace PRM{
 
 
             //** planner tuning params
-            int N_ = 100;  //number of initial poses
-            
+            int N_ ;
             
             
             //core planner vars
             std::vector<Node2d> nodes2d_;
             std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
 
+            kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree
 
             //** ROS members
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
+
+            kdTree::pointVec kd_pts_;
             
-
-
+            kdTreePtr kdTree_;
     };
 
 

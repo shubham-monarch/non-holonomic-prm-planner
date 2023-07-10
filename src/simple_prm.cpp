@@ -3,6 +3,8 @@
 #include <non-holonomic-prm-planner/flags.h>
 #include <non-holonomic-prm-planner/utils.h>
 
+
+
 #include <random>
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Core>
@@ -13,8 +15,20 @@
 
 #include <cmath>
 
+
 typedef Eigen::Matrix3f Mat3f;
 typedef Eigen::Vector2f Vec2f;
+typedef long long int ll;
+
+//forward declaration
+float PRM::Constants::MapMetaData::cell_size_; 
+float PRM::Constants::MapMetaData::res_; 
+float PRM::Constants::MapMetaData::origin_x_; 
+float PRM::Constants::MapMetaData::origin_y_;  
+int PRM::Constants::MapMetaData::height_; 
+int PRM::Constants::MapMetaData::width_; 
+
+
 
 
 PRM::SimplePRM::SimplePRM()
@@ -64,14 +78,34 @@ bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 bool PRM::SimplePRM::buildKDtree()
 {
 
-    
+    //kdTree_ = std::make_shared<kdTree::KDTree>(kd_pts_);
 
+    kdTree::KDTree tree_(kd_pts_);
+
+}
+
+long long int PRM::SimplePRM::set_N()
+{
+
+    float w_ = (Constants::MapMetaData::width_/Constants::MapMetaData::res_);
+    float h_ = (Constants::MapMetaData::height_/Constants::MapMetaData::res_);
+
+    ll n_ = 1ll * w_ * h_;
+
+    ROS_INFO("n_: %ld", n_);
+
+    return n_;
 
 }
 
 bool PRM::SimplePRM::generateRoadMap()
 {
    // ROS_INFO("Inside PRM::plan()");
+
+    //setN();
+    N_ = 100;
+
+    //std::vector<int> v(100 * 100* 100 * 100);
 
     generateSamplePoints();
     //buildKDtree();
@@ -100,6 +134,12 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     Constants::MapMetaData::height_ = map_->info.height;
     Constants::MapMetaData::width_ = map_->info.width;
     Constants::MapMetaData::res_ = map_->info.resolution;
+
+    if(Constants::MapMetaData::res_ > Constants::Vehicle::max_res_) {
+
+        ROS_ERROR("map_res_ >  max_res! ==> Need to increase map resolution!");
+
+    }
     
     grid_ = map_;
 
@@ -175,66 +215,74 @@ bool PRM::SimplePRM::connectConfigurationToRobot(geometry_msgs::Pose or_ , geome
 
 }
 
-bool PRM::SimplePRM::generateSamplePoints(){
+bool PRM::SimplePRM::generateSamplePoints()
+{
 
     ROS_INFO("Inside simplePRM::samplePoints!");
 
-    //grid width and height
     const int w_ = Constants::MapMetaData::width_; 
     const int h_ =  Constants::MapMetaData::height_;
 
-    ROS_INFO("map_dimension: (%f,%f)", h_, w_);
+    ROS_INFO("map_dimension: (%d,%d)", h_, w_);
 
-    const float xi_ = Constants::MapMetaData::origin_x_;
-    const float xf_ = Constants::MapMetaData::origin_x_ + (w_ + 0.5) * Constants::MapMetaData::res_;
-    
-    const float yi_ = Constants::MapMetaData::origin_y_;
-    const float yf_ = Constants::MapMetaData::origin_y_ + (h_ + 0.5) * Constants::MapMetaData::res_;
-    
-    ROS_INFO("xi_: %f", xi_);
-    ROS_INFO("xf_: %f", xf_);
-    ROS_INFO("yi_: %f", yi_);
-    ROS_INFO("yf_: %f", yf_);
-    
     std::random_device rd;
     std::mt19937 gen(rd());
     
-    // Define the range for x, y, and theta
-
-
-
-  
+    std::uniform_int_distribution<int> dist_x(0, w_);
+    std::uniform_int_distribution<int> dist_y(0,h_);
     
 
-    std::uniform_real_distribution<float> dist_x(xi_, xf_);
-    std::uniform_real_distribution<float> dist_y(yi_, yf_);
-    //std::uniform_real_distribution<float> dist_theta(0.0, 2 * M_PI);
-    
-    
-    if((int)nodes2d_.size() > 0) {
+    std::vector<std::vector<int> > pose_flag_(2000, std::vector<int>(2000, -1));
 
-        ROS_ERROR("nodes_.size() > 0!"); 
+    ROS_INFO("pose_flag_ filled!");
+
+    nodes2d_.clear();
+    nodes2d_.reserve(N_);
+
+    if(pose_flag_.size()  * pose_flag_[0].size()< N_) 
+    {
+        ROS_ERROR("pose_flag_ is small!");
         return false;
 
     }
-     
-    nodes2d_.reserve(N_);
+    
+    while((int)nodes2d_.size()  < N_ && ros::ok())  
+    {
+        //ROS_INFO("nodes2d_.size(): %d", nodes2d_.size());
+        const int mx_ = dist_x(gen);
+        const int my_ = dist_y(gen);
 
-    while((int)nodes2d_.size()  < N_) {
-
-        float x_ = dist_x(gen);
-        float y_ = dist_y(gen);
+ 
+        if(mx_ >= 0 && mx_ < 1000 && my_>= 0 && my_ <= 2000)
+        {
         
-        Node2d node2d_(x_, y_);
+            if(pose_flag_[my_][mx_] == -1)
+            {   
+                pose_flag_[my_][mx_] = 1;
 
-        if(isObstacleFree(node2d_)) {
+                Node2d node_(mx_, my_);
 
-            nodes2d_.push_back(node2d_);
+                if(isObstacleFree(node_))
+                {
+                    nodes2d_.push_back(node_);
 
+                    //point_t pt_{node_.x_, node_.y};
+                    float wx_, wy_; //world co-ordinates
+                    Utils::mapToWorld(mx_, my_, wx_, wy_);
+                    
+                    kdTree::point_t pt_ {wx_, wy_};
+                    kd_pts_.push_back(pt_); //inserting WORLD co-ordinates corresponding to (mx_, my_);
+                
+                }                
+            }
         }
 
+        ROS_WARN("nodes_2d_.size(): %d" , (int)nodes2d_.size());
     }
     
+
+
+
     ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
     
     geometry_msgs::PoseArray pose_array_;
@@ -243,11 +291,15 @@ bool PRM::SimplePRM::generateSamplePoints(){
 
 
 
-    for(const auto &t: nodes2d_) {
+    for(const auto &t: nodes2d_) 
+    {
 
         geometry_msgs::Pose pose_; 
-        pose_.position.x = t.x_;
-        pose_.position.y = t.y_; 
+        float wx_, wy_; 
+        Utils::mapToWorld(t.x_, t.y_,  wx_, wy_);
+        
+        pose_.position.x = wx_;
+        pose_.position.y = wy_; 
         pose_.orientation = Utils::getQuatFromYaw(0.f);
 
         pose_array_.poses.push_back(pose_);
