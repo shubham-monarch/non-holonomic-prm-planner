@@ -80,8 +80,44 @@ bool PRM::SimplePRM::buildKDtree()
 
     //kdTree_ = std::make_shared<kdTree::KDTree>(kd_pts_);
 
-    kdTree::KDTree tree_(kd_pts_);
+    //kdTree::KDTree tree_(kd_pts_);
+    kdTree::pointVec points;
+    kdTree::point_t pt;
 
+    pt = {0.0, 0.0};
+    points.push_back(pt);
+    pt = {1.0, 0.0};
+    points.push_back(pt);
+    pt = {0.0, 1.0};
+    points.push_back(pt);
+    pt = {1.0, 1.0};
+    points.push_back(pt);
+    pt = {0.5, 0.5};
+    points.push_back(pt);
+
+    kdTree::KDTree tree(points);
+
+    std::cout << "nearest test\n";
+    pt = {0.0, 0.0};
+    auto res = tree.nearest_point(pt);
+    for (double b : res) {
+        std::cout << b << " ";
+    }
+    std::cout << '\n';
+
+    std::cout << "####" << std::endl;
+    
+    //auto res2 = tree.neighborhood_points(pt, .55);
+    auto res2 = tree.neighborhood_points(pt, 2);
+
+    for (kdTree::point_t a : res2) {
+        for (double b : a) {
+            std::cout << b << " ";
+        }
+        std::cout << '\n';
+    }
+
+    return true; 
 }
 
 long long int PRM::SimplePRM::set_N()
@@ -107,8 +143,8 @@ bool PRM::SimplePRM::generateRoadMap()
 
     //std::vector<int> v(100 * 100* 100 * 100);
 
-    generateSamplePoints();
-    //buildKDtree();
+    //generateSamplePoints();
+    buildKDtree();
     //geometry_msgs::Pose pose_;
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);
