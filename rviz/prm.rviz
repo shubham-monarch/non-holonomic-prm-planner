@@ -137,7 +137,7 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Alpha: 1
-      Arrow Length: 1
+      Arrow Length: 50
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
@@ -150,23 +150,23 @@ Visualization Manager:
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /steering_curve_family
+      Topic: /sposes
       Unreliable: false
       Value: true
-    - Alpha: 0.699999988079071
+    - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
-      Color: 255; 25; 0
+      Color: 239; 41; 41
       Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
+      Head Length: 20
+      Head Radius: 50
       Name: Pose
       Queue Size: 10
       Shaft Length: 100
-      Shaft Radius: 0.05000000074505806
+      Shaft Radius: 5
       Shape: Arrow
-      Topic: /target_pt
+      Topic: /tp
       Unreliable: false
       Value: true
   Enabled: true
@@ -206,10 +206,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 3.393178939819336
+      Scale: 0.415111780166626
       Target Frame: <Fixed Frame>
-      X: -930.5303955078125
-      Y: -246.615966796875
+      X: -421.40997314453125
+      Y: 698.876708984375
     Saved: ~
 Window Geometry:
   Displays:

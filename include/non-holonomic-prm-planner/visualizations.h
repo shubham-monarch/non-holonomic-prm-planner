@@ -18,6 +18,8 @@ namespace PRM{
             
             Visualize();
 
+            void drawCircle(const geometry_msgs::PoseStamped c_, const float r_, std::string topic_ = "knn_circle");
+
             template <typename T>
             void publishT(std::string topic_,  T msg, int qs_ = 10, bool latch_ = true)
             {
@@ -33,7 +35,9 @@ namespace PRM{
 
             }
 
+            void draw2DNodes(const std::vector<Node2d> &nodes2d_, std::string topic_ = "sposes");
 
+            
 
         private: 
 

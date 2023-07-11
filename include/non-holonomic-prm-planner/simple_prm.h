@@ -25,6 +25,8 @@ namespace PRM{
     
     
     typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;
+    typedef kdTree::point_t kdPoint;
+    typedef kdTree::pointVec kdPoints;
 
     class Visualize;
 
@@ -57,51 +59,56 @@ namespace PRM{
 
             // ===== functions ====
 
-            bool buildKDtree();
 
+            //**** core planner functions
+            long long int set_N();
+            float set_SR(); 
+            
+            bool buildKDtree();
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     
             
-            bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float delta_);
+            bool generateEdges();
 
+            bool isReachable();
+
+            //*** miscellaneous
+            bool connectConfigurationToRobot(geometry_msgs::Pose rp_, geometry_msgs::Pose configuration_)   ;
+            bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float delta_);
             bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  geometry_msgs::Pose &config_pose_, float R_);
-            
-            
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
             
-            bool connectConfigurationToRobot(geometry_msgs::Pose rp_, geometry_msgs::Pose configuration_)   ;
-
-            long long int set_N();
-           
+            
             //==== variables =====
+            
             Visualize visualize_;
             bool map_set_;
             nav_msgs::OccupancyGridConstPtr grid_;
 
-            template <typename T>
-            void publishT(std::string topic_name, T msg);
-
-
             //** planner tuning params
             int N_ ;
             
-            
+            int sr_; // neighbour search radius
+
             //core planner vars
             std::vector<Node2d> nodes2d_;
             std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
 
+            kdTreePtr kdTree_;
             kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree
+
+            //G[p1][theta1][p2][theta2] ==> implies that an edge exist  between 
+            //std::vector<
+
 
             //** ROS members
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
-            kdTree::pointVec kd_pts_;
+
             
-            kdTreePtr kdTree_;
-
-            std::vector<std::shared_ptr<ros::Publisher> > pub_list_;
-
+           
+        
     };
 
 

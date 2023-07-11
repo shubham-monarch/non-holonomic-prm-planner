@@ -91,7 +91,7 @@ namespace PRM{
             ROS_INFO("a2_: %f", Constants::Vehicle::a2_);
             ROS_INFO("l_: %f", Constants::Vehicle::l_);
             ROS_INFO("r_min_: %f", Constants::Vehicle::r_min_);
-            ROS_INFO("max_res_: %f", Constants::Vehicle::max_res_);
+            ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
         }
 

@@ -34,11 +34,7 @@ PRM::SimplePRM::SimplePRM()
 {   
 
     ROS_WARN("SimplePRM constructor called");
-
-    
 }
-
-
 
 void PRM::SimplePRM::initialize()
 {
@@ -59,13 +55,9 @@ void PRM::SimplePRM::initialize()
     nodes2d_.clear();
 
     ROS_INFO("r_min_: %f", Constants::Vehicle::r_min_); 
-    ROS_INFO("max_res_: %f", Constants::Vehicle::max_res_);
-
-    
+    ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
 }
-
-
 
 bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 {
@@ -73,97 +65,57 @@ bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
     return true; 
 }
 
-/*template <typename T>
-void PRM::SimplePRM::publishT(std::string topic_,  T msg)
-{
-    //ros::Publisher P_ = nh_.advertise<T>(topic_, 10); 
-
-    std::shared_ptr<ros::Publisher> P_ = std::make_shared<ros::Publisher>();
-    *P_ = nh_.advertise<T>(topic_, 10, true);
-    
-    P_->publish(msg);
-    
-    pub_list_.push_back(P_);
-
-    //P_.publish(msg);
-
-}*/
-
-
 bool PRM::SimplePRM::buildKDtree()
 {
 
     //kdTree_ = std::make_shared<kdTree::KDTree>(kd_pts_);
 
     //kdTree::KDTree tree_(kd_pts_);
-    kdTree::pointVec points;
-    kdTree::point_t pt;
 
-    geometry_msgs::PoseArray poses_; 
-    poses_.header.frame_id = "map"; 
-    poses_.header.stamp = ros::Time::now();
+    ROS_INFO("Inside buildKDTree!");
 
-    pt = {0.0, 0.0};
-    points.push_back(pt);
-    pt = {1.0, 0.0};
-    points.push_back(pt);
-    pt = {0.0, 1.0};
-    points.push_back(pt);
-    pt = {1.0, 1.0};
-    points.push_back(pt);
-    pt = {0.5, 0.5};
-    points.push_back(pt);
+    if((int)nodes2d_.size() == 0) {
 
-    for(const auto &t: points) {
-
-        geometry_msgs::Pose p_; 
-        p_.position.x  = t[0];
-        p_.position.y = t[1]; 
-
-        poses_.poses.push_back(p_);
+        ROS_ERROR("nodes2d_ is empty!");
+        return false;
 
     }
 
-    //visualize_.publishT<geometry_msgs::PoseArray>("kdtree_points", poses_);
+    kdPoints kd_points_;
 
-    kdTree::KDTree tree(points);
+    for(const auto &node_: nodes2d_)
+    {
 
-    std::cout << "nearest test\n";
-    pt = {0.0, 0.0};
-    auto res = tree.nearest_point(pt);
-    for (double b : res) {
-        std::cout << b << " ";
-    }
-    std::cout << '\n';
+        const int mx_ = node_.x_, my_ = node_.y_; 
+        float wx_, wy_; 
 
-    std::cout << "####" << std::endl;
+        Utils::mapToWorld(mx_, my_, wx_, wy_);
 
-    //auto res2 = tree.neighborhood_points(pt, .55);
-    auto res2 = tree.neighborhood_points(pt, 2);
+        kdPoint kp_ = {wx_, wy_};
 
-    for (kdTree::point_t a : res2) {
-        for (double b : a) {
-            std::cout << b << " ";
-        }
-        std::cout << '\n';
+        kd_points_.push_back(kp_);
+
+        //ROS_INFO("(mx_, my_): (%d,%d) ==> (wx_, wy_): (%f,%f)", mx_, my_, wx_, wy_);
+        //ROS_INFO("(wx_, wy): (%f,%f)");
+
     }
 
-    geometry_msgs::PoseStamped pose_; 
-    pose_.header.frame_id = "map"; 
-    pose_.header.stamp = ros::Time::now(); 
-
-    pose_.pose.position.x = 0.5;
-    pose_.pose.position.y = 0.5;
-    pose_.pose.orientation = Utils::getQuatFromYaw(0.f);
-
-    //publishT<geometry_msgs::PoseStamped>("target_pt", pose_);
-    
-    // /visualize_.publishT("target_pt_", pose_);
-
-    visualize_.publishT("target_pt", pose_);
+    kdTree_ = std::make_shared<kdTree::KDTree>(kd_points_);
 
     return true; 
 }
+
+
+
+
+bool PRM::SimplePRM::generateEdges()
+{
+
+
+
+
+}
+
 
 long long int PRM::SimplePRM::set_N()
 {
@@ -184,20 +136,17 @@ bool PRM::SimplePRM::generateRoadMap()
    // ROS_INFO("Inside PRM::plan()");
 
     //setN();
-    N_ = 100;
+    //setSR();  //set neighbour search radius
 
-    //std::vector<int> v(100 * 100* 100 * 100);
-    geometry_msgs::Pose rp_; 
-    rp_.position.x = Constants::MapMetaData::origin_x_; 
-    rp_.position.y = Constants::MapMetaData::origin_y_; 
+    N_ = 30;
+    sr_ = Constants::Planner::max_res_;
     
 
-    generateSteeringCurveFamily(rp_);
-   // generateSamplePoints();
-    //buildKDtree();
-    //geometry_msgs::Pose pose_;
+    generateSamplePoints(); 
+    buildKDtree();
+    geometry_msgs::Pose pose_;
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
-    //generateSteeringCurveFamily(pose_);
+    generateSteeringCurveFamily(pose_);
 
     //generateEdges();
     //generatePath();
@@ -221,7 +170,7 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     Constants::MapMetaData::width_ = map_->info.width;
     Constants::MapMetaData::res_ = map_->info.resolution;
 
-    if(Constants::MapMetaData::res_ > Constants::Vehicle::max_res_) {
+    if(Constants::MapMetaData::res_ > Constants::Planner::max_res_) {
 
         ROS_ERROR("map_res_ >  max_res! ==> Need to increase map resolution!");
 
@@ -233,6 +182,8 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     ROS_DEBUG("dimensions: (%d, %d)", map_->info.height, map_->info.width);
     ROS_DEBUG("resolution: %f", map_->info.resolution);
     ROS_DEBUG("origin: (%f, %f)", map_->info.origin.position.x, map_->info.origin.position.y);
+
+    ROS_WARN("r_min_: %f", Constants::Vehicle::r_min_);
 
     map_set_ = true; 
     
@@ -356,8 +307,8 @@ bool PRM::SimplePRM::generateSamplePoints()
                     float wx_, wy_; //world co-ordinates
                     Utils::mapToWorld(mx_, my_, wx_, wy_);
                     
-                    kdTree::point_t pt_ {wx_, wy_};
-                    kd_pts_.push_back(pt_); //inserting WORLD co-ordinates corresponding to (mx_, my_);
+                    //kdPoint pt_ {wx_, wy_};
+                    //kd_pts_.push_back(pt_); //inserting WORLD co-ordinates corresponding to (mx_, my_);
                 
                 }                
             }
