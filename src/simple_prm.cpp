@@ -54,7 +54,7 @@ void PRM::SimplePRM::initialize()
 
     nodes2d_.clear();
 
-    ROS_INFO("r_min_: %f", Constants::Vehicle::r_min_); 
+    ROS_INFO("r_min_: %f", Constants::Vehicle::R_MIN_); 
     ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
 }
@@ -64,6 +64,10 @@ bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 
     return true; 
 }
+
+//void PRM::SimplePRM::generateEdges(const Node2d &a_, const Node)
+
+
 
 bool PRM::SimplePRM::buildKDtree()
 {
@@ -106,15 +110,89 @@ bool PRM::SimplePRM::buildKDtree()
 }
 
 
+/*
 
-
-bool PRM::SimplePRM::generateEdges()
+bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 {
 
+    a_ = Node2d{0, 0};
+    b_ = Node2d{10, 10};
 
 
+    const float mx_a_ = a_.x_, my_a_ = a_.y_;; // grid pose
+    float wx_a_, wy_a_; // world pose
+    Utils::mapToWorld(mx_a_ , my_a_, wx_a_, wy_a_); 
 
-}
+    visualize_.drawPoint(wx_a_, wy_a_, "point_a");
+
+    ROS_WARN("(wx_a_, wy_a_) => (%f,%f)", wx_a_,  wy_a_);
+
+    const float mx_b_ = b_.x_, my_b_ = b_.y_;; // grid pose
+    float wx_b_, wy_b_; // world pose
+    Utils::mapToWorld(mx_b_ , my_b_, wx_b_, wy_b_); 
+
+    ROS_WARN("(wx_b_, wy_b_) => (%f,%f)", wx_b_,  wy_b_);
+
+    visualize_.drawPoint(wx_b_, wy_b_, "point_b");
+
+    const Vec2f V_oa_{wx_a_, wy_a_};
+    const Vec2f V_ob_{wx_b_, wy_b_};
+    
+
+    //TODO ==> do intelligent brute-force
+    for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
+    {
+
+        //homogeneous transformation representing pose of a w.r.t o 
+        const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+        
+        const Mat3f &P_ao_ = P_oa_.inverse();
+        
+
+        for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
+        {   
+
+
+            const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
+
+            const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
+            
+            const float x_dash_ = P_ab_(0,2); 
+            const float y_dash_ = P_ab_(1,2);
+
+            const float r_ = Utils::getR(x_dash_, y_dash_);
+
+            if(r_ < Constants::Vehicle::R_MIN_)
+            {
+                ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
+                continue;
+            }
+
+            
+            const float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));
+            
+            const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_);
+
+            if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
+            {
+                ROS_INFO("yaw_a_: %f === yaw_b_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI);
+            }
+
+            else 
+            {   
+                //ROS_INFO("theta_dash_: %f theta_c_: %f" , theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);
+                //const float del_theta_ = std::fabs(theta_dash_ - theta_c_) * 180.f / M_PI;            
+                //ROS_DEBUG("yaw_a_: %f === yaw_b_: %f del_theta_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, del_theta_);
+
+            }
+
+        }
+
+    }
+
+    return true; 
+
+}*/
 
 
 long long int PRM::SimplePRM::set_N()
@@ -143,10 +221,12 @@ bool PRM::SimplePRM::generateRoadMap()
     
 
     generateSamplePoints(); 
-    buildKDtree();
-    geometry_msgs::Pose pose_;
+    //buildKDtree();
+    //geometry_msgs::Pose pose_;
+    //Node2d node_a_, node_b_;
+    //generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
-    generateSteeringCurveFamily(pose_);
+    //generateSteeringCurveFamily(pose_);
 
     //generateEdges();
     //generatePath();
@@ -183,7 +263,7 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     ROS_DEBUG("resolution: %f", map_->info.resolution);
     ROS_DEBUG("origin: (%f, %f)", map_->info.origin.position.x, map_->info.origin.position.y);
 
-    ROS_WARN("r_min_: %f", Constants::Vehicle::r_min_);
+    ROS_WARN("r_min_: %f", Constants::Vehicle::R_MIN_);
 
     map_set_ = true; 
     
@@ -244,7 +324,7 @@ bool PRM::SimplePRM::connectConfigurationToRobot(geometry_msgs::Pose or_ , geome
     const float x_ =  P_rc_(0,2); 
     const float y_ = P_rc_(1,2); 
 
-    const float R_ = Utils::getRfromConfigPose(x_, y_); 
+    const float R_ = Utils::getR(x_, y_); 
 
     generateSteeringCurve(or_, oc_, R_);
 
@@ -262,63 +342,50 @@ bool PRM::SimplePRM::generateSamplePoints()
 
     ROS_INFO("map_dimension: (%d,%d)", h_, w_);
 
+    //range of x in real world and NOT GRID
+    std::vector<float> rx_ = {Constants::MapMetaData::origin_x_ , Constants::MapMetaData::origin_x_ + (w_ + 0.5f) * Constants::MapMetaData::res_}; 
+    std::vector<float> ry_ = {Constants::MapMetaData::origin_y_ , Constants::MapMetaData::origin_y_ + (h_ + 0.5f) * Constants::MapMetaData::res_} ;
+    
+    
     std::random_device rd;
     std::mt19937 gen(rd());
     
-    std::uniform_int_distribution<int> dist_x(0, w_);
-    std::uniform_int_distribution<int> dist_y(0,h_);
+    std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
+    std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
+    //std::vector<std::vector<int> > pose_flag_(2000, std::vector<int>(2000, -1));
 
-    std::vector<std::vector<int> > pose_flag_(2000, std::vector<int>(2000, -1));
+    //std::unordered_set<Node2d> sampled_points_;
+    
+    //TODO ==> initialise on HEAP
+    std::unordered_set<Node2d, Node2dHash> sampled_points_;
 
-    ROS_INFO("pose_flag_ filled!");
-
+    
     nodes2d_.clear();
     nodes2d_.reserve(N_);
 
-    if(pose_flag_.size()  * pose_flag_[0].size()< N_) 
-    {
-        ROS_ERROR("pose_flag_ is small!");
-        return false;
-
-    }
     
-    while((int)nodes2d_.size()  < N_ && ros::ok())  
+    
+    while(sampled_points_.size() < N_ && ros::ok())  
     {
         //ROS_INFO("nodes2d_.size(): %d", nodes2d_.size());
-        const int mx_ = dist_x(gen);
-        const int my_ = dist_y(gen);
+        const float  x_ = dist_x(gen);
+        const float  y_ = dist_y(gen);
 
- 
-        if(mx_ >= 0 && mx_ < 1000 && my_>= 0 && my_ <= 2000)
+        ROS_INFO("(x,y) => (%f,%f)", x_, y_);
+
+        const Node2d node_{x_, y_};
+
+        if(sampled_points_.find(node_) == sampled_points_.end())
         {
-        
-            if(pose_flag_[my_][mx_] == -1)
-            {   
-                pose_flag_[my_][mx_] = 1;
 
-                Node2d node_(mx_, my_);
+            sampled_points_.insert(node_);
 
-                if(isObstacleFree(node_))
-                {
-                    nodes2d_.push_back(node_);
-
-                    //point_t pt_{node_.x_, node_.y};
-                    float wx_, wy_; //world co-ordinates
-                    Utils::mapToWorld(mx_, my_, wx_, wy_);
-                    
-                    //kdPoint pt_ {wx_, wy_};
-                    //kd_pts_.push_back(pt_); //inserting WORLD co-ordinates corresponding to (mx_, my_);
-                
-                }                
-            }
         }
-
-        ROS_WARN("nodes_2d_.size(): %d" , (int)nodes2d_.size());
+        
+        nodes2d_.push_back(node_);
     }
     
-
-
 
     ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
     
@@ -332,11 +399,9 @@ bool PRM::SimplePRM::generateSamplePoints()
     {
 
         geometry_msgs::Pose pose_; 
-        float wx_, wy_; 
-        Utils::mapToWorld(t.x_, t.y_,  wx_, wy_);
         
-        pose_.position.x = wx_;
-        pose_.position.y = wy_; 
+        pose_.position.x = t.x_;
+        pose_.position.y = t.y_; 
         pose_.orientation = Utils::getQuatFromYaw(0.f);
 
         pose_array_.poses.push_back(pose_);
@@ -400,7 +465,8 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta_)
 {
 
-    if(delta_ > Constants::Vehicle::delta_max_) {
+    if(delta_ > Constants::Vehicle::delta_max_) 
+    {
         
         ROS_ERROR("del_max: %f delta_: %f", Constants::Vehicle::delta_max_, delta_);
         ROS_ERROR("***** DELTA_ > DELTA_MAX!! ===> Something is wrong!");

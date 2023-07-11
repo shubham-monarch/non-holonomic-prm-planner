@@ -7,6 +7,9 @@
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
 
+#include <boost/functional/hash.hpp>
+#include <unordered_set>
+
 /**
  * Simple PRM implementation
 */
@@ -38,7 +41,19 @@ namespace PRM{
 
         Node2d(const int x, const int y) : x_(x), y_(y){}
         Node2d(){}
-        
+
+        bool operator==(const Node2d& other) const {
+            return x_ == other.x_ && y_ == other.y_;
+        }    
+    };
+
+    struct Node2dHash {
+        std::size_t operator()(const Node2d& obj) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, obj.x_);
+            boost::hash_combine(seed, obj.y_);
+            return seed;
+        }
     };
 
     class SimplePRM{
@@ -63,13 +78,12 @@ namespace PRM{
             //**** core planner functions
             long long int set_N();
             float set_SR(); 
-            
+
             bool buildKDtree();
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     
             
             bool generateEdges();
-
             bool isReachable();
 
             //*** miscellaneous

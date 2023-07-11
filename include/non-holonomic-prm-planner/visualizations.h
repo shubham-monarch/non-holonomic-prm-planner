@@ -37,7 +37,7 @@ namespace PRM{
 
             void draw2DNodes(const std::vector<Node2d> &nodes2d_, std::string topic_ = "sposes");
 
-            
+            void drawPoint(const float x_ , const float y_, const std::string topic = "point");
 
         private: 
 

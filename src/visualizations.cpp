@@ -66,10 +66,20 @@ void PRM::Visualize::drawCircle(const geometry_msgs::PoseStamped tp_, const floa
     }
 
     publishT<geometry_msgs::PoseArray>(topic_, circle_);
-
-
-
 }
 
+void PRM::Visualize::drawPoint(const float x_, const float y_, const std::string topic_)
+{
 
+    geometry_msgs::PoseStamped  pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now(); 
+
+    pose_.pose.position.x= x_; 
+    pose_.pose.position.y = y_; 
+    pose_.pose.orientation = Utils::getQuatFromYaw(0.f);
+
+    publishT(topic_, pose_);
+
+}
 
