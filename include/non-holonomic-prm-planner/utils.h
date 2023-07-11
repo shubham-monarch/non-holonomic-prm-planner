@@ -34,6 +34,19 @@ namespace PRM{
         
         };
 
+        static inline float euclidean(const Node2d &a_, const Node2d &b_)
+        {
+
+            return sqrt(pow(a_.x_ - b_.x_ , 2) + pow(a_.y_ - b_.y_, 2));
+
+        }
+
+        static inline float norm(const float x_, const float y_)
+        {
+
+            return sqrt(pow(x_, 2) + pow(y_, 2));
+        }
+
         static inline float fmod_(const float y_, const float x_)
         {
 

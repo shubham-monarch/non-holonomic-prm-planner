@@ -7,9 +7,11 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
-        - /Steering Curve Family1
-        - /Steering Curve Family1/Status1
+        - /Sampled Points1
+        - /Sampled Points1/Status1
         - /Pose1
+        - /Pose2
+        - /Steering Curve Family1
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz/Selection
@@ -70,16 +72,16 @@ Visualization Manager:
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
-      Color: 255; 255; 255
+      Color: 238; 238; 236
       Enabled: true
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
-      Name: Steering Curve Family
+      Name: Sampled Points
       Queue Size: 10
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /sposes
+      Topic: /sampled_points
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -89,13 +91,46 @@ Visualization Manager:
       Color: 239; 41; 41
       Enabled: true
       Head Length: 20
-      Head Radius: 50
+      Head Radius: 20
       Name: Pose
       Queue Size: 10
-      Shaft Length: 100
-      Shaft Radius: 5
+      Shaft Length: 30
+      Shaft Radius: 0.20000000298023224
       Shape: Arrow
-      Topic: /tp
+      Topic: /point_b
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 115; 210; 22
+      Enabled: true
+      Head Length: 20
+      Head Radius: 20
+      Name: Pose
+      Queue Size: 10
+      Shaft Length: 50
+      Shaft Radius: 0.20000000298023224
+      Shape: Arrow
+      Topic: /point_a
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.5
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 252; 233; 79
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Steering Curve Family
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /steering_curve
       Unreliable: false
       Value: true
   Enabled: true
@@ -135,10 +170,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 0.44512826204299927
+      Scale: -2.8925275802612305
       Target Frame: <Fixed Frame>
-      X: -421.40997314453125
-      Y: 698.876708984375
+      X: -930.431640625
+      Y: -245.16317749023438
     Saved: ~
 Window Geometry:
   Displays:

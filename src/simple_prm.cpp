@@ -110,43 +110,57 @@ bool PRM::SimplePRM::buildKDtree()
 }
 
 
-/*
+
 
 bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 {
+    
+    ROS_INFO("generateEdges called!");
+    const float ox_ = Constants::MapMetaData::origin_x_; 
+    const float oy_ = Constants::MapMetaData::origin_y_;
 
-    a_ = Node2d{0, 0};
-    b_ = Node2d{10, 10};
+    a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
+    b_ = Node2d{ox_ + 31.f, oy_ + 31.f};
+
+    if(Utils::euclidean(a_, b_) > Constants::Planner::max_res_)
+    {   
+        ROS_ERROR("euclidean distance  > max_res!");
+        return false;
+    }
 
 
-    const float mx_a_ = a_.x_, my_a_ = a_.y_;; // grid pose
-    float wx_a_, wy_a_; // world pose
-    Utils::mapToWorld(mx_a_ , my_a_, wx_a_, wy_a_); 
+    const float xa_ = a_.x_, ya_ = a_.y_;
+    const float xb_ = b_.x_, yb_ = b_.y_;
 
-    visualize_.drawPoint(wx_a_, wy_a_, "point_a");
-
-    ROS_WARN("(wx_a_, wy_a_) => (%f,%f)", wx_a_,  wy_a_);
-
-    const float mx_b_ = b_.x_, my_b_ = b_.y_;; // grid pose
-    float wx_b_, wy_b_; // world pose
-    Utils::mapToWorld(mx_b_ , my_b_, wx_b_, wy_b_); 
-
-    ROS_WARN("(wx_b_, wy_b_) => (%f,%f)", wx_b_,  wy_b_);
-
-    visualize_.drawPoint(wx_b_, wy_b_, "point_b");
-
-    const Vec2f V_oa_{wx_a_, wy_a_};
-    const Vec2f V_ob_{wx_b_, wy_b_};
+    
+    const Vec2f V_oa_{xa_, ya_};
+    const Vec2f V_ob_{xb_, yb_};
     
 
     //TODO ==> do intelligent brute-force
+
+    bool found_ = false;
+
+    int cnt_ = 0 ;
+
     for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
     {
-
+        
+        ROS_INFO("cnt_: %d", cnt_);
+        /*if(cnt_> 10)
+        {
+            break;
+        }*/
         //homogeneous transformation representing pose of a w.r.t o 
         const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
         
         const Mat3f &P_ao_ = P_oa_.inverse();
+        
+        if(found_)
+        {
+            //break;
+        }
+            
         
 
         for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
@@ -164,7 +178,7 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 
             if(r_ < Constants::Vehicle::R_MIN_)
             {
-                ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
+               // ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
                 continue;
             }
 
@@ -175,7 +189,33 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 
             if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
             {
+                
+                geometry_msgs::Pose or_;
+                or_.position.x = xa_; 
+                or_.position.y = ya_; 
+                or_.orientation = Utils::getQuatFromYaw(yaw_a_);
+
+                geometry_msgs::Pose oc_; 
+                oc_.position.x = xb_; 
+                oc_.position.y = yb_; 
+                oc_.orientation = Utils::getQuatFromYaw(yaw_b_);
+
+                const geometry_msgs::PoseArray sc_ =  generateSteeringCurve(or_, oc_, r_);
+                //generateSteeringCurveFamily(or_);
+
+                visualize_.drawPoint(or_, "o" + std::to_string(cnt_));
+                visualize_.drawPoint(oc_, "p" + std::to_string(cnt_));
+                visualize_.publishT<geometry_msgs::PoseArray>("sc_" + std::to_string(cnt_) , sc_);
+
+                cnt_++;
                 ROS_INFO("yaw_a_: %f === yaw_b_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI);
+                
+                //found_ = true;
+
+                visualize_.drawPoint(or_, "point_a");
+                visualize_.drawPoint(oc_, "point_b");
+
+                //break;
             }
 
             else 
@@ -190,10 +230,11 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 
     }
 
+    ROS_WARN("cnt_: %d", cnt_);
+
     return true; 
 
-}*/
-
+}
 
 long long int PRM::SimplePRM::set_N()
 {
@@ -223,8 +264,9 @@ bool PRM::SimplePRM::generateRoadMap()
     generateSamplePoints(); 
     //buildKDtree();
     //geometry_msgs::Pose pose_;
-    //Node2d node_a_, node_b_;
-    //generateEdges(node_a_, node_b_);
+    Node2d node_a_, node_b_;
+    
+    generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);
 
@@ -460,7 +502,7 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 
 }
 
-
+//TODO ==> fix bug
 //generate steering curve points for a particular delta
 bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta_)
 {
@@ -470,7 +512,7 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
         
         ROS_ERROR("del_max: %f delta_: %f", Constants::Vehicle::delta_max_, delta_);
         ROS_ERROR("***** DELTA_ > DELTA_MAX!! ===> Something is wrong!");
-        return false;
+        //return false;
 
     }
 
@@ -489,9 +531,9 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
     
     //double theta = tf::getYaw(robot_pose_.orientation);
 
-    rp_.position.x = -937;
-    rp_.position.y = -245;
-    rp_.orientation = Utils::getQuatFromYaw(0.1f);
+    //rp_.position.x = -937;
+    //rp_.position.y = -245;
+    //rp_.orientation = Utils::getQuatFromYaw(0.1f);
     
     P_oa_ = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f(rp_.position.x , rp_.position.y), tf::getYaw(rp_.orientation));
 
@@ -505,7 +547,12 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
     {
         R_ = Utils::getR(delta_);
 
-    } 
+    } else
+    {   
+        ROS_ERROR("delta is zero!");
+        return false;
+    }
+
     ROS_WARN("R_: %f", R_);
 
     std::vector<Eigen::Vector2f> V_ab_;
@@ -554,12 +601,7 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
         
         V_ab_.emplace_back(x_,y_);
 
-        if(V_ab_.size() > 800) {
-
-            ROS_ERROR("V_ab_.size() ==> %d > 800", (int)V_ab_.size());
-            break;
-        }
-
+      
 
     }
 
@@ -578,7 +620,8 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
     for(const auto &t: V_ab_){
         
         const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
-
+        //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, tf::getYaw(rp_.orientation));
+            
         const Mat3f &P_ob_ = P_ab_ * P_oa_;
 
         geometry_msgs::Pose pose_ob_;  //pose of b in world frame
@@ -612,7 +655,7 @@ bool PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, float delta
 }   
 
 //generate steering curve points for a particular delta with a config pose
-bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_msgs::Pose &cp_, float R_)
+geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_msgs::Pose &cp_, float R_)
 {
     
     //delta_ = 0.577;
@@ -647,9 +690,10 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
     ROS_WARN("R_: %f", R_);
     */
 
-    std::vector<Eigen::Vector2f> V_ab_;
+    std::vector<Eigen::Vector2f> V_ab_;    // point pose in robot frame
     V_ab_.reserve(1000);
     //assuming δ > 0
+    
     float y_;  
     for (float x_ = 0.f ;  ; x_ += 0.1f)
     {
@@ -658,44 +702,26 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
         //if(delta_ > 0.f){
 
 
-            y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
-            
-            if(std::isnan(y_)) {
-            
-                ROS_WARN("Last x_ value: %f", x_);
-                break;
-            }
+        y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
         
-            V_ab_.emplace_back(x_,y_);
-
-
-            y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
-            
-            if(std::isnan(y_)) {
-            
-                ROS_WARN("Last x_ value: %f", x_);
-                break;
-            }
+        if(std::isnan(y_)) {
         
-            V_ab_.emplace_back(x_,y_);
-
-
-        //Eigen::Vector2f v(x_, y_);
-
-        //ROS_INFO("R: %f" , R_);
-        //ROS_INFO("delta_: %f", delta_);
-        ROS_WARN("(x_,y_) => (%f,%f)", x_, y_);
-        //ROS_INFO("a2_: %f" , Constants::Vehicle::a2_);
-        //ROS_INFO("x_ + a2_: %f", x_ + Constants::Vehicle::a2_);
-        
-        
-        V_ab_.emplace_back(x_,y_);
-
-        if(V_ab_.size() > 800) {
-
-            ROS_ERROR("V_ab_.size() ==> %d > 800", (int)V_ab_.size());
+            ROS_WARN("Last x_ value: %f", x_);
             break;
         }
+    
+        V_ab_.emplace_back(x_,y_);
+
+
+        y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+        
+        if(std::isnan(y_)) {
+        
+            ROS_WARN("Last x_ value: %f", x_);
+            break;
+        }
+    
+        V_ab_.emplace_back(x_,y_);
 
 
     }
@@ -714,10 +740,13 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
 
     for(const auto &t: V_ab_){
         
-        const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
+        const float yaw_ = Utils::getThetaC(t[0], t[1]);
+        const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
+        //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
 
-        const Mat3f &P_ob_ = P_ab_ * P_oa_;
-
+        //const Mat3f &P_ob_ = P_ab_ * P_oa_;
+        const Mat3f &P_ob_ = P_oa_ * P_ab_;
+        
         geometry_msgs::Pose pose_ob_;  //pose of b in world frame
         pose_ob_.position.x = P_ob_(0,2); 
         pose_ob_.position.y = P_ob_(1,2);
@@ -734,7 +763,9 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
     pose_array_ob_.header.stamp = ros::Time::now();
     pose_array_ob_.poses = std::move(poses_ob_);
 
-    visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
+    return pose_array_ob_;
+
+    //visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
     
     steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
                                         std::make_move_iterator(pose_array_ob_.poses.begin()),   \
@@ -746,9 +777,9 @@ bool PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_,  geometry_ms
     cp_stamped_.header.stamp = ros::Time::now();
     cp_stamped_.pose = cp_;
 
-    visualize_.publishT<geometry_msgs::PoseStamped>("point_pose", cp_stamped_);
+    //visualize_.publishT<geometry_msgs::PoseStamped>("point_pose", cp_stamped_);
     //visualize_.visualizePointPose(cp_stamped_);
-    return true;
+    //return true;
 
 
 

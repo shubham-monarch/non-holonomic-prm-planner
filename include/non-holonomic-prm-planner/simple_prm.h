@@ -83,13 +83,13 @@ namespace PRM{
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     
             
-            bool generateEdges();
+            bool generateEdges(Node2d a_, const Node2d b_);
             bool isReachable();
 
             //*** miscellaneous
             bool connectConfigurationToRobot(geometry_msgs::Pose rp_, geometry_msgs::Pose configuration_)   ;
             bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float delta_);
-            bool generateSteeringCurve(geometry_msgs::Pose robot_pose_,  geometry_msgs::Pose &config_pose_, float R_);
+            geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_,  geometry_msgs::Pose &config_pose_, float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
             
             

@@ -83,3 +83,18 @@ void PRM::Visualize::drawPoint(const float x_, const float y_, const std::string
 
 }
 
+
+void PRM::Visualize::drawPoint(const geometry_msgs::Pose &p_, const std::string topic_)
+{
+
+    geometry_msgs::PoseStamped  pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now(); 
+
+    pose_.pose.position.x = p_.position.x; 
+    pose_.pose.position.y = p_.position.y;  
+    pose_.pose.orientation = p_.orientation;
+
+    publishT(topic_, pose_);
+
+}
