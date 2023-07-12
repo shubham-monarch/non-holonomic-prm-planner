@@ -112,7 +112,7 @@ bool PRM::SimplePRM::buildKDtree()
 
 
 
-bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
+bool PRM::SimplePRM::generateEdges(Node2d c_, Node2d d_)
 {
     
     ROS_INFO("generateEdges called!");
@@ -120,8 +120,8 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
     const float oy_ = Constants::MapMetaData::origin_y_;
 
     //TODO ==> fix for these values
-    a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
-    b_ = Node2d{ox_ + 29.3f, oy_ + 30.7f};
+    const Node2d &a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
+    const Node2d &b_ = Node2d{ox_ + 28.f, oy_ + 30.7f};
 
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};

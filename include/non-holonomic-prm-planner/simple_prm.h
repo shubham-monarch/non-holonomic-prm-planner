@@ -36,11 +36,10 @@ namespace PRM{
     //represents a sampled point with no heading information in the GRID and not WORLD
     struct Node2d {
 
-        int x_, y_; 
-        float theta_;
-
-        Node2d(const int x, const int y) : x_(x), y_(y){}
-        Node2d(){}
+        const float x_, y_; 
+    
+        Node2d(const float  x, const float y) : x_(x), y_(y){}
+        Node2d(): x_(0.f), y_(0.f) {}
 
         bool operator==(const Node2d& other) const {
             return x_ == other.x_ && y_ == other.y_;
@@ -55,6 +54,29 @@ namespace PRM{
             return seed;
         }
     };
+
+   /* struct Node3d {
+
+        const int x_, y_; 
+        const float theta_;
+        
+        Node3d(const int x, const int y) : x_(x), y_(y){}
+        Node3d(){}
+
+        bool operator==(const Node2d& other) const {
+            return x_ == other.x_ && y_ == other.y_;
+        }    
+    };
+
+    struct Node33dHash {
+        std::size_t operator()(const Node2d& obj) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, obj.x_);
+            boost::hash_combine(seed, obj.y_);
+            return seed;
+        }
+    };
+    */
 
     class SimplePRM{
 
@@ -94,6 +116,7 @@ namespace PRM{
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
             
+            void generateGraphEdgesFromSampledPoints();
             
             //==== variables =====
             
