@@ -273,7 +273,7 @@ bool PRM::SimplePRM::generateRoadMap()
     generateSamplePoints(); 
     //buildKDtree();
     //geometry_msgs::Pose pose_;
-    Node2d node_a_, node_b_;
+    Node2d node_a_(0, 0), node_b_(0, 0);
     
     generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);

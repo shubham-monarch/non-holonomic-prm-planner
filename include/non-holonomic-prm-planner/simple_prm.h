@@ -38,8 +38,9 @@ namespace PRM{
 
         const float x_, y_; 
     
-        Node2d(const float  x, const float y) : x_(x), y_(y){}
-        Node2d(): x_(0.f), y_(0.f) {}
+        explicit Node2d(const float  x, const float y) : x_(x), y_(y){}
+        
+        ///Node2d(): x_(0.f), y_(0.f) {}
 
         bool operator==(const Node2d& other) const {
             return x_ == other.x_ && y_ == other.y_;
@@ -55,28 +56,30 @@ namespace PRM{
         }
     };
 
-   /* struct Node3d {
+   struct Node3d {
 
-        const int x_, y_; 
-        const float theta_;
+        const float x_, y_;  //world co-ordinates  
+        const float theta_;    //world heading
+        const int theta_idx_;  // theta_ = (theta_) 
         
-        Node3d(const int x, const int y) : x_(x), y_(y){}
-        Node3d(){}
 
-        bool operator==(const Node2d& other) const {
+        explicit Node3d(const float x, const int y) : x_(x), y_(y), theta_idx_(-1), theta_(-1.f){}
+        
+        bool operator==(const Node3d& other) const {
             return x_ == other.x_ && y_ == other.y_;
         }    
     };
 
-    struct Node33dHash {
-        std::size_t operator()(const Node2d& obj) const {
+    struct Node3dHash {
+        std::size_t operator()(const Node3d& obj) const {
             std::size_t seed = 0;
             boost::hash_combine(seed, obj.x_);
             boost::hash_combine(seed, obj.y_);
+            boost::hash_combine(seed, obj.theta_idx_);
             return seed;
         }
     };
-    */
+        
 
     class SimplePRM{
 
@@ -107,17 +110,14 @@ namespace PRM{
             
             bool generateEdges(Node2d a_, const Node2d b_);
             bool isReachable();
-
-            //*** miscellaneous
             bool connectConfigurationToRobot(   geometry_msgs::Pose rp_, geometry_msgs::Pose cp_, \
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_");
             
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
-            
-            void generateGraphEdgesFromSampledPoints();
-            
+        
+        
             //==== variables =====
             
             Visualize visualize_;
