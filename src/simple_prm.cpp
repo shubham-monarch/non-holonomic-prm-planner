@@ -119,13 +119,18 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
     const float ox_ = Constants::MapMetaData::origin_x_; 
     const float oy_ = Constants::MapMetaData::origin_y_;
 
+    //TODO ==> fix for these values
     a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
-    b_ = Node2d{ox_ + 31.f, oy_ + 31.f};
+    b_ = Node2d{ox_ + 29.3f, oy_ + 30.7f};
 
+    //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
+    //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
 
+    const float dis_ = Utils::euclidean(a_, b_) ;
 
-    if(Utils::euclidean(a_, b_) > Constants::Planner::max_res_)
-    {   
+    if(dis_ > Constants::Planner::max_res_)
+    {      
+        ROS_ERROR("dis_: %f Planner::max_res_: %f", dis_, Constants::Planner::max_res_);
         ROS_ERROR("euclidean distance  > max_res!");
         return false;
     }
@@ -149,10 +154,11 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
     {
         
         ROS_INFO("cnt_: %d", cnt_);
-        /*if(cnt_> 10)
+        if(cnt_> 10)
         {
-            break;
-        }*/
+            //ROS_INFO("cnt_ > 10 ==> breaking!");
+            // /break;
+        }
         //homogeneous transformation representing pose of a w.r.t o 
         const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
         
@@ -160,7 +166,7 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
         
         if(found_)
         {
-            break;
+            //break;
         }
             
         
@@ -176,7 +182,10 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
             const float x_dash_ = P_ab_(0,2); 
             const float y_dash_ = P_ab_(1,2);
 
+            
             const float r_ = Utils::getR(x_dash_, y_dash_);
+            //ROS_WARN("r_: %f", r_);
+            //ROS_WARN("r_: %f norm(x_dash_, y_dash_): %f", r_, Utils::norm(x_dash_, y_dash_));
 
             if(r_ < Constants::Vehicle::R_MIN_)
             {
@@ -191,6 +200,8 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
 
             if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
             {
+
+                ROS_INFO("theta_dash_ => %f theta_c => %f", theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);   
                 
                 geometry_msgs::Pose or_;
                 or_.position.x = xa_; 
@@ -202,23 +213,18 @@ bool PRM::SimplePRM::generateEdges(Node2d a_, Node2d b_)
                 oc_.position.y = yb_; 
                 oc_.orientation = Utils::getQuatFromYaw(yaw_b_);
 
-                //const geometry_msgs::PoseArray sc_ =  generateSteeringCurve(or_, oc_, r_);
-                //generateSteeringCurveFamily(or_);
-
-                //visualize_.drawPoint(or_, "o" + std::to_string(cnt_));
-                ///visualize_.drawPoint(oc_, "p" + std::to_string(cnt_));
-                //visualize_.publishT<geometry_msgs::PoseArray>("sc_" + std::to_string(cnt_) , sc_);
-
                 cnt_++;
+                
+                ROS_INFO("r_: %f", r_);
                 ROS_INFO("yaw_a_: %f === yaw_b_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI);
                 
                 found_ = true;
 
                 //visualize_.drawPoint(or_, "point_a");
                 //visualize_.drawPoint(oc_, "point_b");
-                ROS_WARN("or_: (%f,%f) oc_: (%f,%f)", or_.position.x, or_.position.y, oc_.position.x, oc_.position.y);
-                connectConfigurationToRobot(or_, oc_);
-                break;  
+                //ROS_WARN("or_: (%f,%f) oc_: (%f,%f)", or_.position.x, or_.position.y, oc_.position.x, oc_.position.y);
+                connectConfigurationToRobot(or_, oc_ , "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
+               // break;  
             }
 
             else 
@@ -316,9 +322,12 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
 }
 
 
-bool PRM::SimplePRM::connectConfigurationToRobot(geometry_msgs::Pose or_ , geometry_msgs::Pose oc_) 
+bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , geometry_msgs::Pose oc_, \
+                                                    const std::string or_topic_, const std::string oc_topic_, \
+                                                    const std::string sc_topic_) 
 {
 
+    ROS_INFO("connectConfigToRobot called ==> or_topic_: %s oc_topic: %s sc_topic: %s" , or_topic_.c_str(), oc_topic_.c_str(), sc_topic_.c_str());
     /*or_.position.x = -937.f;
     or_.position.y = -245.f;
     or_.orientation = Utils::getQuatFromYaw(0.f);
@@ -346,24 +355,24 @@ bool PRM::SimplePRM::connectConfigurationToRobot(geometry_msgs::Pose or_ , geome
     std::ostringstream oss_; 
     
     oss_ << P_or_; 
-    ROS_INFO("P_or_: \n%s", oss_.str().c_str());
+    //ROS_INFO("P_or_: \n%s", oss_.str().c_str());
 
     oss_.str("");
     oss_ << P_oc_;
-    ROS_INFO("P_oc_: \n%s", oss_.str().c_str());
+   // ROS_INFO("P_oc_: \n%s", oss_.str().c_str());
 
     const Mat3f &P_ro_ = P_or_.inverse();
 
     oss_.str("");
     oss_ << P_ro_;
-    ROS_INFO("P_ro_: \n%s", oss_.str().c_str());
+   // ROS_INFO("P_ro_: \n%s", oss_.str().c_str());
 
 
     const Mat3f &P_rc_ = P_ro_ * P_oc_;
 
     oss_.str("");
     oss_ << P_rc_;
-    ROS_INFO("P_rc_: \n%s", oss_.str().c_str());
+    //ROS_INFO("P_rc_: \n%s", oss_.str().c_str());
 
     
     //config co-ordinates in robot frame
@@ -374,10 +383,10 @@ bool PRM::SimplePRM::connectConfigurationToRobot(geometry_msgs::Pose or_ , geome
 
     geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_, R_);
 
-    visualize_.publishT<geometry_msgs::PoseArray>("sc_curve", sc_poses_);
+    visualize_.publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
 
-    visualize_.drawPoint(or_, "or_");
-    visualize_.drawPoint(oc_, "oc_");
+    visualize_.drawPoint(or_, or_topic_);
+    visualize_.drawPoint(oc_, oc_topic_);
     
     //add yaw
     //visualize_.drawPoint(x_, y_); //
@@ -589,6 +598,38 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     }
 
+    for (float x_ = 0.f ;  ; x_ -= 0.1f)
+    {
+        
+        float y_ ; 
+        //if(delta_ > 0.f){
+
+
+        y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+        
+        if(std::isnan(y_)) {
+        
+            ROS_WARN("Last x_ value: %f", x_);
+            break;
+        }
+    
+        V_ab_.emplace_back(x_,y_);
+
+
+        y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+        
+        if(std::isnan(y_)) {
+        
+            ROS_WARN("Last x_ value: %f", x_);
+            break;
+        }
+    
+        V_ab_.emplace_back(x_,y_);
+
+
+    }
+
+
     //for(auto t: V_ab_) std::cout << t(0) << " " << t(1) << std::endl;
 
     ///return;
@@ -605,7 +646,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
         
         const float yaw_ = Utils::getThetaC(t[0], t[1]);
         //const float yaw_ = 0.f;
-        ROS_DEBUG("yaw_: %f", yaw_); 
+        //ROS_DEBUG("yaw_: %f", yaw_); 
         const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
         //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
 
