@@ -59,10 +59,10 @@ namespace PRM{
         static inline float getR(const float x_, const float y_)
         {
             
-            if(y_ == 0.f)
+            if(std::fabs(y_) < 0.001f)
             {
 
-                ROS_ERROR("y_ == 0.f  ==> Something is wrong!");
+                // /ROS_ERROR("y_ == 0.f  ==> Something is wrong!");
                 return -1.f;
             }
 
@@ -82,7 +82,7 @@ namespace PRM{
         //x_dash_, y_dash_ ==> config_pose in robot frame
         static inline float signDelta(const float x_dash_, const float y_dash_)
         {
-            if(y_dash_ == 0.f)
+            if(std::fabs(y_dash_) < 0.001f)
             {
                 return 0.f;
             }
@@ -116,7 +116,7 @@ namespace PRM{
         static inline float getThetaC(const float x_dash_, const float y_dash_, const float steering_angle_)
         {
 
-            if(y_dash_ == 0.f) {return 0.f ;}
+            if(std::fabs(y_dash_) < 0.001) {return 0.f ;}
 
             const float R_ = getR(x_dash_, y_dash_);
 
@@ -126,7 +126,7 @@ namespace PRM{
                     
             //float theta_c_ = std::atan2((x_ + Constants::Vehicle::a2_) , (sqrt(R_ * R_  - pow(x_ + Constants::Vehicle::a2_, 2))));
 
-            ROS_INFO("theta_c: %f", theta_c_);
+           // ROS_INFO("theta_c: %f", theta_c_);
 
             //if(y_dash_ < 0) theta_c_ = -theta_c_; 
 
