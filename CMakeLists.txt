@@ -56,14 +56,11 @@ set(SOURCES
     )
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/constants.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/vector2d.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/simple_prm.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/utils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/visualizations.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
-    
-    
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})
