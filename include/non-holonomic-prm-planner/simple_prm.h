@@ -1,14 +1,17 @@
 #ifndef PRM_PLANNER_H
 #define PRM_PLANNER_H
 
-#include <ros/ros.h>
+
 #include <nav_msgs/OccupancyGrid.h>
 
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
+//#include <non-holonomic-prm-planner/utils.h>
 #include <non-holonomic-prm-planner/ds.h>
 
+
 #include <unordered_set>
+
 
 
 /**

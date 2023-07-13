@@ -1,6 +1,5 @@
 #include <non-holonomic-prm-planner/simple_prm.h>
-#include <non-holonomic-prm-planner/utils.h>
-
+#include <non-holonomic-prm-planner/helpers.h>
 
 
 #include <random>
@@ -13,10 +12,8 @@
 
 #include <cmath>
 
+#include <non-holonomic-prm-planner/utils.h>
 
-typedef Eigen::Matrix3f Mat3f;
-typedef Eigen::Vector2f Vec2f;
-typedef long long int ll;
 
 //forward declaration
 float PRM::Constants::MapMetaData::cell_size_; 
@@ -111,20 +108,20 @@ bool PRM::SimplePRM::buildKDtree()
 
 
 
-bool PRM::SimplePRM::generateEdges(Node3d c_, Node3d d_)
+bool PRM::SimplePRM::generateEdges(Node3d a_, Node3d b_)
 {
     
 
     ROS_INFO("generateEdges called!");
-    const float ox_ = Constants::MapMetaData::origin_x_; 
-    const float oy_ = Constants::MapMetaData::origin_y_;
+   // const float ox_ = Constants::MapMetaData::origin_x_; 
+    //const float oy_ = Constants::MapMetaData::origin_y_;
 
     //TODO ==> fix for these values
     //const Node2d &a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //const Node2d &b_ = Node2d{ox_ + 28.f, oy_ + 30.f};
 
-    const Node2d &a_ = Node2d{ox_  + 31.f, oy_ + 31.f};
-    const Node2d &b_ = Node2d{ox_ + 30.f, oy_ + 30.f};
+    //const Node2d &a_ = Node2d{ox_  + 31.f, oy_ + 31.f};
+    //const Node2d &b_ = Node2d{ox_ + 30.f, oy_ + 30.f};
 
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
@@ -153,136 +150,66 @@ bool PRM::SimplePRM::generateEdges(Node3d c_, Node3d d_)
     const Vec2f V_oa_{xa_, ya_};
     const Vec2f V_ob_{xb_, yb_};
     
+    const float yaw_a_ = a_.theta_idx_ * Constants::Planner::theta_sep_; 
+    const float yaw_b_ = b_.theta_idx_ * Constants::Planner::theta_sep_;
 
-    //TODO ==> do intelligent brute-force
+    
+    
+    const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+    const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
 
-    bool found_ = false;
-
-    int cnt_ = 0 ;
-
-    for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
+    const Mat3f &P_ao_ = P_oa_.inverse();
+            
+    const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
+    
+    const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
+    const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
+    
+    float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
+    
+    if(theta_dash_ < 0)
     {
+        theta_dash_ += 2 *  M_PI; 
+    }
+    
+    const float r_ = Utils::getR(x_dash_, y_dash_);
+
         
-        //ROS_INFO("cnt_: %d", cnt_);
-        if(cnt_> 10)
-        {
-            //ROS_INFO("cnt_ > 10 ==> breaking!");
-            // /break;
-        }
-        //homogeneous transformation representing pose of a w.r.t o 
-        const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+    if(r_ > 0.f && r_ < Constants::Vehicle::R_MIN_)
+    {   
         
-        const Mat3f &P_ao_ = P_oa_.inverse();
-        
-        if(found_)
-        {
-            //break;
-        }
-            
-        
-
-        for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
-        {   
-
-
-            const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
-
-            const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
-            
-            const float x_dash_ = P_ab_(0,2); 
-            const float y_dash_ = P_ab_(1,2);
-
-            //ROS_DEBUG("(x_dash, y_dash) ==> (%f, %f)", x_dash_, y_dash_);
-           // break;
-            const float r_ = Utils::getR(x_dash_, y_dash_);
-
-            //ROS_WARN("r_: %f", r_);
-            //ROS_WARN("r_: %f norm(x_dash_, y_dash_): %f", r_, Utils::norm(x_dash_, y_dash_));
-
-            if(r_ > 0.f && r_ < Constants::Vehicle::R_MIN_)
-            {   
-               // ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
-                continue;
-            }
-
-            
-            float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));
-
-            
-            if(theta_dash_ < 0) {theta_dash_ += 2 *  M_PI; }
-            
-            //const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_);
-            //const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, P_ob_(1,2));
-            const float steering_dir_ = Utils::signDelta(x_dash_, y_dash_);
-            const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
-
-            /*if(std::fabs(theta_c_) < 0.001) 
-            {
-
-                ROS_ERROR("theta_c ===> 0.0001");
-                found_ = true;
-                break;
-
-            }*/
-
-            if(yaw_a_ == yaw_b_)
-            {
-                
-                ROS_WARN("===========================================");
-                ROS_ERROR("yaw_a_: %f yaw_b_: %f", yaw_a_ * 180 / M_PI, yaw_b_ * 180 / M_PI);
-                ROS_ERROR("x_dash_: %f y_dash_: %f", x_dash_, y_dash_);
-                ROS_ERROR("theta_dash_: %f", theta_dash_ * 180 / M_PI); 
-                ROS_ERROR("theta_c_: %f", theta_c_ * 180 / M_PI);
-                ROS_INFO("===========================================");
-
-            }
-
-            if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
-            {   
-                ROS_WARN(" ======== cnt_ ==> %d ================", cnt_);
-                //ROS_INFO("(x_dash_, y_dash_): (%f,%f)", x_dash_, y_dash_);
-                //ROS_INFO("theta_dash_ => %f theta_c => %f", theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);   
-                
-                geometry_msgs::Pose or_;
-                or_.position.x = xa_; 
-                or_.position.y = ya_; 
-                or_.orientation = Utils::getQuatFromYaw(yaw_a_);
-
-                geometry_msgs::Pose oc_; 
-                oc_.position.x = xb_; 
-                oc_.position.y = yb_; 
-                oc_.orientation = Utils::getQuatFromYaw(yaw_b_);
-
-                cnt_++;
-                
-                //ROS_INFO("r_: %f", r_);
-                // /ROS_INFO("yaw_a_: %f === yaw_b_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI);
-                
-                //found_ = true;
-
-                //visualize_.drawPoint(or_, "point_a");
-                //visualize_.drawPoint(oc_, "point_b");
-                //ROS_WARN("or_: (%f,%f) oc_: (%f,%f)", or_.position.x, or_.position.y, oc_.position.x, oc_.position.y);
-                connectConfigurationToRobot(or_, oc_ , "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-                //break;  
-            }
-
-            else 
-            {   
-                //ROS_INFO("theta_dash_: %f theta_c_: %f" , theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);
-                //const float del_theta_ = std::fabs(theta_dash_ - theta_c_) * 180.f / M_PI;            
-                //ROS_DEBUG("yaw_a_: %f === yaw_b_: %f del_theta_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, del_theta_);
-
-            }
-
-        }
-
-        //break;
+        // ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
+        return false;
     }
 
-    //ROS_WARN("cnt_: %d", cnt_);
 
-    return true; 
+    const float steering_dir_ = Utils::signDelta(x_dash_, y_dash_);
+    const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
+
+        
+    if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
+    {   
+        //ROS_WARN(" ======== cnt_ ==> %d ================", cnt_);
+        //ROS_INFO("(x_dash_, y_dash_): (%f,%f)", x_dash_, y_dash_);
+        //ROS_INFO("theta_dash_ => %f theta_c => %f", theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);   
+        
+        geometry_msgs::Pose or_;
+        or_.position.x = xa_; 
+        or_.position.y = ya_; 
+        or_.orientation = Utils::getQuatFromYaw(yaw_a_);
+
+        geometry_msgs::Pose oc_; 
+        oc_.position.x = xb_; 
+        oc_.position.y = yb_; 
+        oc_.orientation = Utils::getQuatFromYaw(yaw_b_);
+
+        connectConfigurationToRobot(or_, oc_ );
+        
+        return true ;
+    }
+
+  
+    return false; 
 
 }
 

@@ -1,6 +1,5 @@
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/simple_prm.h>
-#include <non-holonomic-prm-planner/constants.h>
 #include <non-holonomic-prm-planner/utils.h>
 
 

@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <non-holonomic-prm-planner/constants.h>
+
 
 #include <cmath>
 
@@ -14,10 +14,14 @@
 #include <geometry_msgs/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-
-
+//#include <non-holonomic-prm-planner/constants.h>
+//#include <non-holonomic-prm-planner/ds.h>
 
 namespace PRM{
+
+    
+    //struct Node2d; 
+    //struct Node3d;
 
     namespace Utils{
 
@@ -34,12 +38,7 @@ namespace PRM{
         
         };
 
-        static inline float euclidean(const Node2d &a_, const Node2d &b_)
-        {
-
-            return sqrt(pow(a_.x_ - b_.x_ , 2) + pow(a_.y_ - b_.y_, 2));
-
-        }
+       
 
         static inline float norm(const float x_, const float y_)
         {
@@ -113,6 +112,7 @@ namespace PRM{
             return 0.f;
 
         }
+
         static inline float getThetaC(const float x_dash_, const float y_dash_, const float steering_angle_)
         {
 
