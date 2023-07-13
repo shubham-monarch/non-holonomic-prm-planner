@@ -114,7 +114,7 @@ namespace PRM{
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_");
             
-            geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_,  float R_);
+            geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
         
         

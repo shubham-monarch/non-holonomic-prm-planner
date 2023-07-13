@@ -78,17 +78,63 @@ namespace PRM{
         
         }
 
-        static inline float getThetaC(const float x_, const float y_)
+
+        //x_dash_, y_dash_ ==> config_pose in robot frame
+        static inline float signDelta(const float x_dash_, const float y_dash_)
+        {
+            if(y_dash_ == 0.f)
+            {
+                return 0.f;
+            }
+
+            if(x_dash_ > 0)
+            {
+                return (y_dash_ >= 0 ? 1.f : -1.f) ;
+                
+            }
+            else 
+            {
+
+                if(x_dash_ < - 2 * Constants::Vehicle::a2_ )
+                {
+
+                    return (y_dash_ >= 0 ? 1.f : -1.f);           
+
+                }
+                else
+                {
+
+                    return (y_dash_ < 0 ? 1.f : -1.f);
+
+                }
+
+            }
+
+            return 0.f;
+
+        }
+        static inline float getThetaC(const float x_dash_, const float y_dash_, const float steering_angle_)
         {
 
-            if(y_ == 0.f) {return 0.f ;}
+            if(y_dash_ == 0.f) {return 0.f ;}
 
-            const float R_ = getR(x_, y_);
+            const float R_ = getR(x_dash_, y_dash_);
 
-            float theta_c_ = std::atan((x_ + Constants::Vehicle::a2_) / (sqrt(R_ * R_  - pow(x_ + Constants::Vehicle::a2_, 2))));
+            //float theta_c_ = std::atan((x_dash_ + Constants::Vehicle::a2_) / (sqrt(R_ * R_  - pow(x_dash_ + Constants::Vehicle::a2_, 2))));
+            float theta_c_ = std::atan2((x_dash_ + Constants::Vehicle::a2_) , (sqrt(R_ * R_  - pow(x_dash_ + Constants::Vehicle::a2_, 2))));
+            //float theta_c_ = std::atan2((sqrt(R_ * R_  - pow(x_dash_ + Constants::Vehicle::a2_, 2))), (x_dash_ + Constants::Vehicle::a2_) );
+                    
+            //float theta_c_ = std::atan2((x_ + Constants::Vehicle::a2_) , (sqrt(R_ * R_  - pow(x_ + Constants::Vehicle::a2_, 2))));
 
-            if(y_ < 0) theta_c_ = -theta_c_; 
+            ROS_INFO("theta_c: %f", theta_c_);
 
+            //if(y_dash_ < 0) theta_c_ = -theta_c_; 
+
+            if(steering_angle_ < 0) 
+            {
+                theta_c_ = -theta_c_;
+            }
+            
             if(theta_c_ < 0.f) 
             {
                 theta_c_ += 2 * M_PI;
@@ -99,7 +145,7 @@ namespace PRM{
         }
 
         //steering radius to reach (x_,y_) in the ROBOT FRAME
-        
+            
 
         static inline geometry_msgs::Quaternion getQuatFromYaw(const float yaw_)
         {
@@ -112,6 +158,8 @@ namespace PRM{
 
             return msg_quaternion;
         }
+
+        
 
         static inline Eigen::Matrix3f getHomogeneousTransformationMatrix(const Eigen::Vector2f &translation, const float &theta) 
         {
