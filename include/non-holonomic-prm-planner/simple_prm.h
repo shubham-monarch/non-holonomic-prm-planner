@@ -6,6 +6,7 @@
 
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
+#include <non-holonomic-prm-planner/constants.h>
 
 #include <boost/functional/hash.hpp>
 #include <unordered_set>
@@ -59,15 +60,21 @@ namespace PRM{
    struct Node3d {
 
         const float x_, y_;  //world co-ordinates  
-        const float theta_;    //world heading
         const int theta_idx_;  // theta_ = (theta_) 
+        const float theta_;    //world heading
         
 
-        explicit Node3d(const float x, const int y) : x_(x), y_(y), theta_idx_(-1), theta_(-1.f){}
+        explicit Node3d(const float x, const float y, const int idx_):x_(x), y_(y), \
+                        theta_idx_(idx_), \
+                        theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ )
+        {
+
+        }
+                                                                
+        bool operator==(const Node3d& other_) const {
+            return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
+        }   
         
-        bool operator==(const Node3d& other) const {
-            return x_ == other.x_ && y_ == other.y_;
-        }    
     };
 
     struct Node3dHash {

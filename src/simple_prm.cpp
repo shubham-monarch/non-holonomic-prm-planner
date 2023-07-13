@@ -1,5 +1,4 @@
 #include <non-holonomic-prm-planner/simple_prm.h>
-#include <non-holonomic-prm-planner/constants.h>
 #include <non-holonomic-prm-planner/utils.h>
 
 
@@ -311,12 +310,19 @@ bool PRM::SimplePRM::generateRoadMap()
     sr_ = Constants::Planner::max_res_;
     
 
-    generateSamplePoints(); 
+    //generateSamplePoints(); 
     //buildKDtree();
     //geometry_msgs::Pose pose_;
-    Node2d node_a_(0, 0), node_b_(0, 0);
+    //Node2d node_a_(0, 0), node_b_(0, 0);
+
+    Node3d a_(0.f,0.f,3), b_(0.f,0.f,29);
+
+    ROS_INFO("a_ => (%f,%f,%d,%f)", a_.x_, a_.y_, a_.theta_idx_, a_.theta_);
+    ROS_INFO("b => (%f,%f,%d,%f)", b_.x_, b_.y_, b_.theta_idx_, b_.theta_);
     
-    generateEdges(node_a_, node_b_);
+
+
+    //generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);
 
