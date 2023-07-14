@@ -55,17 +55,39 @@ namespace PRM
    struct Node3d 
    {
 
-        const float x_, y_;  //world co-ordinates  
-        const int theta_idx_;  // theta_ = (theta_) 
-        const float theta_;    //world heading
+         float x_, y_;  //world co-ordinates  
+         int theta_idx_;  // theta_ = (theta_) 
+        float theta_;    //world heading
         
+        float cost_;
 
+        Node3d():x_(-1.0), y_(1.f), theta_idx_(0), theta_(-1){};
+        
         Node3d(const float x, const float y, const int idx_):x_(x), y_(y), \
                         theta_idx_(idx_), \
                         theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ )
         {
 
         }
+
+        bool operator()(const Node3d& p1, const Node3d& p2) const {
+            // Compare based on the distance from the origin (0,0,0)
+            //double dist1 = p1.x * p1.x + p1.y * p1.y + p1.z * p1.z;
+            //double dist2 = p2.x * p2.x + p2.y * p2.y + p2.z * p2.z;
+            return p1.cost_ > p2.cost_; // Greater-than comparison for min heap
+        }
+
+        bool operator==(const Node3d& other_) const 
+        {
+            return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
+        }   
+
+        /*bool operator<(const Node3d& other) const
+        {
+            return cost_ > other.cost_;
+        }*/
+        
+        
 
         void print() const
         {
@@ -75,11 +97,15 @@ namespace PRM
             
         }
 
-        bool operator==(const Node3d& other_) const 
-        {
-            return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
-        }   
+    };
 
+    class myComparator
+    {
+    public:
+        int operator() (const Node3d& p1, const Node3d& p2)
+        {
+            return p1.cost_ > p2.cost_;
+        }
     };
 
 

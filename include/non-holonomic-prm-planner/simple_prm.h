@@ -84,7 +84,8 @@ namespace PRM{
             
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
-        
+
+            bool Djikstra();
         
             //==== variables =====
             
@@ -93,10 +94,7 @@ namespace PRM{
             nav_msgs::OccupancyGridConstPtr grid_;
 
             //** planner tuning params
-            int N_ ;
             
-            int sr_; // neighbour search radius
-
             //core planner vars
            // std::vector<Node2d> nodes2d_;
             std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
