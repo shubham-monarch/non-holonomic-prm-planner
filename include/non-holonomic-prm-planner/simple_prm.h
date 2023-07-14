@@ -63,11 +63,12 @@ namespace PRM{
             long long int set_N();
             float set_SR(); 
 
+            //bool generateGraph();
             bool buildKDtree();
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     
             
-            bool generateEdges(Node2d a_, const Node2d b_);
+            bool generateEdges(const Node2d &a_, const Node2d &b_);
 
             bool canConnect(const Node3d &a_ , const Node3d &b_) ;
 
@@ -97,8 +98,11 @@ namespace PRM{
             int sr_; // neighbour search radius
 
             //core planner vars
-            std::vector<Node2d> nodes2d_;
+           // std::vector<Node2d> nodes2d_;
             std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
+            
+            std::unordered_set<Node2d, Node2dHash> sampled_points_;
+
 
             kdTreePtr kdTree_;
             kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree

@@ -19,6 +19,8 @@
 #include <memory>
 #include <vector>
 
+#include <ros/ros.h>
+
 //#include "KDTree.hpp"
 #include <non-holonomic-prm-planner/KDTree.hpp>
 
@@ -147,6 +149,8 @@ namespace kdTree
     }
 
     KDTree::KDTree(pointVec point_array) {
+        
+        //ROS_WARN("KDTree constructor called!");
         leaf = std::make_shared< KDNode >();
         // iterators
         pointIndexArr arr;
@@ -161,6 +165,9 @@ namespace kdTree
         size_t level = 0;  // starting
 
         root = KDTree::make_tree(begin, end, length, level);
+
+        ROS_WARN("KDTree constructor exiting!");
+        
     }
 
     KDNodePtr KDTree::nearest_(   //
@@ -310,10 +317,16 @@ namespace kdTree
     pointVec KDTree::neighborhood_points(  //
         const point_t &pt,                 //
         const double &rad) {
+
+        //ROS_DEBUG("Inside KDTree::neighbourhood_points!");
+
         size_t level = 0;
         pointIndexArr nbh = neighborhood_(root, pt, rad, level);
         pointVec nbhp;
         nbhp.resize(nbh.size());
+
+        //ROS_DEBUG("nbhp.size() ==> %d", (int)nbhp.size());
+
         std::transform(nbh.begin(), nbh.end(), nbhp.begin(),
                     [](pointIndex x) { return x.first; });
         return nbhp;

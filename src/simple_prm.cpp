@@ -11,6 +11,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <cmath>
+#include <typeinfo>
 
 #include <non-holonomic-prm-planner/utils.h>
 
@@ -48,8 +49,8 @@ void PRM::SimplePRM::initialize()
 
     ROS_WARN("map_set_ is true!");
 
-    nodes2d_.clear();
-
+    //nodes2d_.clear();
+    sampled_points_.clear();
     ROS_INFO("r_min_: %f", Constants::Vehicle::R_MIN_); 
     ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
@@ -74,35 +75,42 @@ bool PRM::SimplePRM::buildKDtree()
 
     ROS_INFO("Inside buildKDTree!");
 
-    if((int)nodes2d_.size() == 0) {
+    /*if((int)nodes2d_.size() == 0) {
 
         ROS_ERROR("nodes2d_ is empty!");
         return false;
 
-    }
+    }*/
 
     kdPoints kd_points_;
 
-    for(const auto &node_: nodes2d_)
+    //ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
+
+    int cnt_ =0 ; 
+    for(const auto &node_: sampled_points_)
     {
+        cnt_++; 
+        
+        const float x_ = node_.x_ ; 
+        const float y_ = node_.y_; 
 
-        const int mx_ = node_.x_, my_ = node_.y_; 
-        float wx_, wy_; 
-
-        Utils::mapToWorld(mx_, my_, wx_, wy_);
-
-        kdPoint kp_ = {wx_, wy_};
+        kdPoint kp_ = {x_, y_};
 
         kd_points_.push_back(kp_);
-
+        //break;
+        ROS_DEBUG("cnt_: %d" , cnt_);
         //ROS_INFO("(mx_, my_): (%d,%d) ==> (wx_, wy_): (%f,%f)", mx_, my_, wx_, wy_);
         //ROS_INFO("(wx_, wy): (%f,%f)");
 
     }
 
+    //ROS_INFO("EXITED!");
     kdTree_ = std::make_shared<kdTree::KDTree>(kd_points_);
 
-    return true; 
+    ROS_INFO("kdTree initialized!");
+    //kdTree::KDTree tree_(kd_points_);
+
+   return true; 
 }
 
 
@@ -201,19 +209,19 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_)
 }
 
 
-bool PRM::SimplePRM::generateEdges(Node2d c_, Node2d d_)
+bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
     
     ROS_INFO("generateEdges called!");
-    const float ox_ = Constants::MapMetaData::origin_x_; 
-    const float oy_ = Constants::MapMetaData::origin_y_;
+    //const float ox_ = Constants::MapMetaData::origin_x_; 
+    //const float oy_ = Constants::MapMetaData::origin_y_;
 
     //TODO ==> fix for these values
     //const Node2d &a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //const Node2d &b_ = Node2d{ox_ + 28.f, oy_ + 30.f};
 
-    const Node2d &a2_ = Node2d{ox_  + 31.f, oy_ + 31.f};
-    const Node2d &b2_ = Node2d{ox_ + 30.f, oy_ + 30.f};
+    //const Node2d &a2_ = Node2d{ox_  + 31.f, oy_ + 31.f};
+    //  const Node2d &b2_ = Node2d{ox_ + 30.f, oy_ + 31.f};
 
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
@@ -279,12 +287,12 @@ bool PRM::SimplePRM::generateRoadMap()
     sr_ = Constants::Planner::max_res_;
     
 
-    //generateSamplePoints(); 
-    //buildKDtree();
+    generateSamplePoints(); 
+    buildKDtree();
     //geometry_msgs::Pose pose_;
-    Node2d node_a_(0, 0), node_b_(0, 0);
+    //Node2d node_a_(0, 0), node_b_(0, 0);
 
-    Node3d a_(0.f,0.f,3), b_(0.f,0.f,29);
+    //Node3d a_(0.f,0.f,3), b_(0.f,0.f,29);
 
 
     //ROS_INFO("a_ => (%f,%f,%d,%f)", a_.x_, a_.y_, a_.theta_idx_, a_.theta_);
@@ -295,7 +303,7 @@ bool PRM::SimplePRM::generateRoadMap()
 
     //generateEdges(a_, b_);
     
-    generateEdges(node_a_, node_b_);
+    // /generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
     //generateSteeringCurveFamily(pose_);
 
@@ -306,9 +314,29 @@ bool PRM::SimplePRM::generateRoadMap()
 
     //generateKDTree();
 
+    //kdTree::KDTree tree_;
+    ROS_WARN("Starting neighbour search!");
 
-    
+    int cnt_ = 0 ;
+    for(const auto &node_ : sampled_points_)
+    {   
+        cnt_++;
+        const kdTree::point_t pt_{node_.x_, node_.y_};
+        
+        kdTree::pointVec neighbours_ = kdTree_->neighborhood_points(pt_, sr_);
+
+        //ROS_WARN("pt_: (%f,%f) ==>", pt_[0], pt_[1]);
+
+        for(auto t: neighbours_)
+        {
+            //ROS_INFO("(%f,%f)", t[0], t[1]);
+        }
+    }
+
+    ROS_INFO("cnt_: %d" , cnt_);
+
     return true; 
+
 }
 
 void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
@@ -477,14 +505,13 @@ bool PRM::SimplePRM::generateSamplePoints()
     //std::unordered_set<Node2d> sampled_points_;
     
     //TODO ==> initialise on HEAP
-    std::unordered_set<Node2d, Node2dHash> sampled_points_;
+    
+    
+    //nodes2d_.clear();
+    //  nodes2d_.reserve(N_);
 
     
-    nodes2d_.clear();
-    nodes2d_.reserve(N_);
-
-    
-    
+    int cnt_ = 0  ;
     while(sampled_points_.size() < N_ && ros::ok())  
     {
         //ROS_INFO("nodes2d_.size(): %d", nodes2d_.size());
@@ -493,6 +520,7 @@ bool PRM::SimplePRM::generateSamplePoints()
 
         ROS_INFO("(x,y) => (%f,%f)", x_, y_);
 
+        cnt_++; 
         const Node2d node_{x_, y_};
 
         if(sampled_points_.find(node_) == sampled_points_.end())
@@ -502,21 +530,25 @@ bool PRM::SimplePRM::generateSamplePoints()
 
         }
         
-        nodes2d_.push_back(node_);
+        ROS_INFO("cnt_: %d", cnt_);
+
+        //nodes2d_.push_back(node_);
     }
     
+    ROS_INFO("EXITED while loop!"); 
+    ROS_INFO("sampled_pts.size(): %d", sampled_points_.size());
 
-    ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
+//    ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
     
-    geometry_msgs::PoseArray pose_array_;
+    /*geometry_msgs::PoseArray pose_array_;
     pose_array_.header.frame_id = "map"; 
     pose_array_.header.stamp = ros::Time::now(); 
 
 
 
-    for(const auto &t: nodes2d_) 
+    for(const auto &t: sampled_points_) 
     {
-
+        
         geometry_msgs::Pose pose_; 
         
         pose_.position.x = t.x_;
@@ -529,8 +561,8 @@ bool PRM::SimplePRM::generateSamplePoints()
 
    //visualize_.visualizeSampledPoints(pose_array_);
 
-    visualize_.publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
-
+    //visualize_.publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
+    */
     return true; 
 
 }
@@ -633,7 +665,8 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
     if(R_ > 0.f)
     {
 
-        for (float x_ = 0.f ;  ; x_ += 0.1f)
+        //for (float x_ = 0.f ;  ; x_ += 0.1f)
+        for (float x_ = 0.f ;  ; x_ += Constants::Planner::dis_sep_)
         {
         
             float y_ ; 
@@ -667,7 +700,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
        // ROS_WARN("Case 2 ===>");
 
-        for (float x_ = 0.f ;  ; x_ -= 0.1f)
+        for (float x_ = 0.f ;  ; x_ -= Constants::Planner::dis_sep_)
         {
             
             float y_ ; 
@@ -706,13 +739,13 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
     else
     {
 
-        for(float x_ =0 ; x_ < Constants::Planner::max_res_; x_+= 0.1f)
+        for(float x_ =0 ; x_ < Constants::Planner::max_res_; x_+= Constants::Planner::dis_sep_)
         {
 
             V_ab_zero_.emplace_back(x_, 0);
         }
 
-        for(float x_ =0 ; x_ > -Constants::Planner::max_res_; x_-= 0.1f)
+        for(float x_ =0 ; x_ > -Constants::Planner::max_res_; x_-= Constants::Planner::dis_sep_)
         {
 
             V_ab_zero_.emplace_back(x_, 0);
