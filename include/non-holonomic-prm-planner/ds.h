@@ -22,6 +22,7 @@ namespace PRM
     typedef long long int ll;
 
 
+
     struct Node2d 
     {
 
@@ -81,19 +82,6 @@ namespace PRM
 
     };
 
-    
-
-    struct Node3dHash 
-    {
-        std::size_t operator()(const Node3d& obj) const {
-            std::size_t seed = 0;
-            boost::hash_combine(seed, obj.x_);
-            boost::hash_combine(seed, obj.y_);
-            boost::hash_combine(seed, obj.theta_idx_);
-            return seed;
-        }
-    };
-    
 
     //TODO ==> convert node2d to node2d*
     //directed edge from p1 -> p2
@@ -135,7 +123,7 @@ namespace PRM
                 theta_dash_ += 2 * M_PI;
             }
 
-            ROS_WARN("theta_a_: %f theta_b: %f theta_dash_: %f", theta_a_, theta_b_, theta_dash_);
+            //ROS_WARN("theta_a_: %f theta_b: %f theta_dash_: %f", theta_a_, theta_b_, theta_dash_);
             const float r_ = Utils::getR(x_dash_, y_dash_);
 
             if(r_ > 0.f)
@@ -165,6 +153,12 @@ namespace PRM
             tc_ = dis_cost_ + ang_cost_;
         };
 
+
+        bool operator==(const Edge& other) const 
+        {
+            return a_ == other.a_ && b_ == other.b_;
+        }
+
         void print() const
         {
             
@@ -185,6 +179,23 @@ namespace PRM
             float ang_cost_;      //angular cost
             float tc_;          //total cost //tc_ = w_dc_ * dc_ + w_ac_ * ac_ ;
             
+    };
+
+    struct EdgeHash 
+    {
+        std::size_t operator()(const Edge& obj) const {
+            
+            std::size_t seed = 0;
+            boost::hash_combine(seed, obj.a_.x_);
+            boost::hash_combine(seed, obj.a_.y_);
+            boost::hash_combine(seed, obj.a_.theta_);
+            
+            boost::hash_combine(seed, obj.b_.x_);
+            boost::hash_combine(seed, obj.b_.y_);
+            boost::hash_combine(seed, obj.b_.theta_);
+            
+            return seed;
+        }
     };
 
 

@@ -115,6 +115,9 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
+            std::unordered_set<Edge, EdgeHash> G_;  //graph
+            
+
 
             
            
