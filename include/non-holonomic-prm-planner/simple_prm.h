@@ -69,12 +69,17 @@ namespace PRM{
             
             bool generateEdges(Node2d a_, const Node2d b_);
 
-            bool generateEdges(Node3d a_ , Node3d b_);
+            bool canConnect(const Node3d &a_ , const Node3d &b_) ;
 
             bool isReachable();
+            
+            bool connectConfigurationToRobot(   const Node3d &rp_, const Node3d &cp_, \
+                                                const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
+                                                const std::string sc_topic_ = "sc_") ;
+            
             bool connectConfigurationToRobot(   geometry_msgs::Pose rp_, geometry_msgs::Pose cp_, \
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
-                                                const std::string sc_topic_ = "sc_");
+                                                const std::string sc_topic_ = "sc_") ;
             
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);

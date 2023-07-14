@@ -50,6 +50,10 @@ namespace PRM{
             static const float theta_tol_ = 1.0 * M_PI / 180.0 ;  // 2.5 degrees 
             static const float planner_res_ = 0.5;
 
+            static const float w_dis_  = 0.5; 
+            static const float w_ang_ = 0.5; 
+            static const float w_rev_ = 1000.f  ;   //reverse path cost weightage
+
         };
 
         

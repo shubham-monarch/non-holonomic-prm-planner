@@ -65,7 +65,15 @@ namespace PRM
         {
 
         }
-                                                                
+
+        void print() const
+        {
+            ROS_INFO("========================");
+            ROS_INFO("Node3d ==> (%f,%f,%d, %f)", x_, y_, theta_idx_, theta_);
+            ROS_INFO("========================");
+            
+        }
+
         bool operator==(const Node3d& other_) const 
         {
             return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
@@ -95,13 +103,6 @@ namespace PRM
         const Node3d a_;
         const Node3d b_;
 
-        private: 
-
-            float dc_;     //distance traversal cost
-            float ac_;      //angular cost
-
-            float cost_;          //cost_ = w_dc_ * dc_ + w_ac_ * ac_ ;
-            
 
         explicit Edge(const Node3d &n1, const Node3d &n2): a_(n1) , b_(n2)
         {
@@ -109,6 +110,7 @@ namespace PRM
             const float theta_a_ = 1.f * a_.theta_idx_ * Constants::Planner::theta_sep_;
             const float theta_b_ = 1.f * b_.theta_idx_ * Constants::Planner::theta_sep_;
             
+            //checking if theta_idx_ and theta_are sane values 
             if(std::fabs(theta_a_ - a_.theta_) > 0.01 || std::fabs(theta_b_ - b_.theta_) > 0.01) 
             {
                 ROS_ERROR("theta_a_ != a_.theta_ ==> Something is wrong!");
@@ -119,19 +121,70 @@ namespace PRM
             
 
             const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, theta_a_));      //pose of a in origin frame
-            //const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, theta_b_));      //pose of b in origin frame
+            const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, theta_b_));      //pose of b in origin frame
             
-            //const Mat3f &P_ao_ = P_oa_.inverse();           //pose of o in a
+            const Mat3f &P_ao_ = P_oa_.inverse();           //pose of o in a
+            const Mat3f &P_ab_ = P_ao_ * P_ob_;             //pose of b in a
 
-            //const Mat3f &P_ab_ = P_ao_ * P_ob_;             //pose of b in a
+            const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
+            const float y_dash_ = P_ab_(1,2);
+                                                                                    // Δy in the frame of a
+            float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));                
+            if(theta_dash_ < 0)
+            {
+                theta_dash_ += 2 * M_PI;
+            }
 
-            //float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));
+            ROS_WARN("theta_a_: %f theta_b: %f theta_dash_: %f", theta_a_, theta_b_, theta_dash_);
+            const float r_ = Utils::getR(x_dash_, y_dash_);
 
+            if(r_ > 0.f)
+            {
+                dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_;
+                ang_cost_ = Constants::Planner::w_ang_ * theta_dash_;
+               
+            }
+            else 
+            {
+                //implies y_dash is 0 
+                
+                if(x_dash_ >= 0)
+                {   
 
+                    ang_cost_ = 0 ; 
+                    dis_cost_ = Constants::Planner::w_dis_ * x_dash_;
+                } 
+                else
+                {
+                    //implies reverse movement without turning
+                    ang_cost_ = 0 ; 
+                    dis_cost_ = Constants::Planner::w_rev_ * std::fabs(x_dash_);
+                }
+            }
+
+            tc_ = dis_cost_ + ang_cost_;
         };
 
+        void print() const
+        {
+            
+            ROS_INFO("======================  EDGE      ===================================");
+            ROS_INFO("Node a => (%f,%f,%f)", a_.x_, a_.y_, 1.f * a_.theta_idx_ * Constants::Planner::theta_sep_);
+            ROS_INFO("Node b => (%f,%f,%f)", b_.x_, b_.y_, 1.f * b_.theta_idx_ * Constants::Planner::theta_sep_);
+            ROS_INFO("dis_cost: %f", dis_cost_); 
+            ROS_INFO("ang_cost_: %f", ang_cost_); 
+            ROS_INFO("tc_: %f", tc_);
+            ROS_INFO("=====================================================================");
+            
+        }
 
-        
+
+        private: 
+
+            float dis_cost_;     //distance traversal cost
+            float ang_cost_;      //angular cost
+            float tc_;          //total cost //tc_ = w_dc_ * dc_ + w_ac_ * ac_ ;
+            
     };
 
 
