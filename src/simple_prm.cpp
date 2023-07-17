@@ -59,6 +59,77 @@ void PRM::SimplePRM::initialize()
 
 }
 
+
+
+bool PRM::SimplePRM::djikstra()
+{   
+    const float x_ = Constants::MapMetaData::origin_x_; 
+    const float y_ = Constants::MapMetaData::origin_y_;
+
+    Node2d a2_ {x_ + 50.f, y_ + 50.f};
+    Node2d b2_ {x_ + 50.f, y_ + 51.f};
+    
+    Node3d a3_{a2_.x_, a2_.y_, 30};
+
+    std::priority_queue<Node3d> pq_; 
+
+    pq_.push(a3_);
+
+    int cnt_ =0  ;
+
+    while(ros::ok() && !pq_.empty())
+    {
+
+        cnt_++; 
+
+        const Node3d &curr_node_ = pq_.top(); 
+        
+        const Vec3f curr_key_ = Utils::getNode3dkey(curr_node_);
+        
+        const float curr_cost_ = curr_node_.cost_;
+
+        pq_.pop();
+
+        for( auto &t : *curr_node_.edges_) 
+        {
+            const Node3d &nxt_ = *t.node_;
+            const float edge_cost_ = t.tc_;
+
+            Vec3f key_ {nxt_.x_, nxt_.y_, nxt_.theta_};
+
+            if(G_.find(key_) != G_.end())
+            {
+                Node3d &nxt_ = *G_[key_]; 
+                
+                if(nxt_.cost_ > curr_cost_ + edge_cost_)
+                {
+                    nxt_.parent_ = G_[curr_key_];
+                    nxt_.cost_ = curr_cost_ + edge_cost_;
+
+                    G_[key_] = std::make_shared<Node3d>(nxt_);
+                }
+
+                pq_.push(*G_[key_]);
+                
+            }
+            else
+            {
+                ROS_ERROR("Edge not found in the graph ===> Something is wrong!"); 
+                //ROS_ERROR("")
+            }
+
+        }
+
+
+    }
+
+    ROS_INFO("pq_ ran for %d iterations!", cnt_);
+
+    return true; 
+
+}
+
+
 bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 {
 
@@ -317,17 +388,17 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
             {
                 
                 connectConfigurationToRobot(a3_, b3_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-              //  ROS_DEBUG("========================================");
+                //  ROS_DEBUG("========================const ================");
                 //a3_.print();
                 //b3_.print();
 
                 cnt_++;
-                ROS_INFO("e_.dc_: %f" , e_->dc_);    
+                //ROS_INFO("e_.dc_: %f" , e_->dc_);    
 
                 node_->print();
 
                 node_->addEdge(e_);
-
+                
                 node_->print();
                // e_.print(); 
                 //Edge e_(a3_, b3_);
@@ -398,9 +469,11 @@ bool PRM::SimplePRM::generateRoadMap()
     const float y_ = Constants::MapMetaData::origin_y_;
 
     const Node2d a_ {x_ + 50.f, y_ + 50.f};
-    const Node2d b_ {x_ + 51.f, y_ + 51.f};
+    const Node2d b_ {x_ + 50.f, y_ + 51.f};
     
     generateEdges(a_, b_);
+
+    djikstra();
 
     //generateEdges();
     //generatePath();

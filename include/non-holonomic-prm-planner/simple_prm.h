@@ -87,7 +87,7 @@ namespace PRM{
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
 
-            bool Djikstra();
+            bool djikstra();
         
             //==== variables =====
             

@@ -9,24 +9,22 @@
 
 #include <non-holonomic-prm-planner/constants.h>    
 #include <non-holonomic-prm-planner/utils.h>
-#include <non-holonomic-prm-planner/node3d.h>
+
 
 
 
 namespace PRM
 {   
 
-    struct Node3d;  //forward declaration
-
-    //tils::Eigen::Matrix3f getHomogeneousTransformationMatrix(const Eigen::Vector2f &translation, const float &theta) ;
-        
+   // struct Node3d;  //forward declaration
+    
     typedef Eigen::Matrix3f Mat3f;
     typedef Eigen::Vector2f Vec2f;
     typedef Eigen::Vector3f Vec3f;
     
     typedef long long int ll;
 
-
+    struct Edge;
 
     struct Node2d 
     {
@@ -53,6 +51,87 @@ namespace PRM
         }
     };
 
+
+    struct hashing_func {
+        
+        unsigned long operator()(const Vec3f& key) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, key[0]);
+            boost::hash_combine(seed, key[1]);
+            boost::hash_combine(seed, key[2]);
+            return seed ;
+        }
+
+    };
+
+    struct key_equal_fn {
+    
+        bool operator()(const Vec3f& t1, const Vec3f& t2) const {
+            
+            return((t1[0] == t2[0]) && (t1[1] == t2[1]) && (t1[2] == t2[2]));
+
+        }
+    
+    };
+
+    struct Node3d
+    {
+        
+
+        float x_, y_;  //world co-ordinates  
+        int theta_idx_;  // theta_ = (theta_) 
+        float theta_;    //world heading
+        float cost_;
+
+        std::shared_ptr<Node3d> parent_;   
+        
+
+        std::shared_ptr<std::vector<Edge> > edges_;  //pointer to node edges
+
+        //Node3d():x_(-1.0), y_(1.f), theta_idx_(0), theta_(-1){};
+    
+        Node3d(const float x, const float y, const int idx_):   x_(x), y_(y), \
+                                                                theta_idx_(idx_), \
+                                                                theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ ),
+                                                                edges_(std::make_shared<std::vector<Edge> >()),
+                                                                cost_(std::numeric_limits<float>::max()),
+                                                                parent_(nullptr)
+        {
+            
+        }
+
+        Node3d()
+        {}
+
+        bool operator<(const Node3d& p2) const {
+            // Compare based on the distance from the origin (0,0,0)
+            //double dist1 = p1.x * p1.x + p1.y * p1.y + p1.z * p1.z;
+            //double dist2 = p2.x * p2.x + p2.y * p2.y + p2.z * p2.z;
+            return cost_ > p2.cost_; // Greater-than comparison for min heap
+        }
+
+        bool operator==(const Node3d& other_) const 
+        {
+            return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
+        }       
+
+        bool addEdge(const std::shared_ptr<Edge const> &e_)
+        {
+             edges_->push_back(*e_);
+            return true; 
+        }
+
+        void print() const
+        {
+            //ROS_INFO("Node3d ==> (%f,%f,%d, %f)", x_, y_, theta_idx_, theta_);
+            ROS_WARN("========== NODE ============================");
+            ROS_INFO("Edges.size(): %d", edges_->size());
+            ROS_INFO("=============================================");
+                
+        }
+      
+    };
+
     struct Edge
     {
         
@@ -77,38 +156,13 @@ namespace PRM
         }
         
         float dc_;    //distance cost 
-            
-          
-        private:
-        
-            std::shared_ptr<Node3d const> node_; //destination node
+        float ac_ ;   //angular cost
+        float tc_ ;   // total cost 
 
-            float ac_ ;   //angular cost
-            float tc_ ;   // total cost 
+                
+        std::shared_ptr<Node3d const> node_; //destination node
 
         
-    };
-
-    struct hashing_func {
-        
-        unsigned long operator()(const Vec3f& key) const {
-            std::size_t seed = 0;
-            boost::hash_combine(seed, key[0]);
-            boost::hash_combine(seed, key[1]);
-            boost::hash_combine(seed, key[2]);
-            return seed ;
-        }
-
-    };
-
-    struct key_equal_fn {
-    
-        bool operator()(const Vec3f& t1, const Vec3f& t2) const {
-            
-            return((t1[0] == t2[0]) && (t1[1] == t2[1]) && (t1[2] == t2[2]));
-
-        }
-    
     };
 
 

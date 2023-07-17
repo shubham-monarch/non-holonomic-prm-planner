@@ -1,8 +1,8 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-//#include <non-holonomic-prm-planner/ds.h>
-#include <non-holonomic-prm-planner/node3d.h>
+#include <non-holonomic-prm-planner/ds.h>
+
 
 namespace PRM
 {
@@ -24,7 +24,12 @@ namespace PRM
             return Utils::norm(a_.x_ - b_.x_, a_.y_ - b_.y_);
         }
 
-        
+        static Vec3f getNode3dkey(const Node3d &node_)
+        {
+            return Vec3f{node_.x_, node_.y_, node_.theta_};
+        }
+
+
     };   
     
     

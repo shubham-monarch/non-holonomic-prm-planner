@@ -49,14 +49,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_prm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/node3d.cpp
-    
-    
-    
-    
-    
     )
-set(HEADERS
+
+    set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/constants.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/simple_prm.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/utils.h
@@ -64,7 +59,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/node3d.h
     
     )
 
