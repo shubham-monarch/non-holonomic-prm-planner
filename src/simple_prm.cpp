@@ -13,6 +13,7 @@
 #include <cmath>
 #include <typeinfo>
 #include <chrono>
+#include <queue>
 
 #include <non-holonomic-prm-planner/utils.h>
 
@@ -131,7 +132,7 @@ bool PRM::SimplePRM::buildKDtree()
 
 
 
-bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_) 
+bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_ptr<Edge> &e_) 
 {
     
 
@@ -218,8 +219,46 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_)
     const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
 
    // ROS_INFO("theta_dash_ => %f theta_c => %f", theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);   
-            
-    return (std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_);
+    float dis_cost_, ang_cost_; 
+
+
+    if(r_ > 0.f)
+    {
+        dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_;
+        ang_cost_ = Constants::Planner::w_ang_ * theta_dash_;
+        
+    }
+    else 
+    {
+        //implies y_dash is 0 
+        
+        if(x_dash_ >= 0)
+        {   
+
+            ang_cost_ = 0 ; 
+            dis_cost_ = Constants::Planner::w_dis_ * x_dash_;
+        } 
+        else
+        {
+            //implies reverse movement without turning
+            ang_cost_ = 0 ; 
+            dis_cost_ = Constants::Planner::w_rev_ * std::fabs(x_dash_);
+        }
+    }
+
+    if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
+    {
+
+        e_ = std::make_shared<Edge>(b_, dis_cost_, ang_cost_);
+        e_->print();
+        
+        
+        return true; 
+    
+    }
+
+    return false;
+    //return (std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_);
     
 }
 
@@ -245,24 +284,35 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
     for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
     {
-      
+        
+        const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
+        
         for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
         {   
             
-            const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
+            //Edge e_;
+            std::shared_ptr<Edge> e_  = std::make_shared<Edge>();
+
+            //const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
             const Node3d b3_{b2_.x_ , b2_.y_, yaw_b_/Constants::Planner::theta_sep_};
             
-            if(canConnect(a3_, b3_))
-            {
 
+
+            //if(canConnect(a3_, b3_, std::make_shared<Edge const>(e_)))
+            if(canConnect(a3_, b3_, e_))
+            {
+                
+                connectConfigurationToRobot(a3_, b3_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
               //  ROS_DEBUG("========================================");
                 //a3_.print();
                 //b3_.print();
 
-                cnt_++; 
-                Edge e_(a3_, b3_);
+                cnt_++;
+                ROS_INFO("e_.dc_: %f" , e_->dc_);    
+               // e_.print(); 
+                //Edge e_(a3_, b3_);
                 //e_.print();
-                G_.insert(e_);
+                //G_.insert(e_);
 
                // ROS_DEBUG("===========================================");
                 //connectConfigurationToRobot(a3_, b3_, "rp_" + std::to_string(cnt_), "cp_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
@@ -303,8 +353,10 @@ bool PRM::SimplePRM::generateRoadMap()
     //sr_ = Constants::Planner::max_res_;
     
 
-    generateSamplePoints(); 
-    buildKDtree();
+    //generateSamplePoints(); 
+    //buildKDtree();
+    //Djikstra();
+    
     //geometry_msgs::Pose pose_;
     //Node2d node_a_(0, 0), node_b_(0, 0);
 
@@ -321,7 +373,14 @@ bool PRM::SimplePRM::generateRoadMap()
     
     // /generateEdges(node_a_, node_b_);
     //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
-    //generateSteeringCurveFamily(pose_);
+
+    const float x_ = Constants::MapMetaData::origin_x_; 
+    const float y_ = Constants::MapMetaData::origin_y_;
+
+    const Node2d a_ {x_ + 50.f, y_ + 50.f};
+    const Node2d b_ {x_ + 51.f, y_ + 51.f};
+    
+    generateEdges(a_, b_);
 
     //generateEdges();
     //generatePath();
@@ -436,13 +495,13 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   const Node3d &rp_, const Nod
     oc_.orientation = Utils::getQuatFromYaw(1.f * cp_.theta_idx_ * Constants::Planner::theta_sep_);
 
     
-    //ROS_INFO("or_: (%f,%f,%f)" ,    or_.position.x, or_.position.y, tf::getYaw(or_.orientation));
-    //ROS_INFO("oc_: (%f,%f,%f)" ,    oc_.position.x, oc_.position.y, tf::getYaw(oc_.orientation));
+    ROS_INFO("or_: (%f,%f,%f)" ,    or_.position.x, or_.position.y, tf::getYaw(or_.orientation));
+    ROS_INFO("oc_: (%f,%f,%f)" ,    oc_.position.x, oc_.position.y, tf::getYaw(oc_.orientation));
     
     //ROS_INFO("or_topic_: %s", or_topic_.c_str());
     //ROS_INFO("oc_topic_: %s", oc_topic_.c_str());
     //ROS_INFO("sc_topic_: %s", sc_topic_.c_str());
-    
+
     connectConfigurationToRobot(or_, oc_, or_topic_, oc_topic_, sc_topic_);
 
     return true;
@@ -519,6 +578,8 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , ge
     geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_,  R_);
 
     visualize_.publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
+
+    ROS_INFO("oc_: (%f,%f)", oc_.position.x, oc_.position.y);
 
     visualize_.drawPoint(or_, or_topic_);
     visualize_.drawPoint(oc_, oc_topic_);
@@ -687,7 +748,43 @@ bool PRM::SimplePRM::generateSamplePoints()
 
     return true; 
 
+
 }
+
+/*bool PRM::SimplePRM::Djikstra()
+{
+    std::cout << "Djiktra!" << std::endl;
+    const float ox_ = Constants::MapMetaData::origin_x_; 
+    const float oy_ = Constants::MapMetaData::origin_y_; 
+
+
+    const Node3d start_(ox_+ 50, oy_ + 50, 25);
+    const Node3d end_(ox_+ 70, oy_ + 10, 25);
+
+    std::priority_queue<Node3d, std::vector<Node3d>, myComparator> pq_; 
+
+    Node3d a_(1,1,1);
+    a_.cost_= 23; 
+
+    pq_.push(a_); 
+    
+
+    /*Node3d b_(2,1,1);
+    b_.cost_= 24; 
+
+    pq_.push(b_);
+
+    std::cout << pq_.top().cost_ << std::endl;
+    
+    std::cout << "Everything is good@!";
+    
+
+
+    return true;
+
+}*/
+
+
 
 //generate steering curves from -delta to delta for a particular robot pose
 void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
@@ -713,7 +810,7 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
         ROS_INFO("del_: %f", del_);
         del_ += 0.1;    
 
-        //generateSteeringCurve(rp_, del_);
+        generateSteeringCurve(rp_, del_);
 
         r_.sleep(); 
     }

@@ -70,7 +70,8 @@ namespace PRM{
             
             bool generateEdges(const Node2d &a_, const Node2d &b_);
 
-            bool canConnect(const Node3d &a_ , const Node3d &b_) ;
+            //bool canConnect(const Node3d &a_ , const Node3d &b_) ;
+            bool canConnect(const Node3d &a_ , const Node3d &b_, std::shared_ptr<Edge> &e_) ;
 
             bool isReachable();
             
@@ -84,7 +85,8 @@ namespace PRM{
             
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
-        
+
+            bool Djikstra();
         
             //==== variables =====
             
@@ -93,10 +95,7 @@ namespace PRM{
             nav_msgs::OccupancyGridConstPtr grid_;
 
             //** planner tuning params
-            int N_ ;
             
-            int sr_; // neighbour search radius
-
             //core planner vars
            // std::vector<Node2d> nodes2d_;
             std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
@@ -115,7 +114,7 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
-            std::unordered_set<Edge, EdgeHash> G_;  //graph
+           // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
 
 

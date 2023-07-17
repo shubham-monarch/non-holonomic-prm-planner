@@ -62,6 +62,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/node3d.h
     
     )
 

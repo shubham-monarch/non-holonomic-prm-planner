@@ -1,10 +1,13 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include <non-holonomic-prm-planner/ds.h>
+//#include <non-holonomic-prm-planner/ds.h>
+#include <non-holonomic-prm-planner/node3d.h>
 
 namespace PRM
 {
+
+    
 
     namespace Utils
     {
