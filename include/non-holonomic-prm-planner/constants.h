@@ -2,6 +2,7 @@
 #define CONSTANTS_H
 
 #include <string>
+#include <cmath>
 
 namespace PRM{
 

@@ -22,6 +22,8 @@ namespace PRM
         
     typedef Eigen::Matrix3f Mat3f;
     typedef Eigen::Vector2f Vec2f;
+    typedef Eigen::Vector3f Vec3f;
+    
     typedef long long int ll;
 
 
@@ -85,6 +87,28 @@ namespace PRM
             float tc_ ;   // total cost 
 
         
+    };
+
+    struct hashing_func {
+        
+        unsigned long operator()(const Vec3f& key) const {
+            std::size_t seed = 0;
+            boost::hash_combine(seed, key[0]);
+            boost::hash_combine(seed, key[1]);
+            boost::hash_combine(seed, key[2]);
+            return seed ;
+        }
+
+    };
+
+    struct key_equal_fn {
+    
+        bool operator()(const Vec3f& t1, const Vec3f& t2) const {
+            
+            return((t1[0] == t2[0]) && (t1[1] == t2[1]) && (t1[2] == t2[2]));
+
+        }
+    
     };
 
 

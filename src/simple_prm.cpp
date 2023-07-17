@@ -282,10 +282,24 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
     int cnt_ = 0 ;
 
+    std::shared_ptr<Node3d> node_; 
+
     for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
     {
         
         const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
+
+        const Vec3f key_{a3_.x_, a3_.y_, a3_.theta_};
+
+        if(G_.find(key_) == G_.end())
+        {
+            node_ = std::make_shared<Node3d>(a3_);
+        }
+        else
+        {
+            node_ = G_[key_];
+
+        }
         
         for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
         {   
@@ -309,6 +323,12 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
                 cnt_++;
                 ROS_INFO("e_.dc_: %f" , e_->dc_);    
+
+                node_->print();
+
+                node_->addEdge(e_);
+
+                node_->print();
                // e_.print(); 
                 //Edge e_(a3_, b3_);
                 //e_.print();

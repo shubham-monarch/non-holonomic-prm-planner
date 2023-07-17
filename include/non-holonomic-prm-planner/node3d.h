@@ -25,11 +25,12 @@ namespace PRM
 
             Node3d():x_(-1.0), y_(1.f), theta_idx_(0), theta_(-1){};
         
-            Node3d(const float x, const float y, const int idx_):x_(x), y_(y), \
-                            theta_idx_(idx_), \
-                            theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ )
+            Node3d(const float x, const float y, const int idx_):   x_(x), y_(y), \
+                                                                    theta_idx_(idx_), \
+                                                                    theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ ),
+                                                                    edges_(std::make_shared<std::vector<Edge> >())
             {
-
+                
             }
 
             bool operator()(const Node3d& p1, const Node3d& p2) const {
@@ -42,17 +43,16 @@ namespace PRM
             bool operator==(const Node3d& other_) const 
             {
                 return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
-            }   
+            }       
 
         
 
-            void print() const
-            {
-                ROS_INFO("========================");
-                ROS_INFO("Node3d ==> (%f,%f,%d, %f)", x_, y_, theta_idx_, theta_);
-                ROS_INFO("========================");
-                
-            }
+           
+
+            bool addEdge(const std::shared_ptr<Edge const> &e_); 
+            bool updateCost();
+            void print() const;
+      
 
         private: 
 
@@ -61,9 +61,7 @@ namespace PRM
 
 
 
-            bool addEdge(); 
-            bool updateCost();
-      
+            
     };
 
 };

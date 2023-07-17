@@ -49,6 +49,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_prm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/node3d.cpp
+    
     
     
     

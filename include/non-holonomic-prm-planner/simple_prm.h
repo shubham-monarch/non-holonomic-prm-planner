@@ -11,6 +11,7 @@
 
 
 #include <unordered_set>
+#include <unordered_map>
 
 
 
@@ -38,7 +39,7 @@ namespace PRM{
     class Visualize;
 
     //represents a sampled point with no heading information in the GRID and not WORLD
-        
+    
 
     class SimplePRM{
 
@@ -113,6 +114,8 @@ namespace PRM{
             //** ROS members
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
+
+            std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
 
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
