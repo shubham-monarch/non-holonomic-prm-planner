@@ -43,6 +43,28 @@ void PRM::Visualize::draw2DNodes(const std::vector<Node2d> &nodes2d_, std::strin
     publishT<geometry_msgs::PoseArray>(topic_, sposes_);
 }
 
+void PRM::Visualize::draw3DNodes(const std::vector<Node3d> &nodes3d_, std::string topic_)
+{
+
+    geometry_msgs::PoseArray sposes_;
+    sposes_.header.frame_id = "map";
+    sposes_.header.stamp = ros::Time::now(); 
+ 
+    for(const auto &node_ : nodes3d_){
+
+        geometry_msgs::Pose p_;
+
+        p_.position.x = node_.x_; 
+        p_.position.y = node_.y_;
+        p_.orientation = Utils::getQuatFromYaw(node_.theta_);
+        
+        sposes_.poses.push_back(p_);
+    
+    }
+
+    publishT<geometry_msgs::PoseArray>(topic_, sposes_);
+}
+
 void PRM::Visualize::drawCircle(const geometry_msgs::PoseStamped tp_, const float r_, const std::string topic_)
 {   
 
@@ -77,6 +99,20 @@ void PRM::Visualize::drawPoint(const float x_, const float y_, const std::string
     pose_.pose.position.x= x_; 
     pose_.pose.position.y = y_; 
     pose_.pose.orientation = Utils::getQuatFromYaw(0.f);
+
+    publishT(topic_, pose_);
+
+}
+
+void PRM::Visualize::drawNode3d(const Node3d &node_, std::string topic_)
+{
+    geometry_msgs::PoseStamped  pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now(); 
+
+    pose_.pose.position.x   = node_.x_; 
+    pose_.pose.position.y   = node_.y_; 
+    pose_.pose.orientation = Utils::getQuatFromYaw(node_.theta_);
 
     publishT(topic_, pose_);
 

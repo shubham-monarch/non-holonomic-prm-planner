@@ -9,6 +9,8 @@
 namespace PRM{
     
     struct Node2d; 
+    struct Node3d; 
+
 
     typedef std::shared_ptr<ros::Publisher> PubPtr;
 
@@ -36,9 +38,13 @@ namespace PRM{
             }
 
             void draw2DNodes(const std::vector<Node2d> &nodes2d_, std::string topic_ = "sposes");
+            void draw3DNodes(const std::vector<Node3d> &nodes3d_, std::string topic_ = "3d_poses");
 
             void drawPoint(const float x_ , const float y_, const std::string topic = "point");
             void drawPoint(const geometry_msgs::Pose &pose_, const std::string topic = "point");
+            void drawNode3d(const Node3d &node_, std::string topic_ = "node3d");
+
+            
             
 
         private: 

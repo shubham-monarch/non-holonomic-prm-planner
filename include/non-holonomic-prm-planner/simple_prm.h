@@ -28,7 +28,6 @@
 //Distance Metrics
 //k-Nearest neighbours
 
-
 namespace PRM{
     
     
@@ -53,6 +52,7 @@ namespace PRM{
             void initialize();
             bool generateRoadMap();    
 
+            static int edge_cnt_;
 
         private: 
 
@@ -87,7 +87,7 @@ namespace PRM{
             geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
 
-            bool djikstra();
+            bool djikstra( Node3d &start_,  Node3d &goal_);
         
             //==== variables =====
             
@@ -115,11 +115,12 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
+            //std::vector<Node3d> sampled_points_3d_;
+
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
 
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
-
 
             
            

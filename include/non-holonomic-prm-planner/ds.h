@@ -123,13 +123,19 @@ namespace PRM
 
         void print() const
         {
-            //ROS_INFO("Node3d ==> (%f,%f,%d, %f)", x_, y_, theta_idx_, theta_);
             ROS_WARN("========== NODE ============================");
+            ROS_INFO("Node3d ==> (%f,%f,%d,%f)", x_, y_, theta_idx_, theta_ * 180.f / M_PI);
             ROS_INFO("Edges.size(): %d", edges_->size());
             ROS_INFO("=============================================");
                 
         }
       
+    };
+
+    struct CompareNode3dPointers {
+        bool operator()(const std::shared_ptr<Node3d> a, const std::shared_ptr<Node3d> b) const {
+            return a->cost_< b->cost_; // Change to '<' for min heap
+        }
     };
 
     struct Edge
@@ -149,7 +155,7 @@ namespace PRM
 
             ROS_WARN("========================== EDGE =============================="); 
 
-            ROS_INFO("destination node ===> (%f,%f,%f)", node_->x_, node_->y_, node_->theta_);
+            ROS_INFO("destination node ===> (%f,%f,%d,%f)", node_->x_, node_->y_, node_->theta_idx_, node_->theta_);
             ROS_INFO("(dc_, ac_, tc_) ==> (%f,%f,%f)", dc_, ac_, tc_);
             ROS_INFO("========================== EDGE =============================="); 
 
