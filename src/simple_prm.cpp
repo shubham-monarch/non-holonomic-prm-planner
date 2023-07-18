@@ -79,7 +79,8 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
     std::priority_queue<std::shared_ptr<Node3d> , std::vector<std::shared_ptr<Node3d> >, CompareNode3dPointers> pq_; 
 
     start_.cost_ = 0 ;
-    start_.parent_ = std::make_shared<Node3d>(1,1,1); 
+  //  start_.parent_ = std::make_shared<Node3d>(1,1,1); 
+    start_.parent_ = nullptr;
 
     const std::shared_ptr<Node3d> start_ptr_ = std::make_shared<Node3d>(start_);
 
@@ -122,7 +123,7 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
         pq_.pop();
 
 
-        curr_node_->parent_->print(); 
+       // curr_node_->parent_->print(); 
 
         for( auto &t : *curr_node_->edges_) 
         {
@@ -165,10 +166,65 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
     end_.print(); 
     end_.parent_->print();
 
+
+    std::vector<Node3d> path_; 
+    
+    std::shared_ptr<Node3d> curr_node_ = std::make_shared<Node3d>(end_); 
+
+    while(ros::ok() && curr_node_ != nullptr)
+    {
+
+        path_.push_back(*curr_node_); 
+        curr_node_ = curr_node_->parent_;
+
+    } 
+
+    
+    ROS_INFO("path_.size(): %d", path_.size());
+
+    std::reverse(path_.begin(), path_.end());
+
+    generateROSPath(path_);
+
     return reached_; 
 
 }
 
+nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
+{
+
+    int sz_ = (int)path_.size(); 
+
+    //nav_msgs::Path path_;
+    nav_msgs::Path ros_path_;
+    ros_path_.header.frame_id = "map"; 
+    ros_path_.header.stamp = ros::Time::now();
+
+    for(int i =0 ; i < sz_ - 1; i++)
+    {   
+        geometry_msgs::Pose a_; 
+        a_.position.x = path_[i].x_; 
+        a_.position.y = path_[i].y_;
+        a_.orientation = Utils::getQuatFromYaw(path_[i].theta_);
+
+
+        geometry_msgs::Pose b_; 
+        b_.position.x = path_[i].x_; 
+        b_.position.y = path_[i].y_;
+        b_.orientation = Utils::getQuatFromYaw(path_[i].theta_);
+        
+        const std::vector<geometry_msgs::PoseStamped> poses_ = generateSteeringCurveTrimmed(a_, b_);
+
+
+        //ros_path_.poses.push_back(sc_);
+
+        ros_path_.poses.insert(ros_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
+    }
+
+    visualize_.publishT<nav_msgs::Path>("path", ros_path_);
+
+    return ros_path_;
+}
 
 bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
 {
@@ -1074,8 +1130,62 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 //TODO ==> fix bug
 //generate steering curve points for a particular delta
 
+
+//returns the portion of sterring curve between or_ (i.e. position of r w.r.t. origin) and oc_ (position of c w.r.t origin)
+std::vector<geometry_msgs::PoseStamped> PRM::SimplePRM::generateSteeringCurveTrimmed(const geometry_msgs::Pose &or_, const geometry_msgs::Pose &oc_)
+{   
+   
+
+    Mat3f P_or_; //robot pose in origin frame
+    Mat3f P_oc_; // config pose in origin frame
+    //Mat3f P_rc_; //config pose in robot frame
+
+    Vec2f V_or_{or_.position.x, or_.position.y};
+    float theta_or_ = tf::getYaw(or_.orientation);
+
+    Vec2f V_oc_{oc_.position.x, oc_.position.y};
+    float theta_oc_ = tf::getYaw(oc_.orientation);
+
+    P_or_ = (Utils::getHomogeneousTransformationMatrix(V_or_, theta_or_));
+    P_oc_ = (Utils::getHomogeneousTransformationMatrix(V_oc_, theta_oc_));
+    
+    std::ostringstream oss_; 
+    
+    const Mat3f &P_ro_ = P_or_.inverse();
+
+    const Mat3f &P_rc_ = P_ro_ * P_oc_;
+
+    
+    //config co-ordinates in robot frame
+    const float x_dash_ =  P_rc_(0,2); 
+    const float y_dash_ = P_rc_(1,2); 
+
+    const float R_ = Utils::getR(x_dash_, y_dash_); 
+
+    geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_,  R_, true, x_dash_);
+
+    std::vector<geometry_msgs::PoseStamped> poses_; 
+
+    for(const auto &t_ : sc_poses_.poses)
+    {
+        geometry_msgs::PoseStamped pose_; 
+        pose_.header.frame_id = "map"; 
+        pose_.header.stamp  = ros::Time::now(); 
+
+        pose_.pose = t_; 
+
+        poses_.push_back(pose_);
+    }
+
+    return poses_;
+
+}
+
+
+
+
 //generate steering curve points for a particular delta with a config pose
-geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_, const float R_)
+geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_, const float R_, const bool trim_, const float x_dash_)
 {
     
     //ROS_ERROR("generateSteeringCurve called with R_: %f", R_);
@@ -1124,11 +1234,16 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
     
     if(R_ > 0.f)
     {
-
-        //for (float x_ = 0.f ;  ; x_ += 0.1f)
-        for (float x_ = 0.f ;  ; x_ += Constants::Planner::dis_sep_)
-        {
         
+        //for (float x_ = 0.f ;  ; x_ += 0.1f)
+        
+        for (float x_ = 0.f ;   ; x_ += Constants::Planner::dis_sep_)
+        {
+            if(trim_ && x_dash_ > 0 && x_ > x_dash_)
+            {
+                break;
+            }
+            
             float y_ ; 
             //if(delta_ > 0.f){
 
@@ -1162,10 +1277,19 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
         for (float x_ = 0.f ;  ; x_ -= Constants::Planner::dis_sep_)
         {
-            
+            if(trim_ && x_dash_ < 0 && x_ < x_dash_)
+            {
+                break;
+            }
+
             float y_ ; 
             //if(delta_ > 0.f){
 
+            if(trim_ && x_dash_ > 0) 
+            {
+                break;
+
+            }
 
             y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
             
@@ -1201,12 +1325,20 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
         for(float x_ =0 ; x_ < Constants::Planner::max_res_; x_+= Constants::Planner::dis_sep_)
         {
+            if(trim_ && x_dash_ > 0 && x_ > x_dash_) 
+            {
+                break; 
+            }
 
             V_ab_zero_.emplace_back(x_, 0);
         }
 
         for(float x_ =0 ; x_ > -Constants::Planner::max_res_; x_-= Constants::Planner::dis_sep_)
         {
+            if(trim_ && x_dash_ < 0 && x_ < x_dash_)
+            {
+                break;
+            }
 
             V_ab_zero_.emplace_back(x_, 0);
         }

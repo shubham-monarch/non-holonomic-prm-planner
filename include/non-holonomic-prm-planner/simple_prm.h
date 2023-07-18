@@ -3,6 +3,7 @@
 
 
 #include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/Path.h>
 
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
@@ -84,11 +85,18 @@ namespace PRM{
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_") ;
             
-            geometry_msgs::PoseArray generateSteeringCurve(geometry_msgs::Pose robot_pose_, const float R_);
+            geometry_msgs::PoseArray generateSteeringCurve( geometry_msgs::Pose robot_pose_, const float R_, \
+                                                            const bool trim_  = false, \
+                                                            const float x_dash_ = -1.f);
+
+           std::vector<geometry_msgs::PoseStamped> generateSteeringCurveTrimmed(const geometry_msgs::Pose &rp_, const geometry_msgs::Pose &cp_);
+
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
 
             bool djikstra( Node3d &start_,  Node3d &goal_);
-        
+
+            nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
+
             //==== variables =====
             
             Visualize visualize_;
