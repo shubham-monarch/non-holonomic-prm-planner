@@ -60,7 +60,41 @@ void PRM::SimplePRM::initialize()
 
 }
 
+bool PRM::SimplePRM::connectToRoadmap(const geometry_msgs::Pose &start_)
+{   
+    kdTree::point_t pt_{start_.position.x, start_.position.y};
 
+    kdTree::pointVec pts_ = kdTree_->neighborhood_points(pt_, Constants::Planner::max_res_);
+
+    if((int)pts_.size() == 0)
+    {
+        ROS_ERROR("Unable to connect start to the roadmap!");
+        return false; 
+    }
+
+    const Node3d a_{start_.position.x , start_.position.y, tf::getYaw(start_.orientation) / M_PI};
+
+    bool flag_ = false;
+    
+    for(const kdTree::point_t p_: pts_)
+    {
+
+        for(float yaw_ = 0 ; yaw_ <= 2 * M_PI; yaw_ += 5 * M_PI / 180.f)
+        {
+
+            const Node3d b_{p_[0], p_[1], yaw_/Constants::Planner::theta_sep_}; 
+
+            if(connectNodes(a_, b_)) 
+            {
+                flag_ = true; 
+            }
+
+        }
+
+    }
+
+    return flag_; 
+}
 
 bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 {   
@@ -430,6 +464,47 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
 }
 
 
+bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
+{   
+
+    std::shared_ptr<Edge> e_ = std::make_shared<Edge>();
+    std::shared_ptr<Node3d> node_ ;
+    
+    const Vec3f &key_ = Utils::getNode3dkey(*node_);
+        
+    node_ = (G_.find(key_) == G_.end()) ? std::make_shared<Node3d>() : G_[key_]; 
+
+    if(canConnect(a_, b_, e_))
+    {
+        int cnt_ = SimplePRM::edge_cnt_++;
+        //connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
+        //  ROS_DEBUG("========================const ================");
+        //a3_.print();
+        //b3_.print();
+
+        //cnt_++;
+        //ROS_INFO("e_.dc_: %f" , e_->dc_);    
+
+        //node_->print();
+
+        node_->addEdge(e_);
+        
+        //node_->print();
+
+        G_[key_] = node_;
+        //e_->print(); 
+        //Edge e_(a3_, b3_);
+        //e_.print();
+        //G_.insert(e_);
+
+        // ROS_DEBUG("===========================================");
+        //connectConfigurationToRobot(a3_, b3_, "rp_" + std::to_string(cnt_), "cp_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
+        return true; 
+    }            
+
+    return false; 
+}
+
 bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
     
@@ -455,64 +530,16 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
     {
         
         const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
-
-        const Vec3f key_{a3_.x_, a3_.y_, a3_.theta_};
-
-        if(G_.find(key_) == G_.end())
-        {
-            node_ = std::make_shared<Node3d>(a3_);
-        }
-        else
-        {
-            node_ = G_[key_];
-
-        }
-        
+       
         for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
         {   
-            
-            //Edge e_;
-            std::shared_ptr<Edge> e_  = std::make_shared<Edge>();
-
-
-            //const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
             const Node3d b3_{b2_.x_ , b2_.y_, yaw_b_/Constants::Planner::theta_sep_};
-            
 
+            bool flag_ = connectNodes(a3_, b3_);   
 
-            //if(canConnect(a3_, b3_, std::make_shared<Edge const>(e_)))
-            if(canConnect(a3_, b3_, e_))
-            {
-                SimplePRM::edge_cnt_++;
-                connectConfigurationToRobot(a3_, b3_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-                //  ROS_DEBUG("========================const ================");
-                //a3_.print();
-                //b3_.print();
-
-                cnt_++;
-                //ROS_INFO("e_.dc_: %f" , e_->dc_);    
-
-                //node_->print();
-
-                node_->addEdge(e_);
-                
-                //node_->print();
-
-                const Vec3f &key_ = Utils::getNode3dkey(*node_);
-                G_[key_] = node_;
-                //e_->print(); 
-                //Edge e_(a3_, b3_);
-                //e_.print();
-                //G_.insert(e_);
-
-               // ROS_DEBUG("===========================================");
-                //connectConfigurationToRobot(a3_, b3_, "rp_" + std::to_string(cnt_), "cp_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-
-            }            
+            cnt_ = (flag_ ? cnt_ + 1 : cnt_);         
         }
     }
-
-//    ROS_INFO("cnt_: %d", cnt_);
 
     return true; 
 

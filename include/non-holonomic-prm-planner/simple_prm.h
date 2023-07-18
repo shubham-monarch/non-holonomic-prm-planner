@@ -97,6 +97,11 @@ namespace PRM{
 
             nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
 
+            bool connectToRoadmap(const geometry_msgs::Pose &pose_);
+
+            bool connectNodes(const Node3d &a_, const Node3d &b_);
+
+
             //==== variables =====
             
             Visualize visualize_;
