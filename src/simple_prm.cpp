@@ -1238,7 +1238,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
 
             y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
-            ROS_INFO("y_: %f", y_);
+            //ROS_INFO("y_: %f", y_);
 
             if(std::isnan(y_)) {
             
@@ -1252,7 +1252,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
             //ROS_INFO("(x,y) ==> (%f,%f)", x_, y_);
         
             y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
-            ROS_INFO("y_: %f", y_);
+            //ROS_INFO("y_: %f", y_);
             
             if(std::isnan(y_)) {
             
@@ -1327,7 +1327,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     const int sz_ = ((int)V_ab_pos_.size() +  (int)V_ab_neg_.size() + (int)V_ab_zero_.size());
 
-    ROS_INFO("sz_: %d", sz_);
+    //ROS_INFO("sz_: %d", sz_);
 
     //std::vector<Eigen::Matrix3f> V_ob_;
 
