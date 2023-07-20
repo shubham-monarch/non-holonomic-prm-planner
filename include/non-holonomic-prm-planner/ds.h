@@ -100,7 +100,9 @@ namespace PRM
             
         }
 
-        Node3d()
+        Node3d():   parent_(nullptr), \
+                    edges_(std::make_shared<std::vector<Edge> >()),
+                     cost_(std::numeric_limits<float>::max())
         {}
 
         bool operator<(const Node3d& p2) const {
@@ -116,8 +118,9 @@ namespace PRM
         }       
 
         bool addEdge(const std::shared_ptr<Edge const> &e_)
-        {
-             edges_->push_back(*e_);
+        {      
+           // ROS_INFO("Inside addEdge function!");
+            edges_->push_back(*e_);
             return true; 
         }
 
@@ -141,7 +144,7 @@ namespace PRM
     struct Edge
     {
         
-        explicit Edge(const Node3d &node, const float dc, const float ac):  node_(std::make_shared<Node3d const>(node)), \
+        explicit Edge(const Node3d &node, const float dc, const float ac):  node_(std::make_shared<Node3d>(node)), \
                                                                             dc_(dc),    \
                                                                             ac_(ac),    \
                                                                             tc_(ac_ + dc_)
@@ -166,7 +169,7 @@ namespace PRM
         float tc_ ;   // total cost 
 
                 
-        std::shared_ptr<Node3d const> node_; //destination node
+        std::shared_ptr<Node3d> node_; //destination node
 
         
     };

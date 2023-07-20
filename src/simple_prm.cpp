@@ -37,11 +37,106 @@ PRM::SimplePRM::SimplePRM()
     ROS_WARN("SimplePRM constructor called");
 }
 
+void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
+{
+
+    ROS_WARN("========== START POSE RECEIVED =============="); 
+    
+    ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
+
+    geometry_msgs::PoseStamped p_;
+    p_.pose = pose_->pose.pose;
+    p_.header.frame_id = "map"; 
+    p_.header.stamp = ros::Time::now();
+    
+    ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
+
+    float yaw_ = tf::getYaw(pose_->pose.pose.orientation); 
+
+    if(yaw_ < 0)
+    {
+        yaw_  += 2 * M_PI;
+    }
+
+    sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / (5.f * M_PI / 180.f)};
+    
+    visualize_.publishT<geometry_msgs::PoseStamped>("start_pose", p_);
+
+    generateSteeringCurveFamily(sp_);
+
+    //sp_.cost_ = 0; 
+    //sp_.parent_ = nullptr;
+
+    ROS_WARN("Printing start pose ==> "); 
+    sp_.print();
+
+    //const NodePtr_ node_ = std::make_shared<Node3d>(sp_);
+
+    //bool flag_ = connectToRoadmap(node_);
+    
+    //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
+
+    
+
+
+
+    /*if(!flag_)
+    {
+        ROS_ERROR("Could not connect START POSE to the roadmap!");
+    }
+
+    */
+}
+
+void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
+{
+     ROS_WARN("========== GOAL POSE RECEIVED =============="); 
+    
+    geometry_msgs::PoseStamped p_; 
+    p_ = *pose_;
+
+    float yaw_ = tf::getYaw(pose_->pose.orientation); 
+
+    if(yaw_ < 0) 
+    {
+        yaw_ += 2 * M_PI;
+    }
+
+    gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / ( 5.f * M_PI / 180.f)};
+
+    const NodePtr_ node_ = std::make_shared<Node3d>(gp_);
+
+    bool flag_ = connectToRoadmap(node_);  
+
+    ROS_INFO("goal_edges_cnt_: %d", G_[Utils::getNode3dkey(gp_)]->edges_->size());
+    
+    visualize_.publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
+
+    if(!flag_)
+    {
+        ROS_ERROR("Could not connect GOAL POSE to the roadmap!");
+    }
+
+    bool found_ = false; 
+
+    if(flag_)
+    {
+
+        ROS_WARN("Starting djikstra search!");
+        found_ = djikstra(sp_, gp_);
+
+        ROS_INFO("found_: %d", found_);
+
+    }
+
+}   
+
 void PRM::SimplePRM::initialize()
 {
 
     ros::Rate r_(10.0);
     map_sub_ = nh_.subscribe(Constants::map_topic, 1, &SimplePRM::setMapCb, this);
+
     
     while(ros::ok() && !map_set_){
 
@@ -53,18 +148,21 @@ void PRM::SimplePRM::initialize()
 
     ROS_WARN("map_set_ is true!");
 
-    //nodes2d_.clear();
-    sampled_points_.clear();
-    ROS_INFO("r_min_: %f", Constants::Vehicle::R_MIN_); 
-    ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
+    start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
+    goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
+    
 
 }
 
-bool PRM::SimplePRM::connectToRoadmap(const geometry_msgs::Pose &start_)
+bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
 {   
-    kdTree::point_t pt_{start_.position.x, start_.position.y};
+    
+
+    kdTree::point_t pt_{node_->x_, node_->y_};
 
     kdTree::pointVec pts_ = kdTree_->neighborhood_points(pt_, Constants::Planner::max_res_);
+
+    ROS_INFO("pts_.size(): %d", pts_.size());
 
     if((int)pts_.size() == 0)
     {
@@ -72,32 +170,43 @@ bool PRM::SimplePRM::connectToRoadmap(const geometry_msgs::Pose &start_)
         return false; 
     }
 
-    const Node3d a_{start_.position.x , start_.position.y, tf::getYaw(start_.orientation) / M_PI};
+    //const Node3d a_{start_.position.x , start_.position.y, tf::getYaw(start_.orientation) / M_PI};
 
     bool flag_ = false;
     
+    int pnt_cnt_ =0 ; 
+
+    int conn_cnt_ =0 ; 
     for(const kdTree::point_t p_: pts_)
     {
-
+        //ROS_INFO("pnt_cnt_: %d" , pnt_cnt_);
+        
         for(float yaw_ = 0 ; yaw_ <= 2 * M_PI; yaw_ += 5 * M_PI / 180.f)
         {
 
             const Node3d b_{p_[0], p_[1], yaw_/Constants::Planner::theta_sep_}; 
 
-            if(connectNodes(a_, b_)) 
+            if(connectNodes(*node_, b_)) 
             {
                 flag_ = true; 
+                conn_cnt_++;
             }
 
         }
 
     }
 
+    ROS_INFO("flag_: %d", flag_);
+    ROS_INFO("conn_cnt_: %d", conn_cnt_);
     return flag_; 
 }
 
 bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 {   
+    ROS_INFO("Inside djikstra function!");
+    
+    start_.print(); 
+    end_.print();
     //const float x_ = Constants::MapMetaData::origin_x_; 
     //const float y_ = Constants::MapMetaData::origin_y_;
 
@@ -112,17 +221,28 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 
     std::priority_queue<std::shared_ptr<Node3d> , std::vector<std::shared_ptr<Node3d> >, CompareNode3dPointers> pq_; 
 
-    start_.cost_ = 0 ;
-  //  start_.parent_ = std::make_shared<Node3d>(1,1,1); 
-    start_.parent_ = nullptr;
+    //start_.cost_ = 0 ;
+  //  start_.parent_ = std::make_shared<Node3d>(1,1djiks,1); 
+    //start_.parent_ = nullptr;
 
-    const std::shared_ptr<Node3d> start_ptr_ = std::make_shared<Node3d>(start_);
+    //const std::shared_ptr<Node3d> start_ptr_ = std::make_shared<Node3d>(start_);
+    const std::shared_ptr<Node3d> start_ptr_ = G_[Utils::getNode3dkey(start_)];
+    start_ptr_->parent_ = nullptr;
+    start_ptr_->cost_ = 0 ;
 
     pq_.push(start_ptr_);
+
+    ROS_INFO("Num connections for the start node ==> %d", start_ptr_->edges_->size());
 
     int cnt_ =0  ;
 
     bool reached_ = false; 
+
+    geometry_msgs::PoseArray pq_path_;
+    pq_path_.header.frame_id = "map" ;
+    pq_path_.header.stamp = ros::Time::now();
+
+
 
     while(ros::ok() && !pq_.empty())
     {
@@ -131,8 +251,29 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 
         const Vec3f curr_key_ = Utils::getNode3dkey(*pq_.top());
 
-        std::shared_ptr<Node3d> curr_node_ = pq_.top();
+        const std::shared_ptr<Node3d> curr_node_ = pq_.top();
         const float curr_cost_ = curr_node_->cost_;
+
+        curr_node_->print();
+
+        geometry_msgs::Pose pose_; 
+        pose_.position.x = curr_node_->x_ ;
+        pose_.position.y = curr_node_->y_; 
+        pose_.orientation = Utils::getQuatFromYaw(curr_node_->theta_);
+        pq_path_.poses.push_back(pose_);
+
+        visualize_.publishT<geometry_msgs::PoseArray>("pq_path", pq_path_);
+
+        pq_.pop();
+
+        if(vis_.find(curr_key_) != vis_.end())
+        {
+            continue;
+        }
+        else{
+
+            vis_[curr_key_] = 1;
+        }
 
         //const Node3d &curr_node_ = pq_.top(); 
         
@@ -145,41 +286,54 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
         //const Vec3f curr_key_ = Utils::getNode3dkey(curr_node_);        
         //const float curr_cost_ = curr_node_.cost_;
         
+        if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
+        {
+            end_.parent_ = curr_node_->parent_; 
+            reached_ = true; 
+            break;
+        }
         
-        if(*curr_node_ == end_)
+        /*if(*curr_node_ == end_)
         {
             end_.parent_ = curr_node_->parent_;
             reached_ = true; 
             break; 
-        }
+        }*/
+
 
         
-        pq_.pop();
 
 
        // curr_node_->parent_->print(); 
-
+        int cnt_ = 0 ;
         for( auto &t : *curr_node_->edges_) 
-        {
-            const Node3d &nxt_ = *t.node_;
+        {   
+            ROS_INFO("insideQ!");
+            cnt_++;
+            //const Node3d &nxt_ = *t.node_;
+            //const float edge_cost_ = t.tc_;
+
+           // Node3d* node_ = t.node_.get();
+            const std::shared_ptr<Node3d> nxt_node_(t.node_.get());
+            
             const float edge_cost_ = t.tc_;
 
-            Vec3f key_ {nxt_.x_, nxt_.y_, nxt_.theta_};
+            Vec3f key_ {nxt_node_->x_, nxt_node_->y_, nxt_node_->theta_};
 
             if(G_.find(key_) != G_.end())
             {
-                const std::shared_ptr<Node3d> nxt_ = G_[key_]; 
+                //const std::shared_ptr<Node3d> nxt_ = G_[key_]; 
 
               //  ROS_INFO("nxt->cost: %f", nxt_->cost_);
                 
-                if(nxt_->cost_ > curr_cost_ + edge_cost_)
+                if(nxt_node_->cost_ > curr_cost_ + edge_cost_)
                 {   
                  //   ROS_INFO("Hi");
-                    nxt_->parent_ = curr_node_;
-                    nxt_->cost_ = curr_cost_ + edge_cost_;
+                    nxt_node_->parent_ = curr_node_;
+                    nxt_node_->cost_ = curr_cost_ + edge_cost_;
 
-                    G_[key_] = nxt_;
-                    pq_.push(nxt_);
+                    G_[key_] = nxt_node_;
+                    pq_.push(nxt_node_);
                 }
                 
             }
@@ -191,15 +345,19 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 
         }
 
+        ROS_INFO("cnt_: %d", cnt_);
 
     }
 
     ROS_INFO("pq_ ran for %d iterations!", cnt_);
     ROS_WARN("REACHED ==> %d", reached_);
 
-    end_.print(); 
-    end_.parent_->print();
-
+    if(reached_)
+    {
+        end_.print();
+        end_.parent_->print();
+    }
+    
 
     std::vector<Node3d> path_; 
     
@@ -360,6 +518,7 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
 
+   // ROS_INFO("Inside canConnect function!");
     const float dis_ = Utils::euclidean(a_, b_) ;
 
     if(dis_ > Constants::Planner::max_res_)
@@ -467,40 +626,29 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
 bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
 {   
 
+    //ROS_INFO("Inside connectNodes function!");
+
     std::shared_ptr<Edge> e_ = std::make_shared<Edge>();
-    std::shared_ptr<Node3d> node_ ;
+    NodePtr_ node_ ;
     
-    const Vec3f &key_ = Utils::getNode3dkey(*node_);
-        
-    node_ = (G_.find(key_) == G_.end()) ? std::make_shared<Node3d>() : G_[key_]; 
+    const Vec3f &key_ = Utils::getNode3dkey(a_);
 
-    if(canConnect(a_, b_, e_))
-    {
+    
+    bool can_connect_ = canConnect(a_, b_ , e_);
+    
+    if(can_connect_)
+    {   
         int cnt_ = SimplePRM::edge_cnt_++;
-        //connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-        //  ROS_DEBUG("========================const ================");
-        //a3_.print();
-        //b3_.print();
+        connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
+                  
+        node_ = (G_.find(key_) == G_.end()) ? std::make_shared<Node3d>(a_) : G_[key_]; 
 
-        //cnt_++;
-        //ROS_INFO("e_.dc_: %f" , e_->dc_);    
-
-        //node_->print();
-
+      //  ROS_INFO("Connection found!");
         node_->addEdge(e_);
-        
-        //node_->print();
-
+        //ROS_INFO("edge added!");
         G_[key_] = node_;
-        //e_->print(); 
-        //Edge e_(a3_, b3_);
-        //e_.print();
-        //G_.insert(e_);
-
-        // ROS_DEBUG("===========================================");
-        //connectConfigurationToRobot(a3_, b3_, "rp_" + std::to_string(cnt_), "cp_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
         return true; 
-    }            
+    }
 
     return false; 
 }
@@ -557,189 +705,12 @@ bool PRM::SimplePRM::generateRoadMap()
     //sr_ = Constants::Planner::max_res_;
     
 
-    //generateSamplePoints(); 
-//    buildKDtree();
+   // generateSamplePoints(); 
+    //buildKDtree();
 
-    const int w_ = Constants::MapMetaData::width_; 
-    const int h_ =  Constants::MapMetaData::height_;
-
-
-    std::vector<Node3d> sampled_points_3d_;
-
-    std::vector<float> rx_ = {Constants::MapMetaData::origin_x_ , Constants::MapMetaData::origin_x_ + (w_ + 0.5f) * Constants::MapMetaData::res_}; 
-    std::vector<float> ry_ = {Constants::MapMetaData::origin_y_ , Constants::MapMetaData::origin_y_ + (h_ + 0.5f) * Constants::MapMetaData::res_} ;
-    
-   
-
-    for(float del_ = 30.f ; del_ <= 50.f ; del_+= 1.f)
-    {
-        //for(float y_ = ry_[0] + 30; y_ <= ry_[0] + 50; y_ +=1.f)
-        //{
-            
-            sampled_points_3d_.emplace_back(rx_[0] + del_, ry_[0] + del_, 6);
-            sampled_points_3d_.emplace_back(rx_[0] + del_ , ry_[0] + del_, 9);
-            sampled_points_3d_.emplace_back(rx_[0] + del_, ry_[0] + del_, 12);
-            
-        //}
-    }
-
-    visualize_.draw3DNodes(sampled_points_3d_, "points_3d_");
-
-    int cnt_ = 0 ; 
-
-    int sz_ = (int)sampled_points_3d_.size(); 
-
-    for(int i  = 0 ;i  < sz_ ; i++)
-    {
-        for(int j = 0 ; j < sz_ ; j++ )
-        {
-            const Node3d &a_ = sampled_points_3d_[i]; 
-            const Node3d &b_ = sampled_points_3d_[j];
-
-            
-            std::shared_ptr<Edge> e_ = std::make_shared<Edge>();
-            
-            std::shared_ptr<Node3d> node_ = std::make_shared<Node3d>(a_);
-
-            if(canConnect(a_, b_, e_))
-            {
-                SimplePRM::edge_cnt_++;
-                connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-                //  ROS_DEBUG("========================const ================");
-                //a3_.print();
-                //b3_.print();
-
-                cnt_++;
-                //ROS_INFO("e_.dc_: %f" , e_->dc_);    
-
-                //node_->print();
-
-                node_->addEdge(e_);
-                
-                //node_->print();
-
-                const Vec3f &key_ = Utils::getNode3dkey(*node_);
-                G_[key_] = node_;
-                //e_->print(); 
-                //Edge e_(a3_, b3_);
-                //e_.print();
-                //G_.insert(e_);
-
-               // ROS_DEBUG("===========================================");
-                //connectConfigurationToRobot(a3_, b3_, "rp_" + std::to_string(cnt_), "cp_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-
-            }         
-        }
-    }
-
-    djikstra(sampled_points_3d_[1], sampled_points_3d_[sampled_points_3d_.size() - 2]);
-
-
-    /*std::vector<Node2d> v_; 
-
-    for(const auto &t: sampled_points_) v_.push_back(t);
-
-    ROS_INFO("v_.size(): %d", v_.size());
-
-    int sz_= (int)v_.size(); 
-
-    SimplePRM::edge_cnt_ =  0; 
-
-    for(int  i = 0 ; i < sz_; i++)
-    {
-        for(int j = i + 1; j  < sz_; j++ )
-        {
-            const Node2d &a_ = v_[i] ;
-            const Node2d &b_ = v_[j];
-            const float dis_ = Utils::euclidean(a_, b_);
-            
-            if(dis_ > Constants::Planner::max_res_)
-            {
-                continue;
-            }
-
-            generateEdges(a_, b_);
-        }
-    }
-
-    ROS_WARN("edge_cnt_: %d", edge_cnt_);
-
-    auto itr_ = std::begin(G_);
-
-    Node3d a_, b_; 
-
-    a_ = *itr_->second;
-
-    a_.print();
-
-    for(itr_ = G_.begin(); itr_ != G_.end(); ++itr_)
-    {
-
-        const Node3d &n_ = *itr_->second; 
-
-        if(Utils::euclidean(a_, n_) > 2.f)
-        {
-            b_ = n_; 
-            break; 
-        }
-
-    }
-    
-    b_.print();
-    
-    visualize_.drawNode3d(a_, "start_pose_") ; 
-    visualize_.drawNode3d(b_, "end_pose_") ; 
-    
-
-    djikstra(a_, b_);
-    /*/
-    //const Node3d start_{v_[0].x_, v_[0].y_, 10} ; 
-
-
-    //Djikstra();
-    
-    //geometry_msgs::Pose pose_;
-    //Node2d node_a_(0, 0), node_b_(0, 0);
-
-    //Node3d a_(0.f,0.f,3), b_(0.f,0.f,29);
-
-
-    //ROS_INFO("a_ => (%f,%f,%d,%f)", a_.x_, a_.y_, a_.theta_idx_, a_.theta_);
-    //ROS_INFO("b => (%f,%f,%d,%f)", b_.x_, b_.y_, b_.theta_idx_, b_.theta_);
-
-    
-
-
-    //generateEdges(a_, b_);
-    
-    // /generateEdges(node_a_, node_b_);
-    //generateSteeringCurve(geometry_msgs::Pose(), 0.0);
-
-    /*const float x_ = Constants::MapMetaData::origin_x_; 
-    const float y_ = Constants::MapMetaData::origin_y_;
-
-    const Node2d a_ {x_ + 50.f, y_ + 50.f};
-    const Node2d b_ {x_ + 50.f, y_ + 51.f};
-    
-    generateEdges(a_, b_);
-
-    djikstra();
-
-    //generateEdges();
-    //generatePath();
-
-    //connectConfigurationToRobot(pose_, pose_);
-
-    //generateKDTree();
-
-    //kdTree::KDTree tree_;
-   // ROS_WARN("Starting neighbour search!");
-
-
-    ROS_WARN("Graph generation started!");
     auto start = std::chrono::high_resolution_clock::now();
-
-
+    
+    ROS_INFO("sr_: %f", Constants::Planner::sr_);
     int cnt_ = 0 ;
     for(const auto &node_ : sampled_points_)
     {   
@@ -775,19 +746,22 @@ bool PRM::SimplePRM::generateRoadMap()
             }
             cnt_++;
             generateEdges(a_, b_);
-            ROS_INFO("cnt_: %d", cnt_);
+            // /ROS_INFO("cnt_: %d", cnt_);
         }
     }
 
-
+   // ROS_INFO("Total edges: ")
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     double seconds = duration.count();
 
 
     ROS_WARN("Graph generation finished in %f seconds!", seconds);
+    ROS_WARN("G_.size(): %d", G_.size());
     //ROS_INFO("cnt_: %d" , cnt_);
-    */
+    
+    //djikstra()
+
 
     return true; 
 
@@ -923,7 +897,7 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , ge
 
     visualize_.publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
 
-    ROS_INFO("oc_: (%f,%f)", oc_.position.x, oc_.position.y);
+    //ROS_INFO("oc_: (%f,%f)", oc_.position.x, oc_.position.y);
 
     visualize_.drawPoint(or_, or_topic_);
     visualize_.drawPoint(oc_, oc_topic_);
@@ -959,27 +933,11 @@ bool PRM::SimplePRM::generateSamplePoints()
     //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
     //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 130);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 130);
-    
+    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 102);
+    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 102);
+     
+    int cnt_ =0 ; 
 
-    //std::vector<std::vector<int> > pose_flag_(2000, std::vector<int>(2000, -1));
-
-    //std::unordered_set<Node2d> sampled_points_;
-    
-    //TODO ==> initialise on HEAP
-    
-    
-    //nodes2d_.clear();
-    //  nodes2d_.reserve(N_);
-
-    int cnt_ = 0 ;
-
-    //const float del_ = 30.f; 
-
-    
-
-    /*int cnt_ = 0  ;
     while(sampled_points_.size() < Constants::Planner::N_ && ros::ok())  
     {
         //ROS_INFO("nodes2d_.size(): %d", nodes2d_.size());
@@ -998,10 +956,10 @@ bool PRM::SimplePRM::generateSamplePoints()
 
         }
         
-        //ROS_INFO("cnt_: %d", cnt_);
+      //  ROS_INFO("sampled_points_cnt_: %d", cnt_);
 
         //nodes2d_.push_back(node_);
-    }*/
+    }
 
     /*const float ox_ = Constants::MapMetaData::origin_x_; 
     const float oy_ = Constants::MapMetaData::origin_y_; 
@@ -1107,6 +1065,17 @@ bool PRM::SimplePRM::generateSamplePoints()
 }
 
 
+void PRM::SimplePRM::generateSteeringCurveFamily(const Node3d &node_)
+{
+
+    geometry_msgs::Pose rp_; 
+    rp_.position.x = node_.x_; 
+    rp_.position.y = node_.y_ ;
+    rp_.orientation = Utils::getQuatFromYaw(node_.theta_); 
+
+    generateSteeringCurveFamily(rp_);
+
+}
 
 
 
@@ -1123,31 +1092,41 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 
     }
     
-    ros::Rate r_(10.0); 
+    //ros::Rate r_(10.0); 
 
-    float del_ = -Constants::Vehicle::delta_max_;
-    
+    float del_ = 0.f;
+
     ROS_INFO("del_max_: %f", Constants::Vehicle::delta_max_);
+
+    int cnt_ =0 ; 
 
     while(ros::ok() && del_ < Constants::Vehicle::delta_max_)
     {   
-        ROS_INFO("del_: %f", del_);
-        del_ += 0.1;    
+        //ROS_INFO("del_: %f", del_);   
+        const float R_ = Utils::getR(del_);
 
-        generateSteeringCurve(rp_, del_);
+        ROS_WARN("del_: %f R_: %f" , del_, R_);
 
-        r_.sleep(); 
+        geometry_msgs::PoseArray arr_ = generateSteeringCurve(rp_, R_);
+        
+        visualize_.publishT<geometry_msgs::PoseArray>("sc_" + std::to_string(cnt_), arr_);
+        
+        del_ += (5.f * M_PI / 180.f);
+        cnt_++;
+        
+        //r_.sleep(); 
     }
 
+//    generateSteeringCurve(rp_, 0.f);
 
 
-    geometry_msgs::PoseArray pose_array_ob_; 
-    pose_array_ob_.header.frame_id = "map"; 
-    pose_array_ob_.header.stamp = ros::Time::now();
-    pose_array_ob_.poses = std::move(steering_curve_family_poses_);
+  //  geometry_msgs::PoseArray pose_array_ob_; 
+    //pose_array_ob_.header.frame_id = "map"; 
+    //pose_array_ob_.header.stamp = ros::Time::now();
+    //pose_array_ob_.poses = std::move(steering_curve_family_poses_);
 
     //visualize_.visualizeSteeringCurve(pose_array_ob_);
-    visualize_.publishT<geometry_msgs::PoseArray>("steering_curve_family", pose_array_ob_);
+    //visualize_.publishT<geometry_msgs::PoseArray>("steering_curve_family", pose_array_ob_);
 
 // /    return true;
 
@@ -1253,6 +1232,8 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
     std::vector<Eigen::Vector2f> V_ab_pos_, V_ab_neg_, V_ab_zero_; // point pose in robot frame
     V_ab_pos_.reserve(1000);
     V_ab_neg_.reserve(1000);
+    V_ab_zero_.reserve(1000);
+    
     
     //assuming δ > 0
     
@@ -1266,17 +1247,15 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
         
         for (float x_ = 0.f ;   ; x_ += Constants::Planner::dis_sep_)
         {
-            if(trim_ && x_dash_ > 0 && x_ > x_dash_)
-            {
-                break;
-            }
+            
             
             float y_ ; 
             //if(delta_ > 0.f){
 
 
             y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
-            
+            ROS_INFO("y_: %f", y_);
+
             if(std::isnan(y_)) {
             
                 //ROS_WARN("Last x_ value: %f", x_);
@@ -1289,6 +1268,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
             //ROS_INFO("(x,y) ==> (%f,%f)", x_, y_);
         
             y_ = sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) - sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
+            ROS_INFO("y_: %f", y_);
             
             if(std::isnan(y_)) {
             
@@ -1304,20 +1284,11 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
         for (float x_ = 0.f ;  ; x_ -= Constants::Planner::dis_sep_)
         {
-            if(trim_ && x_dash_ < 0 && x_ < x_dash_)
-            {
-                break;
-            }
-
+            
             float y_ ; 
             //if(delta_ > 0.f){
 
-            if(trim_ && x_dash_ > 0) 
-            {
-                break;
-
-            }
-
+            
             y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
             
             if(std::isnan(y_)) {
@@ -1352,21 +1323,13 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
         for(float x_ =0 ; x_ < Constants::Planner::max_res_; x_+= Constants::Planner::dis_sep_)
         {
-            if(trim_ && x_dash_ > 0 && x_ > x_dash_) 
-            {
-                break; 
-            }
-
+            
             V_ab_zero_.emplace_back(x_, 0);
         }
 
         for(float x_ =0 ; x_ > -Constants::Planner::max_res_; x_-= Constants::Planner::dis_sep_)
         {
-            if(trim_ && x_dash_ < 0 && x_ < x_dash_)
-            {
-                break;
-            }
-
+            
             V_ab_zero_.emplace_back(x_, 0);
         }
 
@@ -1380,11 +1343,13 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     const int sz_ = ((int)V_ab_pos_.size() +  (int)V_ab_neg_.size() + (int)V_ab_zero_.size());
 
+    ROS_INFO("sz_: %d", sz_);
+
     //std::vector<Eigen::Matrix3f> V_ob_;
 
     std::vector<geometry_msgs::Pose> poses_ob_;
 
-    poses_ob_.reserve(sz_ + 100);
+    poses_ob_.reserve(sz_ + 100000);
 
     for(const auto &t: V_ab_pos_){
         
@@ -1455,20 +1420,30 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     }
 
+    ROS_INFO("poses_ob_.size(): %d" , poses_ob_.size());
 
     geometry_msgs::PoseArray pose_array_ob_; 
     pose_array_ob_.header.frame_id = "map"; 
     pose_array_ob_.header.stamp = ros::Time::now();
+
+    //ROS_INFO("pose_ob_.size() before moving: %d", poses_ob_.size());
+
     pose_array_ob_.poses = std::move(poses_ob_);
 
-    
+    //ROS_INFO("pose_ob_.size() after moving: %d", poses_ob_.size());
 
     //visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
     
-    steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
+    //ROS_WARN("pose_array_ob_.poses_.size() before moving: %d", pose_array_ob_.poses.size());
+    //ROS_WARN("steering_curve_family_poses_.size() before moving: %d", steering_curve_family_poses_.size());
+    
+    /*steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
                                         std::make_move_iterator(pose_array_ob_.poses.begin()),   \
                                         std::make_move_iterator(pose_array_ob_.poses.end()));
-    
+
+    ROS_INFO("pose_array_ob_.poses_.size() after moving: %d", pose_array_ob_.poses.size());
+    ROS_INFO("steering_curve_family_poses_.size() after moving: %d", steering_curve_family_poses_.size());
+    */
 
     return pose_array_ob_;
 

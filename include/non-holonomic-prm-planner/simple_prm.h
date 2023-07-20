@@ -4,6 +4,7 @@
 
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
@@ -33,6 +34,8 @@ namespace PRM{
     
     
     typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;
+    typedef std::shared_ptr<Node3d> NodePtr_;
+    
     typedef kdTree::point_t kdPoint;
     typedef kdTree::pointVec kdPoints;
 
@@ -60,11 +63,6 @@ namespace PRM{
 
             // ===== functions ====
 
-
-            //**** core planner functions
-            long long int set_N();
-            float set_SR(); 
-
             //bool generateGraph();
             bool buildKDtree();
             bool generateSamplePoints();
@@ -85,22 +83,28 @@ namespace PRM{
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_") ;
             
+
+
             geometry_msgs::PoseArray generateSteeringCurve( geometry_msgs::Pose robot_pose_, const float R_, \
                                                             const bool trim_  = false, \
                                                             const float x_dash_ = -1.f);
 
            std::vector<geometry_msgs::PoseStamped> generateSteeringCurveTrimmed(const geometry_msgs::Pose &rp_, const geometry_msgs::Pose &cp_);
 
+            void generateSteeringCurveFamily(const Node3d &node_);
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
+
 
             bool djikstra( Node3d &start_,  Node3d &goal_);
 
             nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
 
-            bool connectToRoadmap(const geometry_msgs::Pose &pose_);
+            bool connectToRoadmap(const NodePtr_ &node_);
 
             bool connectNodes(const Node3d &a_, const Node3d &b_);
 
+            void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
+            void goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_);
 
             //==== variables =====
             
@@ -128,9 +132,15 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
+            ros::Subscriber start_pose_sub_, goal_pose_sub_;
             //std::vector<Node3d> sampled_points_3d_;
 
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
+            std::unordered_map<Vec3f, bool, hashing_func, key_equal_fn>  vis_;
+            
+
+            Node3d sp_; //start pose
+            Node3d gp_; //goal pose
 
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             

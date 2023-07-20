@@ -71,7 +71,12 @@ namespace PRM{
 
 
         static inline float getR(const float delta_)
-        {
+        {   
+            if(std::fabs(delta_) < 0.01f)
+            {
+                return -1.f;
+            }
+            
             float R_ = sqrt(pow(Constants::Vehicle::a2_, 2) + pow(PRM::Constants::Vehicle::l_ * (1/std::tan(delta_)), 2));
             return R_;
         

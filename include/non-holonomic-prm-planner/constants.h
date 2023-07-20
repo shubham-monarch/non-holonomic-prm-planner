@@ -41,13 +41,13 @@ namespace PRM{
         namespace Planner{
 
             
-            static const int N_ = 200;
+            static const int N_ = 4;
             static const float theta_sep_ = 5.f * M_PI / 180.f;  //5 degree separation
             static const float dis_sep_ = 0.1f; //10  cm
 
             static const float max_res_ = sqrt(pow(Vehicle::R_MIN_,2) + pow(Vehicle::R_MIN_ - Vehicle::a2_,2)); // max allowed resolution
             //static const float theta_tol_ = 2.5 * M_PI / 180.0 ;  // 2.5 degrees 
-            static const float theta_tol_ = 1.0 * M_PI / 180.0 ;  // 2.5 degrees 
+            static const float theta_tol_ = 3.0 * M_PI / 180.0 ;  // 2.5 degrees 
             static const float planner_res_ = 0.5;
 
             static const float w_dis_  = 0.5; 
