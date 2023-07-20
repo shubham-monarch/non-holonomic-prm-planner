@@ -49,7 +49,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     p_.header.frame_id = "map"; 
     p_.header.stamp = ros::Time::now();
     
-    ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
+    //ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
 
     float yaw_ = tf::getYaw(pose_->pose.pose.orientation); 
 
@@ -58,34 +58,43 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
         yaw_  += 2 * M_PI;
     }
 
-    sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / (5.f * M_PI / 180.f)};
+    sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
     
     visualize_.publishT<geometry_msgs::PoseStamped>("start_pose", p_);
 
     generateSteeringCurveFamily(sp_);
 
+    ROS_INFO("Steering Curve family generated!");
+
     //sp_.cost_ = 0; 
     //sp_.parent_ = nullptr;
 
-    ROS_WARN("Printing start pose ==> "); 
-    sp_.print();
+    //ROS_WARN("Printing start pose ==> "); 
+    //sp_.print();
 
-    //const NodePtr_ node_ = std::make_shared<Node3d>(sp_);
+    const NodePtr_ node_ = std::make_shared<Node3d>(sp_);
 
-    //bool flag_ = connectToRoadmap(node_);
+    bool flag_ = connectToRoadmap(node_);
+
+    ROS_INFO("flag_ inside initialPoseCb: %d" , flag_);
+
+    //G_.insert()
+
+    const Vec3f &key_ = Utils::getNode3dkey(*node_);
+    G_[key_] = node_;
+
+    ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
+
+    visualize_.drawNodeNeighbours(node_);
     
-    //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
 
-    
-
-
-
-    /*if(!flag_)
+    if(!flag_)
     {
         ROS_ERROR("Could not connect START POSE to the roadmap!");
     }
 
-    */
+    return; 
+    
 }
 
 void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
@@ -157,6 +166,7 @@ void PRM::SimplePRM::initialize()
 bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
 {   
     
+    ROS_INFO("ConnectToRoadmap function!");
 
     kdTree::point_t pt_{node_->x_, node_->y_};
 
@@ -177,14 +187,15 @@ bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
     int pnt_cnt_ =0 ; 
 
     int conn_cnt_ =0 ; 
-    for(const kdTree::point_t p_: pts_)
+    
+    for(const auto pt_: pts_)
     {
         //ROS_INFO("pnt_cnt_: %d" , pnt_cnt_);
         
         for(float yaw_ = 0 ; yaw_ <= 2 * M_PI; yaw_ += 5 * M_PI / 180.f)
         {
 
-            const Node3d b_{p_[0], p_[1], yaw_/Constants::Planner::theta_sep_}; 
+            const Node3d b_{pt_[0], pt_[1], yaw_/Constants::Planner::theta_sep_}; 
 
             if(connectNodes(*node_, b_)) 
             {
@@ -705,10 +716,10 @@ bool PRM::SimplePRM::generateRoadMap()
     //sr_ = Constants::Planner::max_res_;
     
 
-   // generateSamplePoints(); 
-    //buildKDtree();
+    generateSamplePoints(); 
+    buildKDtree();
 
-    auto start = std::chrono::high_resolution_clock::now();
+    /*auto start = std::chrono::high_resolution_clock::now();
     
     ROS_INFO("sr_: %f", Constants::Planner::sr_);
     int cnt_ = 0 ;
@@ -753,11 +764,13 @@ bool PRM::SimplePRM::generateRoadMap()
    // ROS_INFO("Total edges: ")
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    double seconds = duration.count();
+    double seconds = du1ration.count();
 
 
     ROS_WARN("Graph generation finished in %f seconds!", seconds);
     ROS_WARN("G_.size(): %d", G_.size());
+    */
+    
     //ROS_INFO("cnt_: %d" , cnt_);
     
     //djikstra()
@@ -1404,7 +1417,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     }
 
-    ROS_INFO("poses_ob_.size(): %d" , poses_ob_.size());
+    //ROS_INFO("poses_ob_.size(): %d" , poses_ob_.size());
 
     geometry_msgs::PoseArray pose_array_ob_; 
     pose_array_ob_.header.frame_id = "map"; 

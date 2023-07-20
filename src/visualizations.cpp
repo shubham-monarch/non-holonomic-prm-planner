@@ -7,7 +7,6 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <geometry_msgs/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
 #include <geometry_msgs/PoseArray.h>
 
 PRM::Visualize::Visualize(){
@@ -41,6 +40,31 @@ void PRM::Visualize::draw2DNodes(const std::vector<Node2d> &nodes2d_, std::strin
     }
 
     publishT<geometry_msgs::PoseArray>(topic_, sposes_);
+}
+
+
+
+void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_)
+{
+    
+    geometry_msgs::PoseArray init_pose_neighbours_;
+    init_pose_neighbours_.header.frame_id = "map"; 
+    init_pose_neighbours_.header.stamp = ros::Time::now(); 
+
+    for(const auto edge_: *node_->edges_)
+    {
+        geometry_msgs::Pose p_; 
+        p_.position.x = edge_.node_->x_ ; 
+        p_.position.y = edge_.node_->y_ ; 
+        p_.orientation = Utils::getQuatFromYaw(edge_.node_->theta_) ; 
+
+        init_pose_neighbours_.poses.push_back(p_);
+    }
+    
+    ROS_INFO("init_pose_neighbours.size(): %d", init_pose_neighbours_.poses.size());
+
+    publishT<geometry_msgs::PoseArray>("init_pose_neighbours_", init_pose_neighbours_);
+
 }
 
 void PRM::Visualize::draw3DNodes(const std::vector<Node3d> &nodes3d_, std::string topic_)

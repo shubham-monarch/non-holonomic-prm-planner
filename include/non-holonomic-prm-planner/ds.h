@@ -21,7 +21,11 @@ namespace PRM
     typedef Eigen::Matrix3f Mat3f;
     typedef Eigen::Vector2f Vec2f;
     typedef Eigen::Vector3f Vec3f;
+
+    struct Node3d;
     
+    typedef std::shared_ptr<Node3d> NodePtr_;
+        
     typedef long long int ll;
 
     struct Edge;
@@ -103,7 +107,11 @@ namespace PRM
         Node3d():   parent_(nullptr), \
                     edges_(std::make_shared<std::vector<Edge> >()),
                      cost_(std::numeric_limits<float>::max())
-        {}
+        {
+
+            ROS_WARN("default constructor triggered!");
+
+        }
 
         bool operator<(const Node3d& p2) const {
             // Compare based on the distance from the origin (0,0,0)

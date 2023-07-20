@@ -6,11 +6,14 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseStamped.h>
 
+#include <non-holonomic-prm-planner/ds.h>
+
 namespace PRM{
     
     struct Node2d; 
     struct Node3d; 
 
+   // typedef NodePtr_;
 
     typedef std::shared_ptr<ros::Publisher> PubPtr;
 
@@ -44,7 +47,8 @@ namespace PRM{
             void drawPoint(const geometry_msgs::Pose &pose_, const std::string topic = "point");
             void drawNode3d(const Node3d &node_, std::string topic_ = "node3d");
 
-            
+            void drawNodeNeighbours(const NodePtr_ &node_);
+
             
 
         private: 
