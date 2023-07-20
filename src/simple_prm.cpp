@@ -1083,52 +1083,36 @@ void PRM::SimplePRM::generateSteeringCurveFamily(const Node3d &node_)
 void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
 {
 
-    ROS_INFO("Inside generateSteeringCurveFamily function!");
-
-    if((int)steering_curve_family_poses_.size() > 0) {
-
-        ROS_WARN("steering_curve_family_poses.size() > 0 ==> Something might be wrong!");
-        steering_curve_family_poses_.clear();
-
-    }
-    
-    //ros::Rate r_(10.0); 
-
     float del_ = 0.f;
 
-    ROS_INFO("del_max_: %f", Constants::Vehicle::delta_max_);
+    ROS_INFO("max_steering_angle => %f", Constants::Vehicle::delta_max_);
 
     int cnt_ =0 ; 
+
+    geometry_msgs::PoseArray family_;
+    family_.header.frame_id = "map"; 
+    family_.header.stamp = ros::Time::now();
 
     while(ros::ok() && del_ < Constants::Vehicle::delta_max_)
     {   
         //ROS_INFO("del_: %f", del_);   
         const float R_ = Utils::getR(del_);
 
-        ROS_WARN("del_: %f R_: %f" , del_, R_);
+        //ROS_WARN("del_: %f R_: %f" , del_, R_);
 
         geometry_msgs::PoseArray arr_ = generateSteeringCurve(rp_, R_);
         
-        visualize_.publishT<geometry_msgs::PoseArray>("sc_" + std::to_string(cnt_), arr_);
+        family_.poses.insert(family_.poses.end(), \
+                            std::make_move_iterator(arr_.poses.begin()),
+                            std::make_move_iterator(arr_.poses.end()));
+
+        visualize_.publishT<geometry_msgs::PoseArray>("family_" ,  family_);
         
         del_ += (5.f * M_PI / 180.f);
         cnt_++;
         
-        //r_.sleep(); 
     }
 
-//    generateSteeringCurve(rp_, 0.f);
-
-
-  //  geometry_msgs::PoseArray pose_array_ob_; 
-    //pose_array_ob_.header.frame_id = "map"; 
-    //pose_array_ob_.header.stamp = ros::Time::now();
-    //pose_array_ob_.poses = std::move(steering_curve_family_poses_);
-
-    //visualize_.visualizeSteeringCurve(pose_array_ob_);
-    //visualize_.publishT<geometry_msgs::PoseArray>("steering_curve_family", pose_array_ob_);
-
-// /    return true;
 
 
 }
@@ -1426,33 +1410,9 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
     pose_array_ob_.header.frame_id = "map"; 
     pose_array_ob_.header.stamp = ros::Time::now();
 
-    //ROS_INFO("pose_ob_.size() before moving: %d", poses_ob_.size());
-
     pose_array_ob_.poses = std::move(poses_ob_);
-
-    //ROS_INFO("pose_ob_.size() after moving: %d", poses_ob_.size());
-
-    //visualize_.publishT<geometry_msgs::PoseArray>("steering_curve", pose_array_ob_);
     
-    //ROS_WARN("pose_array_ob_.poses_.size() before moving: %d", pose_array_ob_.poses.size());
-    //ROS_WARN("steering_curve_family_poses_.size() before moving: %d", steering_curve_family_poses_.size());
-    
-    /*steering_curve_family_poses_.insert(steering_curve_family_poses_.end(), \
-                                        std::make_move_iterator(pose_array_ob_.poses.begin()),   \
-                                        std::make_move_iterator(pose_array_ob_.poses.end()));
-
-    ROS_INFO("pose_array_ob_.poses_.size() after moving: %d", pose_array_ob_.poses.size());
-    ROS_INFO("steering_curve_family_poses_.size() after moving: %d", steering_curve_family_poses_.size());
-    */
-
     return pose_array_ob_;
-
-    //visualize_.publishT<geometry_msgs::PoseStamped>("point_pose", cp_stamped_);
-    //visualize_.visualizePointPose(cp_stamped_);
-    //return true;
-
-
-
 
 }
 

@@ -113,13 +113,7 @@ namespace PRM{
             nav_msgs::OccupancyGridConstPtr grid_;
 
             //** planner tuning params
-            
-            //core planner vars
-           // std::vector<Node2d> nodes2d_;
-            std::vector<geometry_msgs::Pose> steering_curve_family_poses_;
-            
             std::unordered_set<Node2d, Node2dHash> sampled_points_;
-
 
             kdTreePtr kdTree_;
             kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree
