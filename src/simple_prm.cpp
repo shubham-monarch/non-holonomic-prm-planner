@@ -59,10 +59,13 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     }
 
     sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
+
+    ROS_DEBUG("====== INITIAL POSE =================="); 
+    sp_.print();
     
     visualize_.publishT<geometry_msgs::PoseStamped>("start_pose", p_);
 
-    generateSteeringCurveFamily(sp_);
+    generateSteeringCurveFamily(sp_, "initial_pose_family");
 
     ROS_INFO("Steering Curve family generated!");
 
@@ -85,7 +88,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
 
     ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
 
-    visualize_.drawNodeNeighbours(node_);
+    visualize_.drawNodeNeighbours(node_, "inital_pose_neighbours_");
     
 
     if(!flag_)
@@ -192,10 +195,10 @@ bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
     {
         //ROS_INFO("pnt_cnt_: %d" , pnt_cnt_);
         
-        for(float yaw_ = 0 ; yaw_ <= 2 * M_PI; yaw_ += 5 * M_PI / 180.f)
+        for(float i_ = 0 ; i_ * Constants::Planner::theta_sep_ < 2 * M_PI; i_++)
         {
 
-            const Node3d b_{pt_[0], pt_[1], yaw_/Constants::Planner::theta_sep_}; 
+            const Node3d b_{pt_[0], pt_[1], i_}; 
 
             if(connectNodes(*node_, b_)) 
             {
@@ -689,14 +692,14 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
     std::shared_ptr<Node3d> node_; 
 
     int precision = 10;
-    for(int a_i_ = 0;  a_i_ * Constants::Planner::theta_sep_ <= 2 * M_PI; a_i_++)
+    for(int a_i_ = 0;  a_i_ * Constants::Planner::theta_sep_ < 2 * M_PI; a_i_++)
     {
         
         const Node3d a3_{a2_.x_ , a2_.y_, a_i_};
         //cnt_++;
         //int cnt_ = 0 ;
 
-        for (int b_i_ = 0.0; b_i_  * Constants::Planner::theta_sep_ <= 2 * M_PI; b_i_++)
+        for (int b_i_ = 0.0; b_i_  * Constants::Planner::theta_sep_ < 2 * M_PI; b_i_++)
         {   
 
             //ROS_INFO("cnt_: %d yaw_b_: %d %.*%f %f", cnt_, int(yaw_b_ / Constants::Planner::theta_sep_),10 ,(yaw_b_ / Constants::Planner::theta_sep_), double(yaw_b_ / Constants::Planner::theta_sep_)) ;
@@ -1098,7 +1101,7 @@ bool PRM::SimplePRM::generateSamplePoints()
     {
         const float cx_ = t.position.x , cy_ = t.position.y;
 
-        for(int i_ = 0; i_ * Constants::Planner::theta_sep_ <= 2 * M_PI ; i_++)
+        for(int i_ = 0; i_ * Constants::Planner::theta_sep_ < 2 * M_PI ; i_++)
         {   
             const float x_ = cx_ + r_ * cos(i_ * Constants::Planner::theta_sep_); 
             const float y_ = cy_ + r_ * sin(i_ * Constants::Planner::theta_sep_);
