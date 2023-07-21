@@ -34,7 +34,6 @@ namespace PRM{
     
     
     typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;
-    typedef std::shared_ptr<Node3d> NodePtr_;
     
     typedef kdTree::point_t kdPoint;
     typedef kdTree::pointVec kdPoints;
@@ -68,8 +67,10 @@ namespace PRM{
             bool generateSamplePoints();
             bool isObstacleFree(const Node2d &node_) const;     
             
-            bool generateEdges(const Node2d &a_, const Node2d &b_);
+            void buildGraph();
 
+            int generateEdges(const Node2d &a_, const Node2d &b_);
+        
             //bool canConnect(const Node3d &a_ , const Node3d &b_) ;
             bool canConnect(const Node3d &a_ , const Node3d &b_, std::shared_ptr<Edge> &e_) ;
 
@@ -91,8 +92,8 @@ namespace PRM{
 
            std::vector<geometry_msgs::PoseStamped> generateSteeringCurveTrimmed(const geometry_msgs::Pose &rp_, const geometry_msgs::Pose &cp_);
 
-            void generateSteeringCurveFamily(const Node3d &node_);
-            void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_);
+            void generateSteeringCurveFamily(const Node3d &node_, std::string topic_ = "family_");
+            void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_, std::string topic_ = "family_");
 
 
             bool djikstra( Node3d &start_,  Node3d &goal_);
@@ -113,7 +114,7 @@ namespace PRM{
             nav_msgs::OccupancyGridConstPtr grid_;
 
             //** planner tuning params
-            std::unordered_set<Node2d, Node2dHash> sampled_points_;
+            std::unordered_set<Node2d, Node2dHash> sampled_points_; 
 
             kdTreePtr kdTree_;
             kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree

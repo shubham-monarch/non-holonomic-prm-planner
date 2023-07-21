@@ -42,17 +42,31 @@ void PRM::Visualize::draw2DNodes(const std::vector<Node2d> &nodes2d_, std::strin
     publishT<geometry_msgs::PoseArray>(topic_, sposes_);
 }
 
-
-
-void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_)
+void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string topic_)
 {
     
     geometry_msgs::PoseArray init_pose_neighbours_;
     init_pose_neighbours_.header.frame_id = "map"; 
     init_pose_neighbours_.header.stamp = ros::Time::now(); 
+    int sz_ = (*node_->edges_).size();
 
-    for(const auto edge_: *node_->edges_)
+    ROS_INFO("sz_: %d", sz_);
+    
+    if(sz_ > 1)
     {
+        ROS_DEBUG("Source Node ==>");
+        node_->print(); 
+        ROS_DEBUG("Destination Nddes ==>");
+    
+    }
+    for(const auto edge_: *node_->edges_)
+    {   
+        if(sz_ > 1)
+        {
+            edge_.node_->print();
+      
+        }
+        //node_->print();
         geometry_msgs::Pose p_; 
         p_.position.x = edge_.node_->x_ ; 
         p_.position.y = edge_.node_->y_ ; 
@@ -61,9 +75,10 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_)
         init_pose_neighbours_.poses.push_back(p_);
     }
     
-    ROS_INFO("init_pose_neighbours.size(): %d", init_pose_neighbours_.poses.size());
+    //ROS_INFO("sz_: %d", sz_);
+    if(sz_ > 1) ROS_WARN("neighbours.size(): %d", init_pose_neighbours_.poses.size());
 
-    publishT<geometry_msgs::PoseArray>("init_pose_neighbours_", init_pose_neighbours_);
+    publishT<geometry_msgs::PoseArray>(topic_, init_pose_neighbours_);
 
 }
 

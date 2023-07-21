@@ -639,7 +639,7 @@ bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
 
     //ROS_INFO("Inside connectNodes function!");
 
-    std::shared_ptr<Edge> e_ = std::make_shared<Edge>();
+    std::shared_ptr<Edge> e_;
     NodePtr_ node_ ;
     
     const Vec3f &key_ = Utils::getNode3dkey(a_);
@@ -652,7 +652,7 @@ bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
         int cnt_ = SimplePRM::edge_cnt_++;
         connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
                   
-        node_ = (G_.find(key_) == G_.end()) ? std::make_shared<Node3d>(a_) : G_[key_]; 
+        node_ = ((G_.find(key_) == G_.end()) ? std::make_shared<Node3d>(a_) : G_[key_]);
 
       //  ROS_INFO("Connection found!");
         node_->addEdge(e_);
@@ -664,10 +664,13 @@ bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
     return false; 
 }
 
-bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
+int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
     
-    //ROS_INFO("generateEdges called!");
+    ROS_DEBUG("generateEdges called!");
+    //ROS_INFO("a_ => (%f,%f)", a2_.x_, a2_.y_);
+    //ROS_INFO("b_ => (%f,%f)", b2_.x_, b2_.y_);
+    
     //const float ox_ = Constants::MapMetaData::origin_x_; 
     //const float oy_ = Constants::MapMetaData::origin_y_;
 
@@ -681,51 +684,60 @@ bool PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
 
-    int cnt_ = 0 ;
+    //int cnt_ = 0 ;
 
     std::shared_ptr<Node3d> node_; 
 
-    for(float yaw_a_ = 0.0 ; yaw_a_ <= 2 * M_PI ; yaw_a_ += 5 * M_PI / 180.f)
+    int precision = 10;
+    for(int a_i_ = 0;  a_i_ * Constants::Planner::theta_sep_ <= 2 * M_PI; a_i_++)
     {
         
-        const Node3d a3_{a2_.x_ , a2_.y_, yaw_a_/Constants::Planner::theta_sep_};
-       
-        for (float yaw_b_ = 0.0; yaw_b_  <= 2 * M_PI; yaw_b_ += 5 * M_PI / 180.f)
-        {   
-            const Node3d b3_{b2_.x_ , b2_.y_, yaw_b_/Constants::Planner::theta_sep_};
+        const Node3d a3_{a2_.x_ , a2_.y_, a_i_};
+        //cnt_++;
+        //int cnt_ = 0 ;
 
+        for (int b_i_ = 0.0; b_i_  * Constants::Planner::theta_sep_ <= 2 * M_PI; b_i_++)
+        {   
+
+            //ROS_INFO("cnt_: %d yaw_b_: %d %.*%f %f", cnt_, int(yaw_b_ / Constants::Planner::theta_sep_),10 ,(yaw_b_ / Constants::Planner::theta_sep_), double(yaw_b_ / Constants::Planner::theta_sep_)) ;
+            //std::cout << "cnt_ ==> " << cnt_ << " ";
+            //std::cout.precision(10); 
+            //std::cout << "idx_ ==> " << 1.f * yaw_b_ / Constants::Planner::theta_sep_ << std::endl;
+            const Node3d b3_{b2_.x_ , b2_.y_, b_i_};
+            //cnt_++;
             bool flag_ = connectNodes(a3_, b3_);   
 
-            cnt_ = (flag_ ? cnt_ + 1 : cnt_);         
+            //ROS_INFO("[%f,%f,%f] ==> [%f,%f,%f]", a3_.x_, a3_.y_, a3_.theta_ * 180.f / M_PI, b3_.x_, b3_.y_, b3_.theta_ * 180.f / M_PI);
+
+            
+            if(flag_)
+            {
+                ROS_DEBUG("===================");
+                //a3_.print();
+                //b3_.print();
+
+            }
+
+            //cnt_ = (flag_ ? cnt_ + 1 : cnt_);         
         }
+
+        //ROS_INFO("cnt_: %d", cnt_);
     }
 
-    return true; 
+    //ROS_INFO("cnt_: %d", cnt_);
+
+    return 1    ; 
 
 }
 
-bool PRM::SimplePRM::generateRoadMap()
-{
-   // ROS_INFO("Inside PRM::plan()");
 
-
-    //setN();
-    //setSR();  //set neighbour search radius
-
-    //N_ = 30;
-    //sr_ = Constants::Planner::max_res_;
+void PRM::SimplePRM::buildGraph()
+{   
     
-
-    generateSamplePoints(); 
-    buildKDtree();
-
-    /*auto start = std::chrono::high_resolution_clock::now();
-    
-    ROS_INFO("sr_: %f", Constants::Planner::sr_);
-    int cnt_ = 0 ;
     for(const auto &node_ : sampled_points_)
     {   
-
+        //ROS_DEBUG("build_graph_cnt_: %d", build_graph_cnt_); 
+        
         if(!ros::ok())
         {
             break;
@@ -736,6 +748,8 @@ bool PRM::SimplePRM::generateRoadMap()
         
         kdTree::pointVec neighbours_ = kdTree_->neighborhood_points(o_, Constants::Planner::sr_);
 
+        ROS_DEBUG("kdtree_neighbours.size(): %d", neighbours_.size()); 
+        
         //ROS_WARN("pt_: (%f,%f) ==>", pt_[0], pt_[1]);
 
         for(const kdTree::point_t pt_: neighbours_)
@@ -755,21 +769,60 @@ bool PRM::SimplePRM::generateRoadMap()
             {
                 continue;
             }
-            cnt_++;
-            generateEdges(a_, b_);
-            // /ROS_INFO("cnt_: %d", cnt_);
+        
+            int cnt_ = generateEdges(a_, b_);
+            ROS_DEBUG("%d edges added", cnt_);
         }
     }
 
+}
+
+bool PRM::SimplePRM::generateRoadMap()
+{
+   // ROS_INFO("Inside PRM::plan()");
+
+
+    //setN();
+    //setSR();  //set neighbour search radius
+
+    //N_ = 30;
+    //sr_ = Constants::Planner::max_res_;
+    
+
+    generateSamplePoints(); 
+    buildKDtree();
+
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    ROS_INFO("sr_: %f", Constants::Planner::sr_);
+    
    // ROS_INFO("Total edges: ")
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
-    double seconds = du1ration.count();
+    double seconds = duration.count();
+
+
+    buildGraph();
+
+    int cnt_ = 0; 
+
+    for(const auto t : G_)
+    {   
+        ROS_ERROR("=========================");
+
+        const NodePtr_ node_ = t.second;
+        
+        generateSteeringCurveFamily(*node_, "family_"  + std::to_string(cnt_));
+        visualize_.drawNodeNeighbours(node_, "neighbours_" + std::to_string(cnt_));
+        cnt_++;
+    
+    }
+
 
 
     ROS_WARN("Graph generation finished in %f seconds!", seconds);
     ROS_WARN("G_.size(): %d", G_.size());
-    */
+    
     
     //ROS_INFO("cnt_: %d" , cnt_);
     
@@ -1078,7 +1131,7 @@ bool PRM::SimplePRM::generateSamplePoints()
 }
 
 
-void PRM::SimplePRM::generateSteeringCurveFamily(const Node3d &node_)
+void PRM::SimplePRM::generateSteeringCurveFamily(const Node3d &node_, std::string topic_)
 {
 
     geometry_msgs::Pose rp_; 
@@ -1086,19 +1139,19 @@ void PRM::SimplePRM::generateSteeringCurveFamily(const Node3d &node_)
     rp_.position.y = node_.y_ ;
     rp_.orientation = Utils::getQuatFromYaw(node_.theta_); 
 
-    generateSteeringCurveFamily(rp_);
+    generateSteeringCurveFamily(rp_, topic_);
 
 }
 
 
 
 //generate steering curves from -delta to delta for a particular robot pose
-void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
+void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_, std::string topic_)
 {
 
     float del_ = 0.f;
 
-    ROS_INFO("max_steering_angle => %f", Constants::Vehicle::delta_max_);
+   // ROS_INFO("max_steering_angle => %f", Constants::Vehicle::delta_max_);
 
     int cnt_ =0 ; 
 
@@ -1119,7 +1172,7 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_)
                             std::make_move_iterator(arr_.poses.begin()),
                             std::make_move_iterator(arr_.poses.end()));
 
-        visualize_.publishT<geometry_msgs::PoseArray>("family_" ,  family_);
+        visualize_.publishT<geometry_msgs::PoseArray>(topic_ ,  family_);
         
         del_ += (5.f * M_PI / 180.f);
         cnt_++;

@@ -47,7 +47,7 @@ namespace PRM{
             void drawPoint(const geometry_msgs::Pose &pose_, const std::string topic = "point");
             void drawNode3d(const Node3d &node_, std::string topic_ = "node3d");
 
-            void drawNodeNeighbours(const NodePtr_ &node_);
+            void drawNodeNeighbours(const NodePtr_ &node_, const std::string topic_ = "topic_");
 
             
 
