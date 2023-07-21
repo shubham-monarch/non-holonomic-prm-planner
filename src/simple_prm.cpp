@@ -1098,10 +1098,10 @@ bool PRM::SimplePRM::generateSamplePoints()
     {
         const float cx_ = t.position.x , cy_ = t.position.y;
 
-        for(float theta_ = 0; theta_ <= 2 * M_PI ; theta_ += 5 * M_PI / 180.f)
+        for(int i_ = 0; i_ * Constants::Planner::theta_sep_ <= 2 * M_PI ; i_++)
         {   
-            const float x_ = cx_ + r_ * cos(theta_); 
-            const float y_ = cy_ + r_ * sin(theta_);
+            const float x_ = cx_ + r_ * cos(i_ * Constants::Planner::theta_sep_); 
+            const float y_ = cy_ + r_ * sin(i_ * Constants::Planner::theta_sep_);
 
             geometry_msgs::Pose pose_; 
             pose_.position.x = x_; 
@@ -1159,7 +1159,7 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_, std::s
     family_.header.frame_id = "map"; 
     family_.header.stamp = ros::Time::now();
 
-    while(ros::ok() && del_ < Constants::Vehicle::delta_max_)
+    while(ros::ok() && del_ <= Constants::Vehicle::delta_max_)
     {   
         //ROS_INFO("del_: %f", del_);   
         const float R_ = Utils::getR(del_);
