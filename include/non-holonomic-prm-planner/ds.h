@@ -68,7 +68,7 @@ namespace PRM
 
     };
 
-    struct key_equal_fn {
+struct key_equal_fn {
     
         bool operator()(const Vec3f& t1, const Vec3f& t2) const {
             
@@ -152,7 +152,7 @@ namespace PRM
     struct Edge
     {
         
-        explicit Edge(const Node3d &node, const float dc, const float ac):  node_(std::make_shared<Node3d>(node)), \
+        explicit Edge(NodePtr_ node, const float dc, const float ac):  node_(node), \
                                                                             dc_(dc),    \
                                                                             ac_(ac),    \
                                                                             tc_(ac_ + dc_)
@@ -177,7 +177,7 @@ namespace PRM
         float tc_ ;   // total cost 
 
                 
-        std::shared_ptr<Node3d> node_; //destination node
+        NodePtr_ node_; //destination node
 
         
     };

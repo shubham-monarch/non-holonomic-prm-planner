@@ -37,12 +37,40 @@ PRM::SimplePRM::SimplePRM()
     ROS_WARN("SimplePRM constructor called");
 }
 
+
+void PRM::SimplePRM::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
+{
+
+    ROS_ERROR("========= CLICKED PT CB ===============  ");
+
+    for(auto t: G_)
+    {
+
+        const NodePtr_ node_ = t.second; 
+
+        ROS_DEBUG("SOURCE NODE ==>");
+        node_->print();
+
+        ROS_DEBUG("DESTINATION NODE ==>");
+        for(auto t : *node_->edges_)
+        {
+            
+            const NodePtr_ dst_ = t.node_;
+            dst_->print();
+        }
+
+    }
+}
+
+
 void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
 {
 
     ROS_WARN("========== START POSE RECEIVED =============="); 
+
+    int cnt_ =0 ; 
     
-    ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
+   ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
 
     geometry_msgs::PoseStamped p_;
     p_.pose = pose_->pose.pose;
@@ -57,8 +85,19 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     {
         yaw_  += 2 * M_PI;
     }
-
+    
     sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
+   //sp_ = {-827.245544,-140.275894,17};
+   
+   // sp_ = {-838.735840,-141.841537,55};
+    
+    /*geometry_msgs::PoseStamped p_;
+    p_.pose.position.x = sp_.x_; 
+    p_.pose.position.y = sp_.y_;
+    p_.pose.orientation = Utils::getQuatFromYaw(sp_.theta_);
+    p_.header.frame_id = "map"; 
+    p_.header.stamp = ros::Time::now();
+    */
 
     ROS_DEBUG("====== INITIAL POSE =================="); 
     sp_.print();
@@ -74,27 +113,43 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
 
     //ROS_WARN("Printing start pose ==> "); 
     //sp_.print();
-
-    const NodePtr_ node_ = std::make_shared<Node3d>(sp_);
-
-    bool flag_ = connectToRoadmap(node_);
-
-    ROS_INFO("flag_ inside initialPoseCb: %d" , flag_);
-
-    //G_.insert()
-
-    const Vec3f &key_ = Utils::getNode3dkey(*node_);
-    G_[key_] = node_;
-
-    ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
-
-    visualize_.drawNodeNeighbours(node_, "inital_pose_neighbours_");
     
+    const Vec3f &key_ = Utils::getNode3dkey(sp_);
+    
+    NodePtr_ ptr_; 
+
+    if(G_.find(key_) != G_.end())
+    {
+        ptr_ = G_[key_];
+    }
+    else
+    {
+        ptr_ = std::make_shared<Node3d>(sp_);
+    }
+
+
+    bool flag_ = connectToRoadmap(ptr_);
 
     if(!flag_)
     {
-        ROS_ERROR("Could not connect START POSE to the roadmap!");
+        
+        ROS_ERROR("ROADMAP CONNECT FLAG ==> FALSE");
+    
     }
+    else
+    {
+        ROS_ERROR("ROADMAP CONNECT FLAG ==> TRUE");
+        //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
+        visualize_.drawNodeNeighbours(ptr_, "inital_pose_neighbours_");
+        G_[key_] = ptr_;
+        ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(*ptr_)]->edges_->size());
+        
+
+        ROS_DEBUG("G_.size(): %d", G_.size());
+    
+    }
+
+    djikstra(ptr_);
 
     return; 
     
@@ -116,30 +171,75 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 
     gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / ( 5.f * M_PI / 180.f)};
 
-    const NodePtr_ node_ = std::make_shared<Node3d>(gp_);
+    NodePtr_ ptr_ = std::make_shared<Node3d>(gp_);
 
-    bool flag_ = connectToRoadmap(node_);  
-
-    ROS_INFO("goal_edges_cnt_: %d", G_[Utils::getNode3dkey(gp_)]->edges_->size());
     
-    visualize_.publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
-
-    if(!flag_)
-    {
-        ROS_ERROR("Could not connect GOAL POSE to the roadmap!");
-    }
+    /*generateSteeringCurveFamily(gp_, "family_" + std::to_string(SimplePRM::edge_cnt_));
+    
+    geometry_msgs::PoseArray neighbours_;
+    neighbours_.header.frame_id = "map" ; 
+    neighbours_.header.stamp = ros::Time::now();
 
     bool found_ = false; 
 
-    if(flag_)
+    neighbours_.poses.clear();
+
+    for(const auto t: G_)
     {
+        Vec3f key_ = t.first; 
+        NodePtr_ node_ = t.second; 
 
-        ROS_WARN("Starting djikstra search!");
-        found_ = djikstra(sp_, gp_);
+        bool flag_  = canConnect(ptr_ , node_); 
 
-        ROS_INFO("found_: %d", found_);
+        if(flag_)
+        {
+            found_ = flag_; 
 
+            geometry_msgs::Pose p_; 
+            p_.position.x = node_->x_; 
+            p_.position.y = node_->y_; 
+            p_.orientation = Utils::getQuatFromYaw(node_->theta_);
+
+            neighbours_.poses.push_back(p_);
+        
+        }
     }
+
+    ROS_INFO("found: %d" , found_);
+    
+    visualize_.publishT<geometry_msgs::PoseArray>("goal_neighbours", neighbours_);
+    
+    */
+
+   typedef std::tuple<float,float,int> T; 
+   std::vector<T> v_; 
+   int cnt_ = 0 ; 
+   for(auto t : G_)
+   {
+
+        auto key_ = t.first; 
+        auto node_ = t.second; 
+
+        if(Utils::euclidean(*node_, *ptr_) < 0.1)
+        {
+            v_.emplace_back(node_->x_, node_->y_, node_->theta_idx_);
+            generateSteeringCurveFamily(*node_, "family_" + std::to_string(cnt_));        
+            visualize_.drawNodeNeighbours(node_, "neighbours_" + std::to_string(cnt_));
+            
+            cnt_++;
+        }
+
+   }
+
+    int i_ = 0 ;
+   std::sort(v_.begin(), v_.end());
+    
+    for(auto t: v_)
+    {
+        std::cout << "[" << i_ << "] " <<  std::get<0>(t) << " " << std::get<1>(t) << " " << std::get<2>(t) << std::endl;
+        i_++;
+    }
+    
 
 }   
 
@@ -162,11 +262,29 @@ void PRM::SimplePRM::initialize()
 
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
+    clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
     
 
 }
 
-bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
+PRM::NodePtr_ PRM::SimplePRM::getNodePtr(const Node3d &node_)
+{   
+    NodePtr_ ptr_; 
+
+    const Vec3f &key_ = Utils::getNode3dkey(node_);
+
+    if(G_.find(key_) == G_.end())
+    {
+        ptr_ = std::make_shared<Node3d>(node_);
+        G_[key_] = ptr_; 
+
+    }
+
+    return G_[key_];
+
+}
+
+bool PRM::SimplePRM::connectToRoadmap(NodePtr_ &node_)
 {   
     
     ROS_INFO("ConnectToRoadmap function!");
@@ -198,14 +316,20 @@ bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
         for(float i_ = 0 ; i_ * Constants::Planner::theta_sep_ < 2 * M_PI; i_++)
         {
 
-            const Node3d b_{pt_[0], pt_[1], i_}; 
+            const Vec3f &key_{pt_[0], pt_[1], i_};
 
-            if(connectNodes(*node_, b_)) 
+            // checking if node exists
+            if(G_.count(key_) > 0)
             {
-                flag_ = true; 
-                conn_cnt_++;
-            }
 
+                NodePtr_ b_ptr_ = G_[key_];
+                if(connectNodes(node_, b_ptr_))
+                {
+                    flag_ = true; 
+                    conn_cnt_++;
+                }
+            }
+            
         }
 
     }
@@ -215,12 +339,14 @@ bool PRM::SimplePRM::connectToRoadmap(const NodePtr_ &node_)
     return flag_; 
 }
 
-bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
+bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
 {   
     ROS_INFO("Inside djikstra function!");
     
-    start_.print(); 
-    end_.print();
+    auto G__ = G_;
+
+    //start_.print(); 
+    // /end_.print();
     //const float x_ = Constants::MapMetaData::origin_x_; 
     //const float y_ = Constants::MapMetaData::origin_y_;
 
@@ -232,6 +358,9 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
    // Node3d start_{}
 
     // tart_.parent_ = std::make_shared<Node3d>(start_);
+    geometry_msgs::PoseArray pq_path_;
+    pq_path_.header.frame_id = "map" ; 
+    pq_path_.header.stamp = ros::Time::now();
 
     std::priority_queue<std::shared_ptr<Node3d> , std::vector<std::shared_ptr<Node3d> >, CompareNode3dPointers> pq_; 
 
@@ -240,114 +369,107 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
     //start_.parent_ = nullptr;
 
     //const std::shared_ptr<Node3d> start_ptr_ = std::make_shared<Node3d>(start_);
-    const std::shared_ptr<Node3d> start_ptr_ = G_[Utils::getNode3dkey(start_)];
+    
+    //auto GC_ = G_; //creating copy of roadmap for Djikstra
+
+    const auto key_ = Utils::getNode3dkey(*start_ptr_);
+
+    //NodePtr_ start_ptr_; 
+    
+    //const std::shared_ptr<Node3d> start_ptr_ = G_[Utils::getNode3dkey(start_)];
     start_ptr_->parent_ = nullptr;
     start_ptr_->cost_ = 0 ;
 
     pq_.push(start_ptr_);
+    
+    ROS_INFO("Pushed start node to pq!");
+    //ROS_INFO("Num connections for the start node ==> %d", start_ptr_->edges_->size());
 
-    ROS_INFO("Num connections for the start node ==> %d", start_ptr_->edges_->size());
-
-    int cnt_ =0  ;
+    //int cnt_ =0  ;
 
     bool reached_ = false; 
 
-    geometry_msgs::PoseArray pq_path_;
-    pq_path_.header.frame_id = "map" ;
-    pq_path_.header.stamp = ros::Time::now();
 
 
+    Vec3f k_;
 
+    int cnt_ = 200;
     while(ros::ok() && !pq_.empty())
     {
-       // ROS_WARN("pq_.size(): %d", pq_.size());
+       
+        
+        ROS_WARN("pq_.size(): %d", pq_.size());
         cnt_++; 
 
-        const Vec3f curr_key_ = Utils::getNode3dkey(*pq_.top());
+        //k_ = Utils::getNode3dkey(*pq_.top());
 
-        const std::shared_ptr<Node3d> curr_node_ = pq_.top();
-        const float curr_cost_ = curr_node_->cost_;
+        NodePtr_ curr_node_ = pq_.top();
+        
+        
+        float curr_cost_ = curr_node_->cost_;
+        
+        //generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
+        //visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
+
 
         curr_node_->print();
 
-        geometry_msgs::Pose pose_; 
-        pose_.position.x = curr_node_->x_ ;
-        pose_.position.y = curr_node_->y_; 
-        pose_.orientation = Utils::getQuatFromYaw(curr_node_->theta_);
-        pq_path_.poses.push_back(pose_);
+        geometry_msgs::Pose p_; 
+        p_.position.x = curr_node_->x_; 
+        p_.position.y = curr_node_->y_; 
+        p_.orientation = Utils::getQuatFromYaw(curr_node_->theta_); 
 
-        visualize_.publishT<geometry_msgs::PoseArray>("pq_path", pq_path_);
+        pq_path_.poses.push_back(p_);
+
+        
+        //ROS_DEBUG("Printing top node ==> ");
+        //curr_node_->print();
 
         pq_.pop();
 
-        if(vis_.find(curr_key_) != vis_.end())
-        {
+        k_ = Utils::getNode3dkey(*curr_node_);
+
+        // === Checking if curr_node has already been visited
+        if(vis_.find(k_) != vis_.end())
+        {   
+            ROS_WARN("Curr node was already visited ==> CONTINUE");
             continue;
         }
         else{
 
-            vis_[curr_key_] = 1;
+            vis_.insert(k_);
         }
-
-        //const Node3d &curr_node_ = pq_.top(); 
-        
-        //ROS_INFO("curr_node_: "); 
-        //curr_node_->print(); 
-
-        //ROS_INFO("parent_node_: "); 
-        //curr_node_->parent_->print();
-        
-        //const Vec3f curr_key_ = Utils::getNode3dkey(curr_node_);        
-        //const float curr_cost_ = curr_node_.cost_;
-        
-        if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
+     
+        /*if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
         {
             end_.parent_ = curr_node_->parent_; 
             reached_ = true; 
             break;
-        }
-        
-        /*if(*curr_node_ == end_)
-        {
-            end_.parent_ = curr_node_->parent_;
-            reached_ = true; 
-            break; 
         }*/
-
-
         
-
-
-       // curr_node_->parent_->print(); 
-        int cnt_ = 0 ;
+        
+        // ==== UPDATING NEIGHBOURS =========
+        //int cnt_ = 0 ;
         for( auto &t : *curr_node_->edges_) 
         {   
-            ROS_INFO("insideQ!");
-            cnt_++;
-            //const Node3d &nxt_ = *t.node_;
-            //const float edge_cost_ = t.tc_;
-
-           // Node3d* node_ = t.node_.get();
-            const std::shared_ptr<Node3d> nxt_node_(t.node_.get());
+            //ROS_INFO("insideQ!");
+           // cnt_++;
             
-            const float edge_cost_ = t.tc_;
+            float ec_ = t.tc_;  //edge cost
 
-            Vec3f key_ {nxt_node_->x_, nxt_node_->y_, nxt_node_->theta_};
+            k_ = Utils::getNode3dkey(*t.node_);
+            
+            if(G_.find(k_) != G_.end())
+            {   
+                NodePtr_ node_ = G_[k_];
 
-            if(G_.find(key_) != G_.end())
-            {
-                //const std::shared_ptr<Node3d> nxt_ = G_[key_]; 
-
-              //  ROS_INFO("nxt->cost: %f", nxt_->cost_);
-                
-                if(nxt_node_->cost_ > curr_cost_ + edge_cost_)
+                if(node_->cost_ > curr_cost_ + ec_)
                 {   
-                 //   ROS_INFO("Hi");
-                    nxt_node_->parent_ = curr_node_;
-                    nxt_node_->cost_ = curr_cost_ + edge_cost_;
+                    node_->parent_ = curr_node_;
+                    node_->cost_ = curr_cost_ + ec_;
 
-                    G_[key_] = nxt_node_;
-                    pq_.push(nxt_node_);
+                    //G_[key_] = nxt_node_;
+                    pq_.push(node_);
                 }
                 
             }
@@ -359,21 +481,26 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
 
         }
 
-        ROS_INFO("cnt_: %d", cnt_);
+        
 
     }
+    
+    ROS_INFO("cnt_: %d", cnt_);   
 
     ROS_INFO("pq_ ran for %d iterations!", cnt_);
     ROS_WARN("REACHED ==> %d", reached_);
 
-    if(reached_)
+
+    visualize_.publishT<geometry_msgs::PoseArray>("pq_path_" , pq_path_);
+
+    /*if(reached_)
     {
         end_.print();
         end_.parent_->print();
-    }
+    }*/
     
 
-    std::vector<Node3d> path_; 
+    /*std::vector<Node3d> path_; 
     
     std::shared_ptr<Node3d> curr_node_ = std::make_shared<Node3d>(end_); 
 
@@ -391,7 +518,7 @@ bool PRM::SimplePRM::djikstra(Node3d &start_,  Node3d &end_)
     std::reverse(path_.begin(), path_.end());
 
     generateROSPath(path_);
-
+    */
     return reached_; 
 
 }
@@ -505,7 +632,7 @@ bool PRM::SimplePRM::buildKDtree()
 
 
 
-bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_ptr<Edge> &e_) 
+bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_) 
 {
     
 
@@ -532,8 +659,8 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
     //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
     //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
 
-   // ROS_INFO("Inside canConnect function!");
-    const float dis_ = Utils::euclidean(a_, b_) ;
+  // ROS_WARN("Inside canConnect function!");
+    const float dis_ = Utils::euclidean(*a_ptr_, *b_ptr_) ;
 
     if(dis_ > Constants::Planner::max_res_)
     {      
@@ -550,15 +677,15 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
     }
 
 
-    const float xa_ = a_.x_, ya_ = a_.y_;
-    const float xb_ = b_.x_, yb_ = b_.y_;
+    const float xa_ = a_ptr_->x_, ya_ = a_ptr_->y_;
+    const float xb_ = b_ptr_->x_, yb_ = b_ptr_->y_;
 
     
     const Vec2f V_oa_{xa_, ya_};
     const Vec2f V_ob_{xb_, yb_};
     
-    const float yaw_a_ = a_.theta_idx_ * Constants::Planner::theta_sep_; 
-    const float yaw_b_ = b_.theta_idx_ * Constants::Planner::theta_sep_;
+    const float yaw_a_ = a_ptr_->theta_idx_ * Constants::Planner::theta_sep_; 
+    const float yaw_b_ = b_ptr_->theta_idx_ * Constants::Planner::theta_sep_;
 
     
     
@@ -623,9 +750,8 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
     if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
     {
 
-        e_ = std::make_shared<Edge>(b_, dis_cost_, ang_cost_);
-        //e_->print();
-        
+        std::shared_ptr<Edge> e_ = std::make_shared<Edge>(b_ptr_, dis_cost_, ang_cost_);
+        a_ptr_->addEdge(e_);
         
         return true; 
     
@@ -637,30 +763,31 @@ bool PRM::SimplePRM::canConnect(const Node3d &a_, const Node3d &b_, std::shared_
 }
 
 
-bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
+bool PRM::SimplePRM::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
 {   
 
     //ROS_INFO("Inside connectNodes function!");
 
-    std::shared_ptr<Edge> e_;
-    NodePtr_ node_ ;
+    //std::shared_ptr<Edge> e_;
+    //NodePtr_ node_ ;
     
-    const Vec3f &key_ = Utils::getNode3dkey(a_);
+    const Vec3f &a_key_ = Utils::getNode3dkey(*a_ptr_);
+    const Vec3f &b_key_ = Utils::getNode3dkey(*b_ptr_);
 
     
-    bool can_connect_ = canConnect(a_, b_ , e_);
+    bool can_connect_ = canConnect(a_ptr_, b_ptr_);
     
     if(can_connect_)
     {   
         int cnt_ = SimplePRM::edge_cnt_++;
-        connectConfigurationToRobot(a_, b_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
-                  
-        node_ = ((G_.find(key_) == G_.end()) ? std::make_shared<Node3d>(a_) : G_[key_]);
+        //connectConfigurationToRobot(*a_ptr_, *b_ptr_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
+        
+        if(G_.find(b_key_) == G_.end())
+        {
+            G_[b_key_] = b_ptr_;
+        }
 
-      //  ROS_INFO("Connection found!");
-        node_->addEdge(e_);
-        //ROS_INFO("edge added!");
-        G_[key_] = node_;
+
         return true; 
     }
 
@@ -670,7 +797,7 @@ bool PRM::SimplePRM::connectNodes(const Node3d &a_, const Node3d &b_)
 int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
     
-    ROS_DEBUG("generateEdges called!");
+    //ROS_DEBUG("generateEdges called!");
     //ROS_INFO("a_ => (%f,%f)", a2_.x_, a2_.y_);
     //ROS_INFO("b_ => (%f,%f)", b2_.x_, b2_.y_);
     
@@ -689,33 +816,48 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
     //int cnt_ = 0 ;
 
-    std::shared_ptr<Node3d> node_; 
+    //std::shared_ptr<Node3d> node_; 
 
     int precision = 10;
     for(int a_i_ = 0;  a_i_ * Constants::Planner::theta_sep_ < 2 * M_PI; a_i_++)
     {
         
-        const Node3d a3_{a2_.x_ , a2_.y_, a_i_};
-        //cnt_++;
-        //int cnt_ = 0 ;
+        const Vec3f &a_key_{a2_.x_, a2_.y_, a_i_};
+        
+        NodePtr_ a_ptr_;
 
+        if(G_.find(a_key_) != G_.end())
+        {
+            a_ptr_ = G_[a_key_];
+        }
+        else
+        {
+            a_ptr_ = std::make_shared<Node3d>(a2_.x_ , a2_.y_, a_i_);
+        }
+        
         for (int b_i_ = 0.0; b_i_  * Constants::Planner::theta_sep_ < 2 * M_PI; b_i_++)
         {   
 
-            //ROS_INFO("cnt_: %d yaw_b_: %d %.*%f %f", cnt_, int(yaw_b_ / Constants::Planner::theta_sep_),10 ,(yaw_b_ / Constants::Planner::theta_sep_), double(yaw_b_ / Constants::Planner::theta_sep_)) ;
-            //std::cout << "cnt_ ==> " << cnt_ << " ";
-            //std::cout.precision(10); 
-            //std::cout << "idx_ ==> " << 1.f * yaw_b_ / Constants::Planner::theta_sep_ << std::endl;
-            const Node3d b3_{b2_.x_ , b2_.y_, b_i_};
-            //cnt_++;
-            bool flag_ = connectNodes(a3_, b3_);   
+            
+            const Vec3f &b_key_{b2_.x_, b2_.y_, b_i_};
+        
+            NodePtr_ b_ptr_;
 
-            //ROS_INFO("[%f,%f,%f] ==> [%f,%f,%f]", a3_.x_, a3_.y_, a3_.theta_ * 180.f / M_PI, b3_.x_, b3_.y_, b3_.theta_ * 180.f / M_PI);
+            if(G_.find(b_key_) != G_.end())
+            {
+                b_ptr_ = G_[b_key_];
+            }
+            else
+            {
+                b_ptr_ = std::make_shared<Node3d>(b2_.x_ , b2_.y_, b_i_);
+            }
+
+            bool flag_ = connectNodes(a_ptr_, b_ptr_);   
 
             
             if(flag_)
             {
-                ROS_DEBUG("===================");
+                //ROS_DEBUG("===================");
                 //a3_.print();
                 //b3_.print();
 
@@ -724,11 +866,17 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
             //cnt_ = (flag_ ? cnt_ + 1 : cnt_);         
         }
 
+        /*if(G_.count(a_key_) == 0)
+        {
+            G_.erase(a_key_);
+        }*/
+
         //ROS_INFO("cnt_: %d", cnt_);
     }
 
     //ROS_INFO("cnt_: %d", cnt_);
-
+    int del_cnt_ = 0 ;
+  
     return 1    ; 
 
 }
@@ -751,7 +899,7 @@ void PRM::SimplePRM::buildGraph()
         
         kdTree::pointVec neighbours_ = kdTree_->neighborhood_points(o_, Constants::Planner::sr_);
 
-        ROS_DEBUG("kdtree_neighbours.size(): %d", neighbours_.size()); 
+       // ROS_DEBUG("kdtree_neighbours.size(): %d", neighbours_.size()); 
         
         //ROS_WARN("pt_: (%f,%f) ==>", pt_[0], pt_[1]);
 
@@ -774,9 +922,11 @@ void PRM::SimplePRM::buildGraph()
             }
         
             int cnt_ = generateEdges(a_, b_);
-            ROS_DEBUG("%d edges added", cnt_);
+           // ROS_DEBUG("%d edges added", cnt_);
         }
     }
+
+    ROS_DEBUG("G_.size(): %d", G_.size());
 
 }
 
@@ -795,7 +945,7 @@ bool PRM::SimplePRM::generateRoadMap()
     generateSamplePoints(); 
     buildKDtree();
 
-    auto start = std::chrono::high_resolution_clock::now();
+    /*auto start = std::chrono::high_resolution_clock::now();
     
     ROS_INFO("sr_: %f", Constants::Planner::sr_);
     
@@ -803,13 +953,15 @@ bool PRM::SimplePRM::generateRoadMap()
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     double seconds = duration.count();
+   
+    */
 
 
     buildGraph();
 
     int cnt_ = 0; 
 
-    for(const auto t : G_)
+    /*for(const auto t : G_)
     {   
         ROS_ERROR("=========================");
 
@@ -819,12 +971,12 @@ bool PRM::SimplePRM::generateRoadMap()
         visualize_.drawNodeNeighbours(node_, "neighbours_" + std::to_string(cnt_));
         cnt_++;
     
-    }
+    }*/
 
 
 
-    ROS_WARN("Graph generation finished in %f seconds!", seconds);
-    ROS_WARN("G_.size(): %d", G_.size());
+    //ROS_WARN("Graph generation finished in %f seconds!", seconds);
+    //ROS_WARN("G_.size(): %d", G_.size());
     
     
     //ROS_INFO("cnt_: %d" , cnt_);
@@ -996,14 +1148,15 @@ bool PRM::SimplePRM::generateSamplePoints()
     std::vector<float> ry_ = {Constants::MapMetaData::origin_y_ , Constants::MapMetaData::origin_y_ + (h_ + 0.5f) * Constants::MapMetaData::res_} ;
     
     
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    //std::random_device rd;
+    unsigned int seed_ = 2; 
+    std::mt19937 gen(seed_);
     
     //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
     //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 102);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 102);
+    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 110);
+    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 105);
      
     int cnt_ =0 ; 
 

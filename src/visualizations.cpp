@@ -52,18 +52,18 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string
 
     ROS_INFO("sz_: %d", sz_);
     
-    if(sz_ > 1)
+    /*if(sz_ > 1)
     {
         ROS_DEBUG("Source Node ==>");
         node_->print(); 
         ROS_DEBUG("Destination Nddes ==>");
     
-    }
+    }*/
     for(const auto edge_: *node_->edges_)
     {   
         if(sz_ > 1)
         {
-            edge_.node_->print();
+            //edge_.node_->print();
       
         }
         //node_->print();

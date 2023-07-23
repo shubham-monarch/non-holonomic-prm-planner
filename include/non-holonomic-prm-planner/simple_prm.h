@@ -71,11 +71,12 @@ namespace PRM{
 
             int generateEdges(const Node2d &a_, const Node2d &b_);
         
-            //bool canConnect(const Node3d &a_ , const Node3d &b_) ;
-            bool canConnect(const Node3d &a_ , const Node3d &b_, std::shared_ptr<Edge> &e_) ;
+            bool canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_); 
 
             bool isReachable();
-            
+
+            NodePtr_ getNodePtr(const Node3d &node_) ;
+
             bool connectConfigurationToRobot(   const Node3d &rp_, const Node3d &cp_, \
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_") ;
@@ -96,16 +97,18 @@ namespace PRM{
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_, std::string topic_ = "family_");
 
 
-            bool djikstra( Node3d &start_,  Node3d &goal_);
+            bool djikstra( NodePtr_ &start_);
 
             nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
 
-            bool connectToRoadmap(const NodePtr_ &node_);
+            bool connectToRoadmap( NodePtr_ &node_);
 
-            bool connectNodes(const Node3d &a_, const Node3d &b_);
+            bool connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_);
 
             void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
             void goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_);
+            void clickedPointCb(geometry_msgs::PointStampedConstPtr pose_);
+            
 
             //==== variables =====
             
@@ -127,11 +130,11 @@ namespace PRM{
             ros::NodeHandle nh_;
             ros::Subscriber map_sub_;
 
-            ros::Subscriber start_pose_sub_, goal_pose_sub_;
-            //std::vector<Node3d> sampled_points_3d_;
-
+            ros::Subscriber start_pose_sub_, goal_pose_sub_, clicked_pt_sub_;
+            
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
-            std::unordered_map<Vec3f, bool, hashing_func, key_equal_fn>  vis_;
+            
+            std::unordered_set<Vec3f, hashing_func>  vis_;
             
 
             Node3d sp_; //start pose

@@ -26,7 +26,7 @@ namespace PRM
 
         static Vec3f getNode3dkey(const Node3d &node_)
         {
-            return Vec3f{node_.x_, node_.y_, node_.theta_};
+            return Vec3f{node_.x_, node_.y_, 1.f * node_.theta_idx_};
         }
 
 
