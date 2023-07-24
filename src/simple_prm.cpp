@@ -220,27 +220,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 
         int cnt_ = 0 ;
         
-        /*for(const auto t1: G_)
-        {
-
-            auto key_ = t1.first;  
-            auto node_ = *t1.second;
-
-            for(auto t2 : *node_.edges_)
-            {
-                auto b_ = *t2.node_; 
-
-                if((b_.x_ == gp_.x_) && (b_.y_ == gp_.y_))
-                {
-                    generateSteeringCurveFamily(b_, "family_goal_" + std::to_string(cnt_));
-                    cnt_++;
-                }
-            }
-
-        }
-        */
-        //ROS_WARN("%d nodes were connected to goal!", cnt_);
-        //djikstra(start_ptr_, goal_ptr_);
+        djikstra(start_ptr_, goal_ptr_);
 
 
 
@@ -334,7 +314,7 @@ bool PRM::SimplePRM::connectStartPoseToRoadmap(NodePtr_ &node_)
                 NodePtr_ b_ptr_ = G_[key_];
                 if(connectNodes(node_, b_ptr_))
                 {   
-                    generateSteeringCurveFamily(*b_ptr_, "family_goal" + std::to_string(i_));
+                    //generateSteeringCurveFamily(*b_ptr_, "family_goal" + std::to_string(i_));
                     flag_ = true; 
                     conn_cnt_++;
                 }
@@ -460,6 +440,8 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 
     Vec3f k_;
 
+    NodePtr_ curr_node_;
+
     int cnt_ = 0;
     while(ros::ok() && !pq_.empty())
     {
@@ -470,7 +452,7 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 
         //k_ = Utils::getNode3dkey(*pq_.top());
 
-        NodePtr_ curr_node_ = pq_.top();
+       curr_node_ = pq_.top();
         
         
         float curr_cost_ = curr_node_->cost_;
@@ -508,8 +490,8 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
         }
 
 
-        generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
-        visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
+       // generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
+        //visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
 
         /*if(cnt_ > 10)
         {   
@@ -578,9 +560,9 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 
     ROS_WARN("======= REACHED : %d", reached_);
 
-    /*std::vector<Node3d> path_; 
+    std::vector<Node3d> path_; 
     
-    std::shared_ptr<Node3d> curr_node_ = std::make_shared<Node3d>(end_); 
+    //std::shared_ptr<Node3d> curr_node_ = std::make_shared<Node3d>(end_); 
 
     while(ros::ok() && curr_node_ != nullptr)
     {
@@ -591,12 +573,12 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
     } 
 
     
-    ROS_INFO("path_.size(): %d", path_.size());
+    ROS_DEBUG("path_.size(): %d", path_.size());
 
     std::reverse(path_.begin(), path_.end());
 
     generateROSPath(path_);
-    */
+    
     return reached_; 
 
 }
@@ -611,6 +593,13 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
     ros_path_.header.frame_id = "map"; 
     ros_path_.header.stamp = ros::Time::now();
 
+    geometry_msgs::PoseArray final_path_; 
+    final_path_.header.frame_id = "map" ; 
+    final_path_.header.stamp = ros::Time::now();
+
+ 
+
+
     for(int i =0 ; i < sz_ - 1; i++)
     {   
         geometry_msgs::Pose a_; 
@@ -620,19 +609,29 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
 
 
         geometry_msgs::Pose b_; 
-        b_.position.x = path_[i].x_; 
-        b_.position.y = path_[i].y_;
-        b_.orientation = Utils::getQuatFromYaw(path_[i].theta_);
+        b_.position.x = path_[i + 1].x_; 
+        b_.position.y = path_[i+ 1].y_;
+        b_.orientation = Utils::getQuatFromYaw(path_[i + 1].theta_);
+
+        generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
         
         const std::vector<geometry_msgs::PoseStamped> poses_ = generateSteeringCurveTrimmed(a_, b_);
 
+        for(const auto t: poses_)
+        {
+            auto pose_ = t.pose; 
+            final_path_.poses.push_back(pose_);
+        }
 
         //ros_path_.poses.push_back(sc_);
 
-        ros_path_.poses.insert(ros_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
+        //ros_path_.poses.insert(ros_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
+        //final_path_.poses.insert(final_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
+    
     }
 
     visualize_.publishT<nav_msgs::Path>("path", ros_path_);
+    visualize_.publishT<geometry_msgs::PoseArray>("final_path", final_path_);
 
     return ros_path_;
 }
@@ -1452,7 +1451,9 @@ std::vector<geometry_msgs::PoseStamped> PRM::SimplePRM::generateSteeringCurveTri
 
     const float R_ = Utils::getR(x_dash_, y_dash_); 
 
-    geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_,  R_, true, x_dash_);
+    const float del_sign_ = Utils::signDelta(x_dash_, y_dash_);
+
+    geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_,  R_, true, del_sign_,  x_dash_);
 
     std::vector<geometry_msgs::PoseStamped> poses_; 
 
@@ -1475,7 +1476,9 @@ std::vector<geometry_msgs::PoseStamped> PRM::SimplePRM::generateSteeringCurveTri
 
 
 //generate steering curve points for a particular delta with a config pose
-geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Pose rp_, const float R_, const bool trim_, const float x_dash_)
+geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve( geometry_msgs::Pose rp_, const float R_, \
+                                                                const bool trim_, \
+                                                                const float del_sign_, const float x_dash_)
 {
     
     //ROS_ERROR("generateSteeringCurve called with R_: %f", R_);
@@ -1532,7 +1535,17 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
         for (float x_ = 0.f ;   ; x_ += Constants::Planner::dis_sep_)
         {
             
-            
+            if(trim_ && x_dash_ < 0)
+            {
+                break;
+            }
+
+            if(trim_ && (x_ > x_dash_))
+            {
+                break;
+            }
+
+
             float y_ ; 
             //if(delta_ > 0.f){
 
@@ -1569,6 +1582,16 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
         for (float x_ = 0.f ;  ; x_ -= Constants::Planner::dis_sep_)
         {
             
+            if(trim_ && x_dash_ > 0)
+            {
+                break;
+            }
+
+            if(trim_ && (x_ < x_dash_))
+            {
+                break;
+            }
+
             float y_ ; 
             //if(delta_ > 0.f){
 
@@ -1576,8 +1599,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
             y_ = -sqrt(pow(R_, 2) - pow(x_ + Constants::Vehicle::a2_,2)) + sqrt(pow(R_,2 ) - pow(Constants::Vehicle::a2_, 2));
             
             if(std::isnan(y_)) {
-            V_ab_pos_.reserve(1000);
-        
+            
                // ROS_WARN("Last x_ value: %f", x_);
                 break;
             }
@@ -1607,13 +1629,21 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
         for(float x_ =0 ; x_ < Constants::Planner::max_res_; x_+= Constants::Planner::dis_sep_)
         {
-            
+            if(x_ > x_dash_)
+            {
+                break;
+            }
             V_ab_zero_.emplace_back(x_, 0);
         }
 
         for(float x_ =0 ; x_ > -Constants::Planner::max_res_; x_-= Constants::Planner::dis_sep_)
         {
             
+            if(x_ < x_dash_)
+            {
+                break;
+            }
+
             V_ab_zero_.emplace_back(x_, 0);
         }
 
@@ -1635,75 +1665,84 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve(geometry_msgs::Po
 
     poses_ob_.reserve(sz_ + 100000);
 
-    for(const auto &t: V_ab_pos_){
-        
-        //ROS_INFO("x: %f y: %f ", t[0], t[1]);
-        const float yaw_ = Utils::getThetaC(t[0], t[1], 1.f);
-        //const float yaw_ = 0.f;
-        //ROS_DEBUG("yaw_: %f", yaw_); 
-        const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
-        //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
+    if(trim_ && del_sign_ > 0.f)
+    {
+        for(const auto &t: V_ab_pos_)
+        {    
+            //ROS_INFO("x: %f y: %f ", t[0], t[1]);
+            const float yaw_ = Utils::getThetaC(t[0], t[1], 1.f);
+            //const float yaw_ = 0.f;
+            //ROS_DEBUG("yaw_: %f", yaw_); 
+            const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
+            //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
 
-        //const Mat3f &P_ob_ = P_ab_ * P_oa_;
-        const Mat3f &P_ob_ = P_oa_ * P_ab_;
-        
-        geometry_msgs::Pose pose_ob_;  //pose of b in world frame
-        pose_ob_.position.x = P_ob_(0,2); 
-        pose_ob_.position.y = P_ob_(1,2);
-        pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
-        //pose_ob_.position.x = t(0) + rp_.position.x;  
-        //pose_ob_.position.y = t(1) + rp_.position.y;
+            //const Mat3f &P_ob_ = P_ab_ * P_oa_;
+            const Mat3f &P_ob_ = P_oa_ * P_ab_;
+            
+            geometry_msgs::Pose pose_ob_;  //pose of b in world frame
+            pose_ob_.position.x = P_ob_(0,2); 
+            pose_ob_.position.y = P_ob_(1,2);
+            pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
+            //pose_ob_.position.x = t(0) + rp_.position.x;  
+            //pose_ob_.position.y = t(1) + rp_.position.y;
 
-        poses_ob_.push_back(pose_ob_);    
+            poses_ob_.push_back(pose_ob_);    
 
+        }
     }
 
-    for(const auto &t: V_ab_neg_){
-        
-        //ROS_INFO("x: %f y: %f ", t[0], t[1]);
-        const float yaw_ = Utils::getThetaC(t[0], t[1], -1.f);
-        //const float yaw_ = 0.f;
-        //ROS_DEBUG("yaw_: %f", yaw_); 
-        const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
-        //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
+    if(trim_ && del_sign_ < 0.f)
+    {
+        for(const auto &t: V_ab_neg_)
+        {    
+            //ROS_INFO("x: %f y: %f ", t[0], t[1]);
+            const float yaw_ = Utils::getThetaC(t[0], t[1], -1.f);
+            //const float yaw_ = 0.f;
+            //ROS_DEBUG("yaw_: %f", yaw_); 
+            const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
+            //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
 
-        //const Mat3f &P_ob_ = P_ab_ * P_oa_;
-        const Mat3f &P_ob_ = P_oa_ * P_ab_;
-        
-        geometry_msgs::Pose pose_ob_;  //pose of b in world frame
-        pose_ob_.position.x = P_ob_(0,2); 
-        pose_ob_.position.y = P_ob_(1,2);
-        pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
-        //pose_ob_.position.x = t(0) + rp_.position.x;  
-        //pose_ob_.position.y = t(1) + rp_.position.y;
+            //const Mat3f &P_ob_ = P_ab_ * P_oa_;
+            const Mat3f &P_ob_ = P_oa_ * P_ab_;
+            
+            geometry_msgs::Pose pose_ob_;  //pose of b in world frame
+            pose_ob_.position.x = P_ob_(0,2); 
+            pose_ob_.position.y = P_ob_(1,2);
+            pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
+            //pose_ob_.position.x = t(0) + rp_.position.x;  
+            //pose_ob_.position.y = t(1) + rp_.position.y;
 
-        poses_ob_.push_back(pose_ob_);    
+            poses_ob_.push_back(pose_ob_);    
 
+        }   
     }
 
-    for(const auto &t: V_ab_zero_){
-        
-        ///ROS_INFO("x: %f y: %f ", t[0], t[1]);
-        const float yaw_ = Utils::getThetaC(t[0], t[1], 0.f);
-        //const float yaw_ = 0.f;
-        //ROS_DEBUG("yaw_: %f", yaw_); 
-        const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
-        //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
+    if(trim_ && std::fabs(del_sign_) < 0.01)
+    {
+        for(const auto &t: V_ab_zero_)
+        {
+            ///ROS_INFO("x: %f y: %f ", t[0], t[1]);
+            const float yaw_ = Utils::getThetaC(t[0], t[1], 0.f);
+            //const float yaw_ = 0.f;
+            //ROS_DEBUG("yaw_: %f", yaw_); 
+            const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, yaw_);
+            //const Mat3f &P_ab_ = Utils::getHomogeneousTransformationMatrix(t, 0.0);
 
-        //const Mat3f &P_ob_ = P_ab_ * P_oa_;
-        const Mat3f &P_ob_ = P_oa_ * P_ab_;
-        
-        geometry_msgs::Pose pose_ob_;  //pose of b in world frame
-        pose_ob_.position.x = P_ob_(0,2); 
-        pose_ob_.position.y = P_ob_(1,2);
-        pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
-        //pose_ob_.position.x = t(0) + rp_.position.x;  
-        //pose_ob_.position.y = t(1) + rp_.position.y;
+            //const Mat3f &P_ob_ = P_ab_ * P_oa_;
+            const Mat3f &P_ob_ = P_oa_ * P_ab_;
+            
+            geometry_msgs::Pose pose_ob_;  //pose of b in world frame
+            pose_ob_.position.x = P_ob_(0,2); 
+            pose_ob_.position.y = P_ob_(1,2);
+            pose_ob_.orientation = Utils::getQuatFromYaw(std::atan2(P_ob_(1,0), P_ob_(0,0)));
+            //pose_ob_.position.x = t(0) + rp_.position.x;  
+            //pose_ob_.position.y = t(1) + rp_.position.y;
 
-        poses_ob_.push_back(pose_ob_);    
+            poses_ob_.push_back(pose_ob_);    
 
+        }
     }
-
+    
     //ROS_INFO("poses_ob_.size(): %d" , poses_ob_.size());
 
     geometry_msgs::PoseArray pose_array_ob_; 
