@@ -145,7 +145,7 @@ struct key_equal_fn {
 
     struct CompareNode3dPointers {
         bool operator()(const std::shared_ptr<Node3d> a, const std::shared_ptr<Node3d> b) const {
-            return a->cost_< b->cost_; // Change to '<' for min heap
+            return a->cost_> b->cost_; // Change to '<' for min heap
         }
     };
 

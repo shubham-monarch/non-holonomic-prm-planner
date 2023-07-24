@@ -49,14 +49,14 @@ void PRM::SimplePRM::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
         const NodePtr_ node_ = t.second; 
 
         ROS_DEBUG("SOURCE NODE ==>");
-        node_->print();
+        //node_->print();
 
         ROS_DEBUG("DESTINATION NODE ==>");
         for(auto t : *node_->edges_)
         {
             
             const NodePtr_ dst_ = t.node_;
-            dst_->print();
+            //dst_->print();
         }
 
     }
@@ -100,7 +100,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     */
 
     ROS_DEBUG("====== INITIAL POSE =================="); 
-    sp_.print();
+    //sp_.print();
     
     visualize_.publishT<geometry_msgs::PoseStamped>("start_pose", p_);
 
@@ -157,88 +157,71 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
 
 void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 {
-     ROS_WARN("========== GOAL POSE RECEIVED =============="); 
+    ROS_WARN("========== GOAL POSE RECEIVED =============="); 
     
-    geometry_msgs::PoseStamped p_; 
-    p_ = *pose_;
+    
+    int cnt_ =0 ; 
+    
+    //ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
 
-    float yaw_ = tf::getYaw(pose_->pose.orientation); 
+    geometry_msgs::PoseStamped p_ = *pose_;
+    
+    //ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
 
-    if(yaw_ < 0) 
+    float yaw_ = tf::getYaw(p_.pose.orientation); 
+
+    if(yaw_ < 0)
     {
-        yaw_ += 2 * M_PI;
+        yaw_  += 2 * M_PI;
     }
 
-    gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / ( 5.f * M_PI / 180.f)};
-
-    NodePtr_ ptr_ = std::make_shared<Node3d>(gp_);
+    
+    Node3d gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
+    
+    visualize_.publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
 
     
-    /*generateSteeringCurveFamily(gp_, "family_" + std::to_string(SimplePRM::edge_cnt_));
+    //generateSteeringCurveFamily(gp_);
+    generateSteeringCurveFamily(p_.pose);
+
+
+    /*const Vec3f &key_ = Utils::getNode3dkey(gp_);
     
-    geometry_msgs::PoseArray neighbours_;
-    neighbours_.header.frame_id = "map" ; 
-    neighbours_.header.stamp = ros::Time::now();
+    NodePtr_ ptr_; 
 
-    bool found_ = false; 
-
-    neighbours_.poses.clear();
-
-    for(const auto t: G_)
+    if(G_.find(key_) != G_.end())
     {
-        Vec3f key_ = t.first; 
-        NodePtr_ node_ = t.second; 
+        ptr_ = G_[key_];
+    }
+    else
+    {
+        ptr_ = std::make_shared<Node3d>(gp_);
+    }
 
-        bool flag_  = canConnect(ptr_ , node_); 
 
-        if(flag_)
-        {
-            found_ = flag_; 
+    bool flag_ = connectToRoadmap(ptr_);
 
-            geometry_msgs::Pose p_; 
-            p_.position.x = node_->x_; 
-            p_.position.y = node_->y_; 
-            p_.orientation = Utils::getQuatFromYaw(node_->theta_);
-
-            neighbours_.poses.push_back(p_);
+    if(!flag_)
+    {
         
-        }
+        ROS_ERROR("ROADMAP CONNECT FLAG ==> FALSE");
+    
+    }
+    else
+    {
+        G_[key_] = ptr_;
+        
+        ROS_DEBUG("G_.size(): %d", G_.size());
+    
     }
 
-    ROS_INFO("found: %d" , found_);
-    
-    visualize_.publishT<geometry_msgs::PoseArray>("goal_neighbours", neighbours_);
-    
+    //djikstra(ptr_);
+
+    //return; 
+
     */
 
-   typedef std::tuple<float,float,int> T; 
-   std::vector<T> v_; 
-   int cnt_ = 0 ; 
-   for(auto t : G_)
-   {
 
-        auto key_ = t.first; 
-        auto node_ = t.second; 
-
-        if(Utils::euclidean(*node_, *ptr_) < 0.1)
-        {
-            v_.emplace_back(node_->x_, node_->y_, node_->theta_idx_);
-            generateSteeringCurveFamily(*node_, "family_" + std::to_string(cnt_));        
-            visualize_.drawNodeNeighbours(node_, "neighbours_" + std::to_string(cnt_));
-            
-            cnt_++;
-        }
-
-   }
-
-    int i_ = 0 ;
-   std::sort(v_.begin(), v_.end());
-    
-    for(auto t: v_)
-    {
-        std::cout << "[" << i_ << "] " <<  std::get<0>(t) << " " << std::get<1>(t) << " " << std::get<2>(t) << std::endl;
-        i_++;
-    }
     
 
 }   
@@ -398,7 +381,7 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
     {
        
         
-        ROS_WARN("pq_.size(): %d", pq_.size());
+        //ROS_WARN("pq_.size(): %d", pq_.size());
         cnt_++; 
 
         //k_ = Utils::getNode3dkey(*pq_.top());
@@ -408,11 +391,8 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
         
         float curr_cost_ = curr_node_->cost_;
         
-        //generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
-        //visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
 
-
-        curr_node_->print();
+        //curr_node_->print();
 
         geometry_msgs::Pose p_; 
         p_.position.x = curr_node_->x_; 
@@ -439,7 +419,11 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
 
             vis_.insert(k_);
         }
-     
+
+
+        generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
+        visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
+
         /*if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
         {
             end_.parent_ = curr_node_->parent_; 
@@ -1155,8 +1139,8 @@ bool PRM::SimplePRM::generateSamplePoints()
     //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
     //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 110);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 105);
+    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 130);
+    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 130);
      
     int cnt_ =0 ; 
 
@@ -1330,7 +1314,7 @@ void PRM::SimplePRM::generateSteeringCurveFamily(geometry_msgs::Pose rp_, std::s
 
         visualize_.publishT<geometry_msgs::PoseArray>(topic_ ,  family_);
         
-        del_ += (5.f * M_PI / 180.f);
+        del_ += Constants::Planner::theta_sep_;
         cnt_++;
         
     }

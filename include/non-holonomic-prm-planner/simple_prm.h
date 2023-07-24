@@ -138,7 +138,7 @@ namespace PRM{
             
 
             Node3d sp_; //start pose
-            Node3d gp_; //goal pose
+            //Node3d gp_; //goal pose
 
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
