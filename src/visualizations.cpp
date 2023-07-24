@@ -50,7 +50,7 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string
     init_pose_neighbours_.header.stamp = ros::Time::now(); 
     int sz_ = (*node_->edges_).size();
 
-    ROS_INFO("sz_: %d", sz_);
+    //ROS_INFO("sz_: %d", sz_);
     
     /*if(sz_ > 1)
     {
@@ -76,7 +76,7 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string
     }
     
     //ROS_INFO("sz_: %d", sz_);
-    if(sz_ > 1) ROS_WARN("neighbours.size(): %d", init_pose_neighbours_.poses.size());
+    //if(sz_ > 1) ROS_WARN("neighbours.size(): %d", init_pose_neighbours_.poses.size());
 
     publishT<geometry_msgs::PoseArray>(topic_, init_pose_neighbours_);
 

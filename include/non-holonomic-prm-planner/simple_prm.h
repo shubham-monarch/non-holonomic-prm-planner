@@ -97,11 +97,12 @@ namespace PRM{
             void generateSteeringCurveFamily(geometry_msgs::Pose robot_pose_, std::string topic_ = "family_");
 
 
-            bool djikstra( NodePtr_ &start_);
+            bool djikstra( NodePtr_ &start_, NodePtr_ &goal_);
 
             nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
 
-            bool connectToRoadmap( NodePtr_ &node_);
+            bool connectStartPoseToRoadmap( NodePtr_ &node_);
+            bool connectGoalPoseToRoadmap( NodePtr_ &node_);
 
             bool connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_);
 

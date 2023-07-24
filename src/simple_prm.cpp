@@ -106,7 +106,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
 
     generateSteeringCurveFamily(sp_, "initial_pose_family");
 
-    ROS_INFO("Steering Curve family generated!");
+    //ROS_INFO("Steering Curve family generated!");
 
     //sp_.cost_ = 0; 
     //sp_.parent_ = nullptr;
@@ -128,7 +128,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     }
 
 
-    bool flag_ = connectToRoadmap(ptr_);
+    bool flag_ = connectStartPoseToRoadmap(ptr_);
 
     if(!flag_)
     {
@@ -142,14 +142,14 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
         //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
         visualize_.drawNodeNeighbours(ptr_, "inital_pose_neighbours_");
         G_[key_] = ptr_;
-        ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(*ptr_)]->edges_->size());
+        //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(*ptr_)]->edges_->size());
         
 
         ROS_DEBUG("G_.size(): %d", G_.size());
     
     }
 
-    djikstra(ptr_);
+    //djikstra(ptr_);
 
     return; 
     
@@ -185,7 +185,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     generateSteeringCurveFamily(p_.pose);
 
 
-    /*const Vec3f &key_ = Utils::getNode3dkey(gp_);
+    const Vec3f &key_ = Utils::getNode3dkey(gp_);
     
     NodePtr_ ptr_; 
 
@@ -199,7 +199,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     }
 
 
-    bool flag_ = connectToRoadmap(ptr_);
+    bool flag_ = connectGoalPoseToRoadmap(ptr_);
 
     if(!flag_)
     {
@@ -209,20 +209,46 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     }
     else
     {
+        ROS_DEBUG("ROADMAP CONNECT FLAG ==> TRUE");
+    
         G_[key_] = ptr_;
         
         ROS_DEBUG("G_.size(): %d", G_.size());
-    
+
+        NodePtr_ start_ptr_ = G_[Utils::getNode3dkey(sp_)];
+        NodePtr_ goal_ptr_ = ptr_;
+
+        int cnt_ = 0 ;
+        
+        /*for(const auto t1: G_)
+        {
+
+            auto key_ = t1.first;  
+            auto node_ = *t1.second;
+
+            for(auto t2 : *node_.edges_)
+            {
+                auto b_ = *t2.node_; 
+
+                if((b_.x_ == gp_.x_) && (b_.y_ == gp_.y_))
+                {
+                    generateSteeringCurveFamily(b_, "family_goal_" + std::to_string(cnt_));
+                    cnt_++;
+                }
+            }
+
+        }
+        */
+        //ROS_WARN("%d nodes were connected to goal!", cnt_);
+        //djikstra(start_ptr_, goal_ptr_);
+
+
+
     }
 
     //djikstra(ptr_);
 
     //return; 
-
-    */
-
-
-    
 
 }   
 
@@ -267,7 +293,7 @@ PRM::NodePtr_ PRM::SimplePRM::getNodePtr(const Node3d &node_)
 
 }
 
-bool PRM::SimplePRM::connectToRoadmap(NodePtr_ &node_)
+bool PRM::SimplePRM::connectStartPoseToRoadmap(NodePtr_ &node_)
 {   
     
     ROS_INFO("ConnectToRoadmap function!");
@@ -296,7 +322,7 @@ bool PRM::SimplePRM::connectToRoadmap(NodePtr_ &node_)
     {
         //ROS_INFO("pnt_cnt_: %d" , pnt_cnt_);
         
-        for(float i_ = 0 ; i_ * Constants::Planner::theta_sep_ < 2 * M_PI; i_++)
+        for(int i_ = 0 ; i_ * Constants::Planner::theta_sep_ < 2 * M_PI; i_++)
         {
 
             const Vec3f &key_{pt_[0], pt_[1], i_};
@@ -307,7 +333,8 @@ bool PRM::SimplePRM::connectToRoadmap(NodePtr_ &node_)
 
                 NodePtr_ b_ptr_ = G_[key_];
                 if(connectNodes(node_, b_ptr_))
-                {
+                {   
+                    generateSteeringCurveFamily(*b_ptr_, "family_goal" + std::to_string(i_));
                     flag_ = true; 
                     conn_cnt_++;
                 }
@@ -322,7 +349,64 @@ bool PRM::SimplePRM::connectToRoadmap(NodePtr_ &node_)
     return flag_; 
 }
 
-bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
+bool PRM::SimplePRM::connectGoalPoseToRoadmap(NodePtr_ &node_)
+{   
+    
+    ROS_INFO("ConnectToRoadmap function!");
+
+    kdTree::point_t pt_{node_->x_, node_->y_};
+
+    kdTree::pointVec pts_ = kdTree_->neighborhood_points(pt_, Constants::Planner::max_res_);
+
+    ROS_INFO("pts_.size(): %d", pts_.size());
+
+    if((int)pts_.size() == 0)
+    {
+        ROS_ERROR("Unable to connect start to the roadmap!");
+        return false; 
+    }
+
+    //const Node3d a_{start_.position.x , start_.position.y, tf::getYaw(start_.orientation) / M_PI};
+
+    bool flag_ = false;
+    
+    int pnt_cnt_ =0 ; 
+
+    int conn_cnt_ =0 ; 
+    
+    for(const auto pt_: pts_)
+    {
+        //ROS_INFO("pnt_cnt_: %d" , pnt_cnt_);
+        
+        for(int i_ = 0 ; i_ * Constants::Planner::theta_sep_ < 2 * M_PI; i_++)
+        {
+
+            const Vec3f &key_{pt_[0], pt_[1], i_};
+
+            // checking if node exists
+            if(G_.count(key_) > 0)
+            {
+
+                NodePtr_ b_ptr_ = G_[key_];
+                if(connectNodes(b_ptr_, node_))
+                {   
+                    generateSteeringCurveFamily(*b_ptr_, "family_goal" + std::to_string(i_));
+                    flag_ = true; 
+                    conn_cnt_++;
+                }
+            }
+            
+        }
+
+    }
+
+    ROS_INFO("flag_: %d", flag_);
+    ROS_INFO("conn_cnt_: %d", conn_cnt_);
+    return flag_; 
+}
+
+
+bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 {   
     ROS_INFO("Inside djikstra function!");
     
@@ -376,7 +460,7 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
 
     Vec3f k_;
 
-    int cnt_ = 200;
+    int cnt_ = 0;
     while(ros::ok() && !pq_.empty())
     {
        
@@ -390,9 +474,12 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
         
         
         float curr_cost_ = curr_node_->cost_;
-        
 
-        //curr_node_->print();
+        if((curr_node_->x_ == goal_ptr_->x_) && (curr_node_->y_ == goal_ptr_->y_))
+        {
+            reached_ = true; 
+            break;
+        }        
 
         geometry_msgs::Pose p_; 
         p_.position.x = curr_node_->x_; 
@@ -412,7 +499,7 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
         // === Checking if curr_node has already been visited
         if(vis_.find(k_) != vis_.end())
         {   
-            ROS_WARN("Curr node was already visited ==> CONTINUE");
+            //ROS_WARN("Curr node was already visited ==> CONTINUE");
             continue;
         }
         else{
@@ -423,6 +510,12 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
 
         generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
         visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
+
+        /*if(cnt_ > 10)
+        {   
+            ROS_INFO("cnt_ > 10 ==> Breaking!");
+            break;
+        }*/
 
         /*if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
         {
@@ -482,7 +575,8 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_)
         end_.print();
         end_.parent_->print();
     }*/
-    
+
+    ROS_WARN("======= REACHED : %d", reached_);
 
     /*std::vector<Node3d> path_; 
     
@@ -1139,8 +1233,8 @@ bool PRM::SimplePRM::generateSamplePoints()
     //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
     //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 130);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 130);
+    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 110);
+    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 110);
      
     int cnt_ =0 ; 
 
