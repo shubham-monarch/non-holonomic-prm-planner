@@ -41,7 +41,7 @@ namespace PRM{
         namespace Planner{
 
             
-            static const int N_ = 80;
+            static const int N_ = 120;
             static const float theta_sep_ = 5.f * M_PI / 180.f;  //5 degree separation
             static const float dis_sep_ = 0.1f; //10  cm
 

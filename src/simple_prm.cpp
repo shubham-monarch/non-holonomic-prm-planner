@@ -801,9 +801,20 @@ bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
 
 
     if(r_ > 0.f)
-    {
-        dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_;
-        ang_cost_ = Constants::Planner::w_ang_ * theta_dash_;
+    {   
+        if(x_dash_ > 0)
+        {
+            
+            dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_;
+            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_ * 100;
+        
+        }
+        else
+        {
+            dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_ * 1000;;
+            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_ * 100;
+        
+        }
         
     }
     else 
