@@ -181,8 +181,8 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     visualize_.publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
 
     
-    //generateSteeringCurveFamily(gp_);
-    generateSteeringCurveFamily(p_.pose);
+   // generateSteeringCurveFamily(gp_, "gaoL_");
+    //generateSteeringCurveFamily(p_.pose);
 
 
     const Vec3f &key_ = Utils::getNode3dkey(gp_);
@@ -225,7 +225,6 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 
 
     }
-
     //djikstra(ptr_);
 
     //return; 
@@ -764,9 +763,9 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
         b_.position.y = path_[i+ 1].y_;
         b_.orientation = Utils::getQuatFromYaw(path_[i + 1].theta_);
 
-        //generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
-        generateSteeringCurveFamily(path_[i], "aa_" + std::to_string(i));
-        
+        generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
+        //generateSteeringCurveFamily(path_[i], "aa_" + std::to_string(i));
+
         const std::vector<geometry_msgs::PoseStamped> poses_ = generateSteeringCurveTrimmed(a_, b_);
 
         for(const auto t: poses_)
@@ -1828,7 +1827,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve( geometry_msgs::P
 
     poses_ob_.reserve(sz_ + 100000);
 
-    if(trim_ && del_sign_ > 0.f)
+    if((!trim_) || (trim_ && del_sign_ > 0.f))
     {
         for(const auto &t: V_ab_pos_)
         {    
@@ -1854,7 +1853,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve( geometry_msgs::P
         }
     }
 
-    if(trim_ && del_sign_ < 0.f)
+    if((!trim_) || (trim_ && del_sign_ < 0.f))
     {
         for(const auto &t: V_ab_neg_)
         {    
@@ -1880,7 +1879,7 @@ geometry_msgs::PoseArray PRM::SimplePRM::generateSteeringCurve( geometry_msgs::P
         }   
     }
 
-    if(trim_ && std::fabs(del_sign_) < 0.01)
+    if((!trim_) || (trim_ && std::fabs(del_sign_) < 0.01))
     {
         for(const auto &t: V_ab_zero_)
         {

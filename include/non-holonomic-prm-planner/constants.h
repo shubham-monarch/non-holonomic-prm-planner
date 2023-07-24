@@ -48,7 +48,7 @@ namespace PRM{
             static const float max_res_ = sqrt(pow(Vehicle::R_MIN_,2) + pow(Vehicle::R_MIN_ - Vehicle::a2_,2)); // max allowed resolution
             //static const float theta_tol_ = 2.5 * M_PI / 180.0 ;  // 2.5 degrees 
             //static const float theta_tol_ = 0.5 * M_PI / 180.0 ;  // 2.5 degrees 
-            static const float theta_tol_ =  0.5f * theta_sep_ ;  // 2.5 degrees 
+            static const float theta_tol_ =  0.75f * theta_sep_ ;  // 2.5 degrees 
             static const float planner_res_ = 0.5;
 
             static const float w_dis_  = 90; 
