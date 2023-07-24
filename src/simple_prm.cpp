@@ -389,6 +389,174 @@ bool PRM::SimplePRM::connectGoalPoseToRoadmap(NodePtr_ &node_)
 bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 {   
     ROS_INFO("Inside djikstra function!");
+
+
+    vis_.clear(); 
+
+    geometry_msgs::PoseArray pq_path_;
+    pq_path_.header.frame_id = "map" ; 
+    pq_path_.header.stamp = ros::Time::now();
+
+    std::priority_queue<Node3d> pq_; 
+
+    
+    const auto key_ = Utils::getNode3dkey(*start_ptr_);
+
+    Node3d start_ = *start_ptr_;
+    Node3d goal_ = *goal_ptr_;
+
+    start_.parent_ = nullptr;
+    start_.cost_ = 0 ;
+
+    pq_.push(start_);
+    
+    bool reached_ = false; 
+
+    Vec3f k_;
+
+    Node3d curr_node_;
+
+    int cnt_ = 0;
+    while(ros::ok() && !pq_.empty())
+    {
+       
+        
+        //ROS_WARN("pq_.size(): %d", pq_.size());
+        cnt_++; 
+
+        //k_ = Utils::getNode3dkey(*pq_.top());
+
+       curr_node_ = pq_.top();
+        
+        
+        float curr_cost_ = curr_node_.cost_;
+
+        if((curr_node_.x_ == goal_.x_) && (curr_node_.y_ == goal_.y_))
+        {
+            reached_ = true; 
+            break;
+        }        
+
+        geometry_msgs::Pose p_; 
+        p_.position.x = curr_node_.x_; 
+        p_.position.y = curr_node_.y_; 
+        p_.orientation = Utils::getQuatFromYaw(curr_node_.theta_); 
+
+        pq_path_.poses.push_back(p_);
+
+        
+        //ROS_DEBUG("Printing top node ==> ");
+        //curr_node_->print();
+
+        pq_.pop();
+
+        k_ = Utils::getNode3dkey(curr_node_);
+
+        // === Checking if curr_node has already been visited
+        if(vis_.find(k_) != vis_.end())
+        {   
+            //ROS_WARN("Curr node was already visited ==> CONTINUE");
+            continue;
+        }
+        else{
+
+            vis_.insert(k_);
+        }
+
+
+       // generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
+        //visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
+
+        /*if(cnt_ > 10)
+        {   
+            ROS_INFO("cnt_ > 10 ==> Breaking!");
+            break;
+        }*/
+
+        /*if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
+        {
+            end_.parent_ = curr_node_->parent_; 
+            reached_ = true; 
+            break;
+        }*/
+        
+        
+        // ==== UPDATING NEIGHBOURS =========
+        //int cnt_ = 0 ;
+        for( auto &t : *curr_node_.edges_) 
+        {   
+            //ROS_INFO("insideQ!");
+           // cnt_++;
+            
+            float ec_ = t.tc_;  //edge cost
+
+            k_ = Utils::getNode3dkey(*t.node_);
+            
+            if(G_.find(k_) != G_.end())
+            {   
+                Node3d node_ = *G_[k_];
+
+                if(node_.cost_ > curr_cost_ + ec_)
+                {   
+                    node_.parent_ = std::make_shared<Node3d>(curr_node_);
+                    node_.cost_ = curr_cost_ + ec_;
+
+                    //G_[key_] = nxt_node_;
+                    pq_.push(node_);
+                }
+                
+            }
+            else
+            {
+                ROS_ERROR("Edge not found in the graph ===> Something is wrong!"); 
+                //ROS_ERROR("")
+            }
+
+        }
+
+        
+
+    }
+    
+    ROS_INFO("cnt_: %d", cnt_);   
+
+    ROS_INFO("pq_ ran for %d iterations!", cnt_);
+    ROS_WARN("REACHED ==> %d", reached_);
+
+    if(reached_)
+    {
+        //visualize_.publishT<geometry_msgs::PoseArray>("pq_path_" , pq_path_);
+
+        ROS_WARN("======= REACHED : %d", reached_);
+
+        std::vector<Node3d> path_; 
+        
+        std::shared_ptr<Node3d> idx_ = std::make_shared<Node3d>(curr_node_); 
+        
+        while(ros::ok() && idx_ != nullptr)
+        {
+
+            path_.push_back(*idx_); 
+            idx_ = idx_->parent_;
+        } 
+
+        
+        ROS_DEBUG("path_.size(): %d", path_.size());
+
+        std::reverse(path_.begin(), path_.end());
+
+        generateROSPath(path_);
+        
+    }
+    
+    return reached_; 
+
+}
+
+
+/*bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
+{   
+    ROS_INFO("Inside djikstra function!");
     
     auto G__ = G_;
 
@@ -490,22 +658,6 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
         }
 
 
-       // generateSteeringCurveFamily(*curr_node_, "family_" + std::to_string(cnt_));
-        //visualize_.drawNodeNeighbours(curr_node_, "neighbours_" + std::to_string(cnt_));
-
-        /*if(cnt_ > 10)
-        {   
-            ROS_INFO("cnt_ > 10 ==> Breaking!");
-            break;
-        }*/
-
-        /*if(curr_node_->x_ == end_.x_ && curr_node_->y_ == end_.y_)
-        {
-            end_.parent_ = curr_node_->parent_; 
-            reached_ = true; 
-            break;
-        }*/
-        
         
         // ==== UPDATING NEIGHBOURS =========
         //int cnt_ = 0 ;
@@ -552,11 +704,7 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 
     visualize_.publishT<geometry_msgs::PoseArray>("pq_path_" , pq_path_);
 
-    /*if(reached_)
-    {
-        end_.print();
-        end_.parent_->print();
-    }*/
+  
 
     ROS_WARN("======= REACHED : %d", reached_);
 
@@ -583,6 +731,8 @@ bool PRM::SimplePRM::djikstra(NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 
 }
 
+*/
+
 nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
 {
 
@@ -606,14 +756,16 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
         a_.position.x = path_[i].x_; 
         a_.position.y = path_[i].y_;
         a_.orientation = Utils::getQuatFromYaw(path_[i].theta_);
-
+        //a_.orientation = Utils::getQuatFromYaw(0.f);
+            
 
         geometry_msgs::Pose b_; 
         b_.position.x = path_[i + 1].x_; 
         b_.position.y = path_[i+ 1].y_;
         b_.orientation = Utils::getQuatFromYaw(path_[i + 1].theta_);
 
-        generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
+        //generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
+        generateSteeringCurveFamily(path_[i], "aa_" + std::to_string(i));
         
         const std::vector<geometry_msgs::PoseStamped> poses_ = generateSteeringCurveTrimmed(a_, b_);
 
@@ -625,7 +777,7 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
 
         //ros_path_.poses.push_back(sc_);
 
-        //ros_path_.poses.insert(ros_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
+        ros_path_.poses.insert(ros_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
         //final_path_.poses.insert(final_path_.poses.end(), std::make_move_iterator(poses_.begin()), std::make_move_iterator(poses_.end()));
     
     }
@@ -805,14 +957,14 @@ bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
         if(x_dash_ > 0)
         {
             
-            dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_;
-            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_ * 100;
+            dis_cost_ =  10 * Constants::Planner::w_dis_ * r_ * theta_dash_;
+            ang_cost_ =  Constants::Planner::w_ang_ * theta_dash_ ;
         
         }
         else
         {
             dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_ * 1000;;
-            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_ * 100;
+            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_;
         
         }
         
@@ -1243,8 +1395,8 @@ bool PRM::SimplePRM::generateSamplePoints()
     //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
     //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
     
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 110);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 110);
+    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 150);
+    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 150);
      
     int cnt_ =0 ; 
 

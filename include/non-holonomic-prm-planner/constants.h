@@ -41,7 +41,7 @@ namespace PRM{
         namespace Planner{
 
             
-            static const int N_ = 120;
+            static const int N_ = 2500;
             static const float theta_sep_ = 5.f * M_PI / 180.f;  //5 degree separation
             static const float dis_sep_ = 0.1f; //10  cm
 
@@ -51,8 +51,8 @@ namespace PRM{
             static const float theta_tol_ =  0.5f * theta_sep_ ;  // 2.5 degrees 
             static const float planner_res_ = 0.5;
 
-            static const float w_dis_  = 0.5; 
-            static const float w_ang_ = 0.5; 
+            static const float w_dis_  = 90; 
+            static const float w_ang_ = 0.1; 
             static const float w_rev_ = 1000.f  ;   //reverse path cost weightage
 
             static const float sr_ = max_res_;
