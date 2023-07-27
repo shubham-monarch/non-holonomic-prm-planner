@@ -14,8 +14,6 @@
 #include <geometry_msgs/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-//#include <non-holonomic-prm-planner/constants.h>
-//#include <non-holonomic-prm-planner/ds.h>
 
 namespace PRM{
 

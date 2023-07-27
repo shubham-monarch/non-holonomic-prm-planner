@@ -49,6 +49,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/simple_prm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_curve.cpp
+    
     )
 
     set(HEADERS
@@ -59,6 +61,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/KDTree.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/steering_curve.h
+    
     
     )
 

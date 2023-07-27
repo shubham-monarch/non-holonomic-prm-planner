@@ -87,10 +87,7 @@ namespace PRM{
             
 
 
-            geometry_msgs::PoseArray generateSteeringCurve( geometry_msgs::Pose robot_pose_, const float R_, \
-                                                            const bool trim_  = false, \
-                                                            const float del_sign_ = -1.f, const float x_dash_ = -1.f);
-
+        
            std::vector<geometry_msgs::PoseStamped> generateSteeringCurveTrimmed(const geometry_msgs::Pose &rp_, const geometry_msgs::Pose &cp_);
 
             void generateSteeringCurveFamily(const Node3d &node_, std::string topic_ = "family_");
