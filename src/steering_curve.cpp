@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Core>
 
+
 geometry_msgs::PoseArray PRM::SteeringCurve::generateSteeringCurve( geometry_msgs::Pose rp_, const float R_, \
                                                                 const bool trim_, \
                                                                 const float del_sign_, const float x_dash_)
@@ -282,3 +283,111 @@ geometry_msgs::PoseArray PRM::SteeringCurve::generateSteeringCurve( geometry_msg
     return pose_array_ob_;
 
 }
+
+
+
+//generate steering curves from -delta to delta for a particular robot pose
+geometry_msgs::PoseArray PRM::SteeringCurve::generateSteeringCurveFamily(geometry_msgs::Pose rp_, std::string topic_)
+{
+
+    float del_ = 0.f;
+
+   // ROS_INFO("max_steering_angle => %f", Constants::Vehicle::delta_max_);
+
+    int cnt_ =0 ; 
+
+    geometry_msgs::PoseArray family_;
+    family_.header.frame_id = "map"; 
+    family_.header.stamp = ros::Time::now();
+
+    while(ros::ok() && del_ <= Constants::Vehicle::delta_max_)
+    {   
+        //ROS_INFO("del_: %f", del_);   
+        const float R_ = Utils::getR(del_);
+
+        //ROS_WARN("del_: %f R_: %f" , del_, R_);
+
+        geometry_msgs::PoseArray arr_ = SteeringCurve::generateSteeringCurve(rp_, R_);
+        
+        family_.poses.insert(family_.poses.end(), \
+                            std::make_move_iterator(arr_.poses.begin()),
+                            std::make_move_iterator(arr_.poses.end()));
+
+        
+        del_ += Constants::Planner::theta_sep_;
+        cnt_++;
+        
+    }
+
+    return family_;
+
+
+}
+
+geometry_msgs::PoseArray PRM::SteeringCurve::generateSteeringCurveFamily(const Node3d &node_, std::string topic_)
+{
+
+    geometry_msgs::Pose rp_; 
+    rp_.position.x = node_.x_; 
+    rp_.position.y = node_.y_ ;
+    rp_.orientation = Utils::getQuatFromYaw(node_.theta_); 
+
+    return generateSteeringCurveFamily(rp_, topic_);
+
+}
+
+//returns the portion of sterring curve between or_ (i.e. position of r w.r.t. origin) and oc_ (position of c w.r.t origin)
+std::vector<geometry_msgs::PoseStamped> PRM::SteeringCurve::generateSteeringCurveTrimmed(   const geometry_msgs::Pose &or_, \
+                                                                                            const geometry_msgs::Pose &oc_)
+{   
+   
+
+    Mat3f P_or_; //robot pose in origin frame
+    Mat3f P_oc_; // config pose in origin frame
+    //Mat3f P_rc_; //config pose in robot frame
+
+    Vec2f V_or_{or_.position.x, or_.position.y};
+    float theta_or_ = tf::getYaw(or_.orientation);
+
+    Vec2f V_oc_{oc_.position.x, oc_.position.y};
+    float theta_oc_ = tf::getYaw(oc_.orientation);
+
+    P_or_ = (Utils::getHomogeneousTransformationMatrix(V_or_, theta_or_));
+    P_oc_ = (Utils::getHomogeneousTransformationMatrix(V_oc_, theta_oc_));
+    
+    std::ostringstream oss_; 
+    
+    const Mat3f &P_ro_ = P_or_.inverse();
+
+    const Mat3f &P_rc_ = P_ro_ * P_oc_;
+
+    
+    //config co-ordinates in robot frame
+    const float x_dash_ =  P_rc_(0,2); 
+    const float y_dash_ = P_rc_(1,2); 
+
+    const float R_ = Utils::getR(x_dash_, y_dash_); 
+
+    const float del_sign_ = Utils::signDelta(x_dash_, y_dash_);
+
+    geometry_msgs::PoseArray sc_poses_ = SteeringCurve::generateSteeringCurve(or_,  R_, true, del_sign_,  x_dash_);
+
+    std::vector<geometry_msgs::PoseStamped> poses_; 
+
+    for(const auto &t_ : sc_poses_.poses)
+    {
+        geometry_msgs::PoseStamped pose_; 
+        pose_.header.frame_id = "map"; 
+        pose_.header.stamp  = ros::Time::now(); 
+
+        pose_.pose = t_; 
+
+        poses_.push_back(pose_);
+    }
+
+    return poses_;
+
+}
+
+
+
