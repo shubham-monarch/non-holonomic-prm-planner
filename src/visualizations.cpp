@@ -11,7 +11,7 @@
 
 PRM::Visualize::Visualize(){
 
-    ROS_WARN("Inside Visualize Constrcutor!");
+    //ROS_WARN("Inside Visualize Constrcutor!");
 
 
 }

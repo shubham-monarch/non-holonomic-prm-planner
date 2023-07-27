@@ -50,7 +50,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_curve.cpp
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
     )
 
     set(HEADERS
@@ -62,8 +62,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/steering_curve.h
-    
-    
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})

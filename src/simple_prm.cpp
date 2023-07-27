@@ -4,6 +4,7 @@
 #include <non-holonomic-prm-planner/steering_curve.h>
 
 
+
 #include <random>
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Core>
@@ -37,6 +38,8 @@ PRM::SimplePRM::SimplePRM()
 {   
 
     ROS_WARN("SimplePRM constructor called");
+    //cdp_.initialize();
+
 }
 
 
@@ -45,9 +48,9 @@ void PRM::SimplePRM::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
 
     ROS_ERROR("========= CLICKED PT CB ===============  ");
 
-    for(auto t: G_)
+    /*for(auto t: G_)
     {
-
+Inside 
         const NodePtr_ node_ = t.second; 
 
         ROS_DEBUG("SOURCE NODE ==>");
@@ -61,7 +64,11 @@ void PRM::SimplePRM::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
             //dst_->print();
         }
 
-    }
+    }*/
+
+    ROS_INFO("[%f,%f]", pose_->point.x, pose_->point.y);
+
+
 }
 
 
@@ -251,9 +258,16 @@ void PRM::SimplePRM::initialize()
 
     ROS_WARN("map_set_ is true!");
 
+
+
+
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
+
+
+
+
     
 
 }
@@ -1021,7 +1035,7 @@ bool PRM::SimplePRM::generateRoadMap()
     */
 
 
-    buildGraph();
+    //buildGraph();
 
     int cnt_ = 0; 
 
@@ -1349,16 +1363,4 @@ bool PRM::SimplePRM::generateSamplePoints()
     //*/
 
 }
-
-
-
-
-
-
-
-
-//TODO ==> fix bug
-//generate steering curve points for a particular delta
-
-
 

@@ -10,6 +10,7 @@
 #include <non-holonomic-prm-planner/KDTree.hpp>
 //#include <non-holonomic-prm-planner/utils.h>
 #include <non-holonomic-prm-planner/ds.h>
+#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 
 
 #include <unordered_set>
@@ -40,6 +41,8 @@ namespace PRM{
 
     class Visualize;
 
+    //class CollisionDetectionPolygon;
+
     //represents a sampled point with no heading information in the GRID and not WORLD
     
 
@@ -65,7 +68,8 @@ namespace PRM{
             //bool generateGraph();
             bool buildKDtree();
             bool generateSamplePoints();
-            bool isObstacleFree(const Node2d &node_) const;     
+            bool isObstacleFree
+            (const Node2d &node_) const;     
             
             void buildGraph();
 
@@ -106,7 +110,6 @@ namespace PRM{
 
             //==== variables =====
             
-            Visualize visualize_;
             bool map_set_;
             nav_msgs::OccupancyGridConstPtr grid_;
 
@@ -137,6 +140,9 @@ namespace PRM{
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
 
+            CollisionDetectionPolygon cdp_;
+            Visualize visualize_;
+            
             
            
         
