@@ -21,7 +21,7 @@ bool PRM::PathGenerator::checkEdgeForCollisions(
                                     Visualize &visualize_)
 {
 
-    ROS_WARN("Inside checkEdgeForCollisions!");
+    //ROS_WARN("Inside checkEdgeForCollisions!");
         
     int sz_ = (int)path_.size(); 
 
@@ -29,7 +29,7 @@ bool PRM::PathGenerator::checkEdgeForCollisions(
 
     for(int i = 0 ; i < sz_;  i++)
     {
-        std::cout << "i: " << i << std::endl;
+        //std::cout << "i: " << i << std::endl;
 
         const std::array<float, 2> translation_{path_[i].pose.position.x , path_[i].pose.position.y};
         const float heading_ =  tf::getYaw(path_[i].pose.orientation);
@@ -98,11 +98,11 @@ bool PRM::PathGenerator::checkPathForCollisions(
 
     int sz_ = (int)path_.size(); 
 
-    std::cout << "sz_: " << sz_ << std::endl;
+    //std::cout << "sz_: " << sz_ << std::endl;
 
     for(int i =0 ; i < sz_ - 1; i++)
     {   
-        std::cout << "i: " << i << std::endl;
+      //  std::cout << "i: " << i << std::endl;
         geometry_msgs::Pose a_; 
         a_.position.x = path_[i].x_; 
         a_.position.y = path_[i].y_;
@@ -124,6 +124,29 @@ bool PRM::PathGenerator::checkPathForCollisions(
         
         if(found_)
         {
+            //collision detected between a_ and b_ ==> need to remove the edge
+            ROS_WARN("=========================================================");
+            ROS_WARN("=================DELETING EDGE ===========================");
+            ROS_WARN("=========================================================");
+
+            const Vec3f node_key_ = Utils::getNode3dkey(path_[i]);
+            const Vec3f edge_key_ = Utils::getNode3dkey(path_[i + 1]);        
+            //std::cout << "a => (" << a_.position.x  << "," << a_.position.y << "," << tf::getYaw
+            //std::cout << "node_key_: " << node_key_ << std::endl;
+
+            int key_found_ = G_.count(node_key_);
+
+            //std::cout << "key_found_: " << key_found_ << std::endl;
+            std::cout << "a->edges before deletion: " << G_[node_key_]->edges_->size();
+
+            std::cout << "edge key found: " << G_[node_key_]->edges_->count(edge_key_) << std::endl;
+
+            NodePtr_ a_ptr_ = G_[node_key_];
+            
+            G_[node_key_]->edges_->erase(edge_key_);
+            
+            std::cout << "a->edges after deletion: " << G_[node_key_]->edges_->size() << std::endl;
+
             return true;
         }
     }
@@ -138,7 +161,6 @@ bool PRM::PathGenerator::checkPathForCollisions(
 
 bool PRM::PathGenerator::getCollisionFreePath(  
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    std::unordered_set<Vec3f, hashing_func>  &vis_, \
                                     NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_, 
                                     const std::shared_ptr<RobotModel> &robot_, \
                                     Visualize &visualize_)
@@ -146,15 +168,56 @@ bool PRM::PathGenerator::getCollisionFreePath(
 
     //bool found_ = false; 
 
-    std::vector<Node3d> path_ = getShortestPath(G_, vis_ , start_ptr_, goal_ptr_, visualize_);
-
-    bool found_ = checkPathForCollisions(G_, path_, robot_, visualize_);
-
-    ROS_INFO("=================================================") ;
-    ROS_INFO("==============COLLISION DETECTED : %d============", found_) ;
-    ROS_INFO("=================================================") ;
     
-    return found_;
+    int cnt_ =0 ; 
+
+    std::unordered_set<Vec3f, hashing_func>  vis_; 
+
+    while(ros::ok())
+    {   
+        ROS_DEBUG("============================================================");
+        ROS_DEBUG("===========ATTEMPT: %d======================================", cnt_);
+        ROS_DEBUG("============================================================");
+
+        vis_.clear();    
+        std::vector<Node3d> path_ = getShortestPath(G_, vis_ , start_ptr_, goal_ptr_, visualize_);
+
+        nav_msgs::Path ros_path_ = Utils::generateROSPath(path_);
+
+
+
+        if(path_.size() == 0)
+        {
+            ROS_ERROR("PATH_SZ IS 0 ===> EXITING");
+            return false;
+        }
+
+        visualize_.publishT<nav_msgs::Path>("ros_path_" + std::to_string(cnt_) , ros_path_);        
+
+
+        bool found_ = checkPathForCollisions(G_, path_, robot_, visualize_);
+
+        std::cout << "found_: " << found_ << std::endl;
+
+        if(!found_)
+        {
+            ROS_INFO("=================================================") ;
+            ROS_INFO("==============NO COLLISION DETECTED : %d============", found_) ;
+            ROS_INFO("=================================================") ;
+            return true; 
+        }
+
+        cnt_++;
+
+        /*if(cnt_ > 100)
+        {
+            break;
+        }*/
+    }
+    
+    return false;
+    
+    // /return found_;
 
 }
 

@@ -13,7 +13,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <geometry_msgs/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
+#include <nav_msgs/Path.h>
 
 namespace PRM{
 
@@ -35,9 +35,6 @@ namespace PRM{
             wy = origin_y_ + (my + 0.5) * resolution_;
         
         };
-
-       
-
         static inline float norm(const float x_, const float y_)
         {
 
@@ -66,7 +63,6 @@ namespace PRM{
             float R_ = sqrt(pow((x_ * x_ + 2 * Constants::Vehicle::a2_ * x_ + y_ * y_)/ (2.f * y_), 2) + pow(Constants::Vehicle::a2_, 2));            
             return R_;
         }
-
 
         static inline float getR(const float delta_)
         {   

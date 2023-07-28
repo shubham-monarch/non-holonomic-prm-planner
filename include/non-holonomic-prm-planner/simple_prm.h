@@ -17,7 +17,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-
+//extern PRM::Visualize visualize_;
 
 /**
  * Simple PRM implementation

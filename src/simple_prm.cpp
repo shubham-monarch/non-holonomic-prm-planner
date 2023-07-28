@@ -229,13 +229,14 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         int cnt_ = 0 ;
 
 
-        std::vector<Node3d> path_ = PathGenerator::getShortestPath(G_, vis_,  start_ptr_, goal_ptr_, visualize_);
+        //std::vector<Node3d> path_ = PathGenerator::getShortestPath(G_, vis_,  start_ptr_, goal_ptr_, visualize_);
         
         
-        ROS_INFO("path_.size(): %d", path_.size());
-        generateROSPath(path_);
+        //ROS_INFO("path_.size(): %d", path_.size());
+        //generateROSPath(path_);
         
-        bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
+        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, robot_, visualize_);
+        //bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
         
         ROS_WARN("============================================="); 
         ROS_WARN("==========FOUND: %d===========================", found_); 
@@ -281,9 +282,7 @@ void PRM::SimplePRM::initialize()
                                             Constants::Vehicle::right_width_, 
                                             visualize_);
 
-    
 
-    
 
 }
 
@@ -682,7 +681,7 @@ bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
         std::shared_ptr<Edge> e_ = std::make_shared<Edge>(b_ptr_, dis_cost_, ang_cost_);
         
         //const std::string key_ = std::to_string(e_->node_->x_) } 
-        const Vec3f key_{e_->node_->x_, e_->node_->y_, e_->node_->theta_};
+        const Vec3f key_ = Utils::getNode3dkey(*e_->node_);
         a_ptr_->addEdge(key_, e_);
         
         return true; 
