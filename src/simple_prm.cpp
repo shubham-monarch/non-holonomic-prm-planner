@@ -1,7 +1,7 @@
 #include <non-holonomic-prm-planner/simple_prm.h>
 #include <non-holonomic-prm-planner/helpers.h>
-#include <non-holonomic-prm-planner/steering_curve.h>
 #include <non-holonomic-prm-planner/path_generator.h>
+
 
 
 #include <random>
@@ -39,6 +39,7 @@ PRM::SimplePRM::SimplePRM()
     ROS_WARN("SimplePRM constructor called");
     //cdp_.initialize();
 
+    //visualize_ = std::make_shared<Visualize>();
 }
 
 
@@ -110,7 +111,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     ROS_DEBUG("====== INITIAL POSE =================="); 
     //sp_.print();
     
-    visualize_.publishT<geometry_msgs::PoseStamped>("start_pose", p_);
+    visualize_->publishT<geometry_msgs::PoseStamped>("start_pose", p_);
 
     SteeringCurve::generateSteeringCurveFamily(sp_, "initial_pose_family");
 
@@ -148,7 +149,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     {
         ROS_ERROR("ROADMAP CONNECT FLAG ==> TRUE");
         //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
-        visualize_.drawNodeNeighbours(ptr_, "inital_pose_neighbours_");
+        visualize_->drawNodeNeighbours(ptr_, "inital_pose_neighbours_");
         G_[key_] = ptr_;
         //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(*ptr_)]->edges_->size());
         
@@ -186,7 +187,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     
     Node3d gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
     
-    visualize_.publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
+    visualize_->publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
 
     
     //generateSteeringCurveFamily(gp_);
@@ -235,7 +236,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         //ROS_INFO("path_.size(): %d", path_.size());
         //generateROSPath(path_);
         
-        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, robot_, visualize_);
+        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, robot_);
         //bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
         
         ROS_WARN("============================================="); 
@@ -276,12 +277,11 @@ void PRM::SimplePRM::initialize()
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
 
 
-    robot_  = std::make_shared<RobotModel>( Constants::Vehicle::front_length_, \
+   robot_  = std::make_shared<RobotModel>( Constants::Vehicle::front_length_, \
                                             Constants::Vehicle::hitch_length_, \
                                             Constants::Vehicle::left_width_, \
-                                            Constants::Vehicle::right_width_, 
-                                            visualize_);
-
+                                            Constants::Vehicle::right_width_);
+    
 
 
 }
@@ -468,8 +468,8 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
     
     }
 
-    visualize_.publishT<nav_msgs::Path>("path", ros_path_);
-    visualize_.publishT<geometry_msgs::PoseArray>("final_path", final_path_);
+    visualize_->publishT<nav_msgs::Path>("path", ros_path_);
+    visualize_->publishT<geometry_msgs::PoseArray>("final_path", final_path_);
 
 
     //ROS_INFO("Visualiztion finished!");
@@ -1042,12 +1042,12 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , ge
     //geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_, R_);
     geometry_msgs::PoseArray sc_poses_ = SteeringCurve::generateSteeringCurve(or_,  R_);
 
-    visualize_.publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
+    visualize_->publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
 
     //ROS_INFO("oc_: (%f,%f)", oc_.position.x, oc_.position.y);
 
-    visualize_.drawPoint(or_, or_topic_);
-    visualize_.drawPoint(oc_, oc_topic_);
+    visualize_->drawPoint(or_, or_topic_);
+    visualize_->drawPoint(oc_, oc_topic_);
     
     //add yaw
     //visualize_.drawPoint(x_, y_); //
@@ -1161,7 +1161,7 @@ bool PRM::SimplePRM::generateSamplePoints()
     //start = std::chrono::high_resolution_clock::now();
     
 
-    visualize_.publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
+    visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
     
     //end = std::chrono::high_resolution_clock::now();
     //duration = end - start;
@@ -1198,7 +1198,7 @@ bool PRM::SimplePRM::generateSamplePoints()
     ROS_INFO("Pulishing circles around sampled points started!");
     start = std::chrono::high_resolution_clock::now();
 
-    visualize_.publishT<geometry_msgs::PoseArray>("sampled_circles", circles_);
+    visualize_->publishT<geometry_msgs::PoseArray>("sampled_circles", circles_);
     
     //end = std::chrono::high_resolution_clock::now();
     //duration = end - start;

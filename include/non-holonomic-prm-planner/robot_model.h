@@ -5,7 +5,6 @@
 #include <array>
 
 #include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
-#include <non-holonomic-prm-planner/visualizations.h>
 
 namespace PRM
 {
@@ -16,8 +15,7 @@ namespace PRM
        public: 
 
            RobotModel(  const float front_len, const float hitch_len, \
-                        const float left_width, const float right_width, \
-                        Visualize &vis_);
+                        const float left_width, const float right_width);
             
             std::vector<float> getOBB(const std::array<float,2>& position, float heading) const;
 
@@ -31,7 +29,7 @@ namespace PRM
 
             std::shared_ptr<CollisionDetectionPolygon> cdp_;
 
-            Visualize visualize_;
+            //Visualize visualize_;
 
     };
 

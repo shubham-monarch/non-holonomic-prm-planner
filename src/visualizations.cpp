@@ -1,6 +1,4 @@
-#include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/simple_prm.h>
-#include <non-holonomic-prm-planner/utils.h>
 
 
 #include <geometry_msgs/PoseStamped.h>

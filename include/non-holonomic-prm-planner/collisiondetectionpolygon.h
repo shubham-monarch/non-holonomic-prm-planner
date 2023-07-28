@@ -22,7 +22,6 @@
 
 #include "ros/ros.h"
 
-#include <non-holonomic-prm-planner/visualizations.h>
 
 namespace PRM {
   enum class Color {white, blue, green};
@@ -58,7 +57,7 @@ namespace PRM {
       
       public:
         
-        CollisionDetectionPolygon(Visualize &vis_);
+        CollisionDetectionPolygon();
         CollisionDetectionPolygon(CollisionDetectionPolygon const&) = default;
         void initialize();
         bool isConfigurationFree(const std::vector<float>& obb) ;
@@ -97,7 +96,7 @@ namespace PRM {
 
     private:
 
-        Visualize visualize_;
+       
         ros::NodeHandle n;
         RTree geofence_index;
         PolyPtr current_geofence = nullptr; //Current geofence

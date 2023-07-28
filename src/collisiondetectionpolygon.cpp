@@ -4,13 +4,13 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <geometry_msgs/PolygonStamped.h>
 
-#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
+#include <non-holonomic-prm-planner/simple_prm.h>
 
 
 namespace PRM
 {
 
-	CollisionDetectionPolygon::CollisionDetectionPolygon(Visualize &vis_) : visualize_(vis_)
+	CollisionDetectionPolygon::CollisionDetectionPolygon()
 	{
 		
 		ROS_WARN(" ================ CDP Constructor! =================");
@@ -20,6 +20,7 @@ namespace PRM
 
 	geometry_msgs::Polygon polygonToPolygonMsg(const Polygon_t& polygon) {
 		geometry_msgs::Polygon polygonMsg;
+#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 
 		for (const auto& point : polygon.outer()) {
 			geometry_msgs::Point32 pointMsg;
@@ -112,7 +113,7 @@ namespace PRM
 			geometry_msgs::PolygonStamped msg_ = polyClrToPolygonStampedMsg(polyClr);
 			msg_.header.frame_id = "map"; 
 			msg_.header.stamp = ros::Time::now();
-			visualize_.publishT<geometry_msgs::PolygonStamped>("obstacles" + std::to_string(cnt_), msg_);
+			visualize_->publishT<geometry_msgs::PolygonStamped>("obstacles" + std::to_string(cnt_), msg_);
 			cnt_++;
 			
 			//polygonStampedMessages.push_back(polygonStampedMsg);

@@ -1,17 +1,20 @@
 #ifndef STEERING_CURVE_H
 #define STEERING_CURVE_H
 
-#include <non-holonomic-prm-planner/visualizations.h>
+
 
 
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 
 
 
 namespace PRM
 {
-    
+
+    struct Node3d; 
+        
     class SteeringCurve
     {
 

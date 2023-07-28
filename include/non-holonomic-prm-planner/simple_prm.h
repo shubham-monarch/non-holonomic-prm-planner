@@ -6,12 +6,9 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-#include <non-holonomic-prm-planner/visualizations.h>
 #include <non-holonomic-prm-planner/KDTree.hpp>
-//#include <non-holonomic-prm-planner/utils.h>
-#include <non-holonomic-prm-planner/ds.h>
-#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 #include <non-holonomic-prm-planner/robot_model.h>
+#include <non-holonomic-prm-planner/visualizations.h>
 
 
 #include <unordered_set>
@@ -31,6 +28,8 @@
 //CollisionDetection ***
 //Distance Metrics
 //k-Nearest neighbours
+
+extern std::shared_ptr<PRM::Visualize> visualize_ ;
 
 namespace PRM{
     
@@ -141,7 +140,7 @@ namespace PRM{
 
            // std::unordered_set<Edge, EdgeHash> G_;  //graph
             
-            Visualize visualize_;
+          //  Visualize visualize_;
             
             std::shared_ptr<RobotModel> robot_;
             
