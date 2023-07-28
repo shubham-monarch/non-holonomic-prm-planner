@@ -52,6 +52,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_curve.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_model.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/path_generator.cpp
     
     )
 
@@ -66,6 +67,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/steering_curve.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/robot_model.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/path_generator.h
     
     )
 

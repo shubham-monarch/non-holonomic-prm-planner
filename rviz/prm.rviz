@@ -5,15 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Grid1
-        - /Map1
         - /Sampled Points1/Status1
         - /Pose1
-        - /Steering Curve Family1
-        - /PoseArray1
-        - /PoseArray2
-        - /Pose2
-        - /PoseArray3
-        - /Path1
+        - /PolygonArray1
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -41,7 +35,7 @@ Toolbars:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.05000000074505806
+    - Alpha: 0.20000000298023224
       Cell Size: 1
       Class: rviz/Grid
       Color: 255; 255; 255
@@ -190,7 +184,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: false
+      Enabled: true
       Head Diameter: 0.029999999329447746
       Head Length: 0.019999999552965164
       Length: 0.30000001192092896
@@ -209,7 +203,14 @@ Visualization Manager:
       Shaft Length: 0.009999999776482582
       Topic: /path
       Unreliable: false
-      Value: false
+      Value: true
+    - Class: poly_array_plugin/PolygonArray
+      Enabled: true
+      Name: PolygonArray
+      Queue Size: 10
+      Topic: /obstacles
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -237,7 +238,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -31.42498207092285
+      Angle: -21.98495864868164
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -247,10 +248,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 0.4210313856601715
+      Scale: 8.08804702758789
       Target Frame: <Fixed Frame>
-      X: -483.35919189453125
-      Y: 667.796875
+      X: -818.3414306640625
+      Y: -120.50646209716797
     Saved: ~
 Window Geometry:
   Displays:

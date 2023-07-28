@@ -23,22 +23,14 @@ namespace PRM
 		ros::NodeHandle nh;
 		//ros::service::waitForService(polygon_service, -1);
 
-		ROS_INFO("HI");
-		ROS_INFO("m_obstacles.size(): %d" , m_obstacles.size());
 		m_obstacles.clear();
-		ROS_INFO("hi1");
 		obstacle_indices.clear();
-		ROS_INFO("hi1");
-		
-		ROS_INFO("hi1");
 		
 		polygon_publisher::Polygon poly_srv;		
 		
 		poly_srv.request.color = "blue";
-		ROS_INFO("hi1");
 		ros::service::call(polygon_service, poly_srv);
-		ROS_INFO("hi2");
-
+	
 		std::vector<PolyClr> blue_obstacles;
 		packObstacleVector(poly_srv.response, blue_obstacles, Color::blue);
 		

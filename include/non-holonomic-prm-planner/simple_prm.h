@@ -94,8 +94,9 @@ namespace PRM{
 
         
            
-            
-            bool djikstra( NodePtr_ &start_, NodePtr_ &goal_);
+            bool getObstacleFreePath(NodePtr_ &start_, NodePtr_ &goal_);
+
+            std::vector<Node3d> djikstra( NodePtr_ &start_, NodePtr_ &goal_);
 
             nav_msgs::Path generateROSPath(const std::vector<Node3d> &path_);
 
