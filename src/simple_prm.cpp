@@ -229,10 +229,17 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         int cnt_ = 0 ;
 
 
-        std::vector<Node3d> path_ = PathGenerator::getShortestPath(G_, vis_,  start_ptr_, goal_ptr_);
+        std::vector<Node3d> path_ = PathGenerator::getShortestPath(G_, vis_,  start_ptr_, goal_ptr_, visualize_);
+        
+        
         ROS_INFO("path_.size(): %d", path_.size());
         generateROSPath(path_);
         
+        bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
+        
+        ROS_WARN("============================================="); 
+        ROS_WARN("==========FOUND: %d===========================", found_); 
+        ROS_WARN("============================================="); 
         
 
     }
@@ -271,7 +278,8 @@ void PRM::SimplePRM::initialize()
     robot_  = std::make_shared<RobotModel>( Constants::Vehicle::front_length_, \
                                             Constants::Vehicle::hitch_length_, \
                                             Constants::Vehicle::left_width_, \
-                                            Constants::Vehicle::right_width_);
+                                            Constants::Vehicle::right_width_, 
+                                            visualize_);
 
     
 

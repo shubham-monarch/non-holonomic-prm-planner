@@ -2,6 +2,7 @@
 #include <cmath>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <geometry_msgs/PolygonStamped.h>
 
 #include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 
@@ -9,23 +10,53 @@
 namespace PRM
 {
 
-	CollisionDetectionPolygon::CollisionDetectionPolygon() {
+	CollisionDetectionPolygon::CollisionDetectionPolygon(Visualize &vis_) : visualize_(vis_)
+	{
 		
-		ROS_INFO(" ================ CDP Constructor! =================");
+		ROS_WARN(" ================ CDP Constructor! =================");
 		initialize();
 	
 	}
 
+	geometry_msgs::Polygon polygonToPolygonMsg(const Polygon_t& polygon) {
+		geometry_msgs::Polygon polygonMsg;
+
+		for (const auto& point : polygon.outer()) {
+			geometry_msgs::Point32 pointMsg;
+			pointMsg.x = bg::get<0>(point);
+			pointMsg.y = bg::get<1>(point);
+			polygonMsg.points.push_back(pointMsg);
+		}
+
+		return polygonMsg;
+	}
+
+	geometry_msgs::PolygonStamped polyClrToPolygonStampedMsg(const PolyClr& polyClr) {
+		geometry_msgs::PolygonStamped polygonStampedMsg;
+
+		// Assuming the PolyClr object has a name and a Polygon_t object (polyPtr)
+		polygonStampedMsg.header.frame_id = "your_frame_id";
+		polygonStampedMsg.header.stamp = ros::Time::now();
+		polygonStampedMsg.polygon = polygonToPolygonMsg(*(polyClr.polygon));
+
+		return polygonStampedMsg;
+	}
+		
+	
 	void CollisionDetectionPolygon::initialize()
 	{	
-	
-		ROS_INFO("Inside CDP INITIALIZE!");
+		ROS_WARN("=======================");
+		ROS_WARN("Inside CDP INITIALIZE!");
+		ROS_WARN("=======================");
+		
 		ros::NodeHandle nh;
 		//ros::service::waitForService(polygon_service, -1);
 
 		m_obstacles.clear();
 		obstacle_indices.clear();
 		
+		obstacle_indices.emplace(std::make_pair("obstacle",std::make_shared<RTree>()));
+
 		polygon_publisher::Polygon poly_srv;		
 		
 		poly_srv.request.color = "blue";
@@ -39,6 +70,8 @@ namespace PRM
 			m_obstacles.emplace_back(poly);
 		}
 
+		ROS_WARN("m_obstacles.size() after BLUE: %d", m_obstacles.size());
+
 		poly_srv.request.color = "green";
 		ros::service::call(polygon_service, poly_srv);
 		std::vector<PolyClr> green_obstacles;
@@ -48,13 +81,55 @@ namespace PRM
 		{
 			m_obstacles.emplace_back(obstacle);
 		}
+	
+		ROS_INFO("m_obstacles.size() after GREEN: %d", m_obstacles.size());
 		
-		ROS_INFO("m_obstacles.size(): %d", m_obstacles.size());
-		publishAllPolygons(false);
+		std::string name_ = "obstacle"; 
+		ROS_INFO("BEFORE ==> obstacle_indices[obstacle].size(): %d", obstacle_indices[name_]->size());
+
+		for (auto obstacle : m_obstacles) {
+
+			RTree_Ptr curr_idx_ = obstacle_indices["obstacle"];
+			insert(obstacle, curr_idx_);
+			
+		}
 		
+
+		std::vector<geometry_msgs::PolygonStamped> polygonStampedMessages;
+
+		int cnt_ = 8888;	
+
+		RTree_Ptr curr_idx_ = obstacle_indices["obstacle"];
+		
+		ROS_WARN("====================================================") ;
+		ROS_WARN("=============PUBLISING OBSTACLE POLYGONS============") ;
+		ROS_WARN("====================================================") ;
+		
+
+		for (const auto& value : *curr_idx_) {
+			
+			const PolyClr& polyClr = value.second;
+			geometry_msgs::PolygonStamped msg_ = polyClrToPolygonStampedMsg(polyClr);
+			msg_.header.frame_id = "map"; 
+			msg_.header.stamp = ros::Time::now();
+			visualize_.publishT<geometry_msgs::PolygonStamped>("obstacles" + std::to_string(cnt_), msg_);
+			cnt_++;
+			
+			//polygonStampedMessages.push_back(polygonStampedMsg);
+    	
+		}
+
+
+
+		ROS_INFO("AFTER ==> obstacle_indices[obstacle].size(): %d", obstacle_indices[name_]->size());
+
+
+
+
 	}
 
-	bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb) const {
+	
+	bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb)  {
 		Polygon_t polygon;
 		std::vector<Value> result;
 		std::vector<Point_t> pts;
@@ -62,8 +137,21 @@ namespace PRM
 			pts.emplace_back(obb[i],obb[i+1]);
 		}
 		
-		current_index->query(bgi::intersects(polygon), std::back_inserter(result));
+		RTree_Ptr curr_idx_ = obstacle_indices["obstacle"];
+
+		RTree tree_ = *curr_idx_;
+
+
+		polygon.outer().assign(pts.begin(),pts.end());
+	
+			
+		//RTree_Ptr curr_idx_ = obstacle_indices["obstacle"];
+		
+		curr_idx_->query(bgi::intersects(polygon), std::back_inserter(result));
+		
 		if (!result.empty()) {
+
+			//ROS_ERROR("============RESULT NO EMPTY =================");
 			for (auto potential_collision : result) {
 				if (bg::intersects(polygon,*std::get<1>(potential_collision).polygon)) {
 					return false;
@@ -81,6 +169,9 @@ namespace PRM
 			return false;
 		}
 		std::vector<Value> result;
+
+		
+
 		current_index->query(bgi::intersects(pt),std::back_inserter(result));
 		if (!result.empty())
 		{
@@ -223,6 +314,8 @@ namespace PRM
 		}
 
 		return obstacle_indices.begin()->second;
+
+	
 	}
 
 

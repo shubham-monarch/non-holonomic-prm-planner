@@ -22,6 +22,8 @@
 
 #include "ros/ros.h"
 
+#include <non-holonomic-prm-planner/visualizations.h>
+
 namespace PRM {
   enum class Color {white, blue, green};
 } //!namespace HybridAStar    
@@ -56,10 +58,10 @@ namespace PRM {
       
       public:
         
-        CollisionDetectionPolygon();
+        CollisionDetectionPolygon(Visualize &vis_);
         CollisionDetectionPolygon(CollisionDetectionPolygon const&) = default;
         void initialize();
-        bool isConfigurationFree(const std::vector<float>& obb) const;
+        bool isConfigurationFree(const std::vector<float>& obb) ;
         bool isConfigurationFree(float x, float y) const;
         //#ifdef DEBUG
         void publishAllPolygons(bool);
@@ -71,7 +73,6 @@ namespace PRM {
         void packIndex(std::vector<PolyClr> const& polygons, RTree& index);
         
         
-        bool selectCurrentIndex(Point_t, Point_t);
         RTree_Ptr selectCurrentIndex();
 	
         void insert(PolyClr, RTree_Ptr);
@@ -95,6 +96,8 @@ namespace PRM {
 
 
     private:
+
+        Visualize visualize_;
         ros::NodeHandle n;
         RTree geofence_index;
         PolyPtr current_geofence = nullptr; //Current geofence
@@ -109,6 +112,7 @@ namespace PRM {
 
         ros::Publisher geofence_pub = n.advertise<geometry_msgs::PolygonStamped>("geofence",10, true);
         ros::Publisher obstacle_pub = n.advertise<poly_array_plugin::polygon_array>("obstacles",10, true);
+        
   }; //! class CollisionDetectionPolygon
 
 };

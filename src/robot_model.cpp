@@ -1,12 +1,15 @@
 #include <non-holonomic-prm-planner/robot_model.h>
 
 
+
 PRM::RobotModel::RobotModel(    const float front_len, const float hitch_len, \
-                                const float left_width, const float right_width) :  len_to_front(front_len),\
-                                                                                    len_to_hitch(hitch_len), \
-                                                                                    width_left(left_width), \
-                                                                                    width_right(right_width), \
-                                                                                    cdp_(std::make_shared<CollisionDetectionPolygon>())
+                                const float left_width, const float right_width, \
+                                Visualize &vis_) :  len_to_front(front_len),\
+                                                    len_to_hitch(hitch_len), \
+                                                    width_left(left_width), \
+                                                    width_right(right_width), \
+                                                    visualize_(vis_), \
+                                                    cdp_(std::make_shared<CollisionDetectionPolygon>(vis_))
 {   
     ROS_INFO("Inside RobotModel constructor!");
 
@@ -40,6 +43,12 @@ std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, 
     return obb;
 }
 
+bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb_) const
+{
+
+    return cdp_->isConfigurationFree(obb_);
+
+} 
 
 
 

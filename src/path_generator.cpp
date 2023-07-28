@@ -1,14 +1,169 @@
 #include <non-holonomic-prm-planner/path_generator.h>
 #include <non-holonomic-prm-planner/helpers.h>
+#include <non-holonomic-prm-planner/steering_curve.h>
+
+
 
 #include <geometry_msgs/PoseArray.h>
 #include <queue>
 
+#include <geometry_msgs/PolygonStamped.h>
 
-std::vector<PRM::Node3d> PRM::PathGenerator::getShortestPath(   std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                            std::unordered_set<Vec3f, hashing_func>  &vis_, \
-                                            NodePtr_ &start_ptr_, \
-                                            NodePtr_ &goal_ptr_)
+
+
+int PRM::PathGenerator::obb_cnt_ = 0 ;
+
+// returns true on collision
+bool PRM::PathGenerator::checkEdgeForCollisions(
+                                    std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
+                                    const std::vector<geometry_msgs::PoseStamped> &path_, \
+                                    const std::shared_ptr<RobotModel> &robot_, \
+                                    Visualize &visualize_)
+{
+
+    ROS_WARN("Inside checkEdgeForCollisions!");
+        
+    int sz_ = (int)path_.size(); 
+
+    //std::cout << "sz_: " << sz_ << std::endl;
+
+    for(int i = 0 ; i < sz_;  i++)
+    {
+        std::cout << "i: " << i << std::endl;
+
+        const std::array<float, 2> translation_{path_[i].pose.position.x , path_[i].pose.position.y};
+        const float heading_ =  tf::getYaw(path_[i].pose.orientation);
+        
+        const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
+
+
+        geometry_msgs::PolygonStamped msg_; 
+        msg_.header.frame_id = "map"; 
+        msg_.header.stamp = ros::Time::now(); 
+
+        for(int idx_ = 0; idx_ < (int)obb_.size(); idx_+= 2)
+        {   
+
+            geometry_msgs::Point32 pt_; 
+            pt_.x = obb_[idx_]; 
+            pt_.y =  obb_[idx_ + 1];
+
+            msg_.polygon.points.push_back(pt_);
+
+        }
+
+        
+        
+        //ROS_WARN("msg_.points.size(): %d", msg_.polygon.points.size());
+
+        //Visualize visualize_; 
+        visualize_.publishT<geometry_msgs::PolygonStamped>("obb_" + std::to_string(PathGenerator::obb_cnt_), msg_);
+
+        obb_cnt_++;
+
+        
+        bool is_free_ = robot_->isConfigurationFree(obb_);
+
+        //ROS_INFO("is_free: %d", is_free_);
+
+        if(!is_free_)
+        {
+            //ROS_ERROR("====================================");
+            //ROS_ERROR("========is_free_: %d================", is_free_);
+            //ROS_ERROR("====================================");
+            
+        }
+
+        //geometry_msgs::PolygonStampedA
+        
+        if(!is_free_)
+        {
+            return true;
+        }
+
+    }
+
+    return false; 
+
+}
+
+
+//returns true on collision
+bool PRM::PathGenerator::checkPathForCollisions(
+                                    std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
+                                    const std::vector<Node3d>&path_, \
+                                    const std::shared_ptr<RobotModel> &robot_,
+                                    Visualize &visualize_)
+{
+
+    int sz_ = (int)path_.size(); 
+
+    std::cout << "sz_: " << sz_ << std::endl;
+
+    for(int i =0 ; i < sz_ - 1; i++)
+    {   
+        std::cout << "i: " << i << std::endl;
+        geometry_msgs::Pose a_; 
+        a_.position.x = path_[i].x_; 
+        a_.position.y = path_[i].y_;
+        a_.orientation = Utils::getQuatFromYaw(path_[i].theta_);
+        //a_.orientation = Utils::getQuatFromYaw(0.f);
+            
+
+        geometry_msgs::Pose b_; 
+        b_.position.x = path_[i + 1].x_; 
+        b_.position.y = path_[i+ 1].y_;
+        b_.orientation = Utils::getQuatFromYaw(path_[i + 1].theta_);
+
+        //generateSteeringCurveFamily(a_, "final_family_" + std::to_string(i));
+       // SteeringCurve::generateSteeringCurveFamily(path_[i], "aa_" + std::to_string(i));
+        
+        const std::vector<geometry_msgs::PoseStamped> poses_ = SteeringCurve::generateSteeringCurveTrimmed(a_, b_);
+
+        bool found_  = checkEdgeForCollisions(G_, poses_, robot_, visualize_);
+        
+        if(found_)
+        {
+            return true;
+        }
+    }
+
+    std::cout << "Exited for loop!" << std::endl;
+
+    return false; 
+    
+}
+
+
+
+bool PRM::PathGenerator::getCollisionFreePath(  
+                                    std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
+                                    std::unordered_set<Vec3f, hashing_func>  &vis_, \
+                                    NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_, 
+                                    const std::shared_ptr<RobotModel> &robot_, \
+                                    Visualize &visualize_)
+{
+
+    //bool found_ = false; 
+
+    std::vector<Node3d> path_ = getShortestPath(G_, vis_ , start_ptr_, goal_ptr_, visualize_);
+
+    bool found_ = checkPathForCollisions(G_, path_, robot_, visualize_);
+
+    ROS_INFO("=================================================") ;
+    ROS_INFO("==============COLLISION DETECTED : %d============", found_) ;
+    ROS_INFO("=================================================") ;
+    
+    return found_;
+
+}
+
+std::vector<PRM::Node3d> PRM::PathGenerator::getShortestPath(   
+                                        std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
+                                        std::unordered_set<Vec3f, hashing_func>  &vis_, \
+                                        NodePtr_ &start_ptr_, \
+                                        NodePtr_ &goal_ptr_, \
+                                        Visualize &visualize_)
 {
     ROS_INFO("Inside djikstra function!");
 
