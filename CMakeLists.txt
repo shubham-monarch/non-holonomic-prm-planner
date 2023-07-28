@@ -51,6 +51,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_curve.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_model.cpp
+    
     )
 
     set(HEADERS
@@ -63,6 +65,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/steering_curve.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/robot_model.h
+    
     )
 
 add_library(PRM ${SOURCES} ${HEADERS})

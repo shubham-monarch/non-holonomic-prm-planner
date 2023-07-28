@@ -36,6 +36,12 @@ namespace PRM{
             static const float R_MIN_ = sqrt(pow(a2_, 2) + pow(l_ * (1.f/std::tan(delta_max_)), 2)); //minimum turning radius
             static const bool can_reverse_ = false;
             
+            static const float wheelbase_ =  1.84f;
+            static const float front_length_ = 2.92;
+            static const float hitch_length_ = 0.8;
+            static const float left_width_ = 0.8;
+            static const float right_width_ = 0.8; 
+            
         };
 
         namespace Planner{

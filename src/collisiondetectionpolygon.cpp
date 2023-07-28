@@ -9,9 +9,6 @@
 namespace PRM
 {
 
-	
-
-
 	CollisionDetectionPolygon::CollisionDetectionPolygon() {
 		
 		ROS_INFO(" ================ CDP Constructor! =================");
@@ -21,20 +18,27 @@ namespace PRM
 
 	void CollisionDetectionPolygon::initialize()
 	{	
-		ROS_INFO("=========================================================");
-		ROS_INFO("================ CDP ==> INTIALIZE ======================");
-		ROS_INFO("=========================================================");
-		
+	
+		ROS_INFO("Inside CDP INITIALIZE!");
 		ros::NodeHandle nh;
-		ros::service::waitForService(polygon_service, -1);
-		
-		m_obstacles.clear();
-		obstacle_indices.clear();
+		//ros::service::waitForService(polygon_service, -1);
 
+		ROS_INFO("HI");
+		ROS_INFO("m_obstacles.size(): %d" , m_obstacles.size());
+		m_obstacles.clear();
+		ROS_INFO("hi1");
+		obstacle_indices.clear();
+		ROS_INFO("hi1");
+		
+		ROS_INFO("hi1");
+		
 		polygon_publisher::Polygon poly_srv;		
 		
 		poly_srv.request.color = "blue";
+		ROS_INFO("hi1");
 		ros::service::call(polygon_service, poly_srv);
+		ROS_INFO("hi2");
+
 		std::vector<PolyClr> blue_obstacles;
 		packObstacleVector(poly_srv.response, blue_obstacles, Color::blue);
 		
@@ -53,6 +57,7 @@ namespace PRM
 			m_obstacles.emplace_back(obstacle);
 		}
 		
+		ROS_INFO("m_obstacles.size(): %d", m_obstacles.size());
 		publishAllPolygons(false);
 		
 	}
@@ -64,10 +69,7 @@ namespace PRM
 		for (size_t i=0; i<obb.size(); i+=2) {
 			pts.emplace_back(obb[i],obb[i+1]);
 		}
-		polygon.outer().assign(pts.begin(),pts.end());
-		if (!bg::within(polygon,*(current_geofence.get()))) {
-			return false;
-		}
+		
 		current_index->query(bgi::intersects(polygon), std::back_inserter(result));
 		if (!result.empty()) {
 			for (auto potential_collision : result) {

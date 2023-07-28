@@ -266,7 +266,12 @@ void PRM::SimplePRM::initialize()
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
 
 
+    robot_  = std::make_shared<RobotModel>( Constants::Vehicle::front_length_, \
+                                            Constants::Vehicle::hitch_length_, \
+                                            Constants::Vehicle::left_width_, \
+                                            Constants::Vehicle::right_width_);
 
+    
 
     
 
@@ -971,14 +976,9 @@ void PRM::SimplePRM::buildGraph()
             break;
         }
 
-        //cnt_++;
         const kdTree::point_t o_{node_.x_, node_.y_};
         
         kdTree::pointVec neighbours_ = kdTree_->neighborhood_points(o_, Constants::Planner::sr_);
-
-       // ROS_DEBUG("kdtree_neighbours.size(): %d", neighbours_.size()); 
-        
-        //ROS_WARN("pt_: (%f,%f) ==>", pt_[0], pt_[1]);
 
         for(const kdTree::point_t pt_: neighbours_)
         {   
@@ -988,8 +988,6 @@ void PRM::SimplePRM::buildGraph()
                 break;
             }
             
-            //ROS_INFO("(%f,%f)", t[0], t[1]);
-
             const Node2d a_(o_[0], o_[1]);
             const Node2d b_{pt_[0], pt_[1]}; 
 
@@ -1035,7 +1033,7 @@ bool PRM::SimplePRM::generateRoadMap()
     */
 
 
-    //buildGraph();
+    buildGraph();
 
     int cnt_ = 0; 
 
