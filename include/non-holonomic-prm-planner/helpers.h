@@ -38,7 +38,7 @@ namespace PRM
         static inline nav_msgs::Path generateROSPath(const std::vector<Node3d>&path_)
         {
 
-            ROS_INFO("Inside generateROSPath function!");
+            //ROS_INFO("Inside generateROSPath function!");
 
 
             int sz_ = (int)path_.size(); 
@@ -58,7 +58,7 @@ namespace PRM
 
             for(int i =0 ; i < sz_ - 1; i++)
             {   
-                std::cout << "i: " << i << std::endl;
+                //std::cout << "i: " << i << std::endl;
                 geometry_msgs::Pose a_; 
                 a_.position.x = path_[i].x_; 
                 a_.position.y = path_[i].y_;
@@ -89,7 +89,7 @@ namespace PRM
             
             }
 
-            std::cout << "EXITED FOR LOOP" << std::endl;
+            //std::cout << "EXITED FOR LOOP" << std::endl;
             //visualize_.publishT<nav_msgs::Path>("path", ros_path_);
             //visualize_.publishT<geometry_msgs::PoseArray>("final_path", final_path_);
 

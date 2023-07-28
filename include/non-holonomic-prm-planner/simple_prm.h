@@ -30,6 +30,7 @@
 //k-Nearest neighbours
 
 extern std::shared_ptr<PRM::Visualize> visualize_ ;
+extern std::shared_ptr<PRM::RobotModel> robot_;
 
 namespace PRM{
     

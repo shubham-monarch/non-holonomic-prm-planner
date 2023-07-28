@@ -15,8 +15,7 @@ int PRM::PathGenerator::obb_cnt_ = 0 ;
 // returns true on collision
 bool PRM::PathGenerator::checkEdgeForCollisions(
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    const std::vector<geometry_msgs::PoseStamped> &path_, \
-                                    const std::shared_ptr<RobotModel> &robot_)
+                                    const std::vector<geometry_msgs::PoseStamped> &path_)
 {
 
     //ROS_WARN("Inside checkEdgeForCollisions!");
@@ -92,8 +91,7 @@ bool PRM::PathGenerator::checkEdgeForCollisions(
 //returns true on collision
 bool PRM::PathGenerator::checkPathForCollisions(
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    const std::vector<Node3d>&path_, \
-                                    const std::shared_ptr<RobotModel> &robot_)
+                                    const std::vector<Node3d>&path_)
 {
     //std::cout << "Inside checkPathForCollisions!" << std::endl;
     int sz_ = (int)path_.size(); 
@@ -121,7 +119,7 @@ bool PRM::PathGenerator::checkPathForCollisions(
         const std::vector<geometry_msgs::PoseStamped> poses_ = SteeringCurve::generateSteeringCurveTrimmed(a_, b_);
 
         //std::cout << "1" << std::endl;
-        bool found_  = checkEdgeForCollisions(G_, poses_, robot_);
+        bool found_  = checkEdgeForCollisions(G_, poses_);
         //std::cout << "2" << std::endl;
         if(found_)
         {
@@ -162,8 +160,7 @@ bool PRM::PathGenerator::checkPathForCollisions(
 
 bool PRM::PathGenerator::getCollisionFreePath(  
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_, 
-                                    const std::shared_ptr<RobotModel> &robot_)
+                                    NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
 {
 
     //bool found_ = false; 
@@ -196,7 +193,7 @@ bool PRM::PathGenerator::getCollisionFreePath(
         visualize_->publishT<nav_msgs::Path>("ros_path_" + std::to_string(cnt_) , ros_path_);        
         //std::cout << "After visualize_" << std::endl;
 
-        bool found_ = checkPathForCollisions(G_, path_, robot_);
+        bool found_ = checkPathForCollisions(G_, path_);
 
         //std::cout << "found_: " << found_ << std::endl;
 

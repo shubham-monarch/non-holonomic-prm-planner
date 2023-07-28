@@ -236,7 +236,7 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         //ROS_INFO("path_.size(): %d", path_.size());
         //generateROSPath(path_);
         
-        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, robot_);
+        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_);
         //bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
         
         ROS_WARN("============================================="); 
@@ -275,14 +275,6 @@ void PRM::SimplePRM::initialize()
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
-
-
-   robot_  = std::make_shared<RobotModel>( Constants::Vehicle::front_length_, \
-                                            Constants::Vehicle::hitch_length_, \
-                                            Constants::Vehicle::left_width_, \
-                                            Constants::Vehicle::right_width_);
-    
-
 
 }
 
