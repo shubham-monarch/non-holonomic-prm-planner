@@ -53,6 +53,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/path_generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sampler.cpp
     
     )
 
@@ -68,6 +69,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/robot_model.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/path_generator.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/sampler.h
     
     )
 

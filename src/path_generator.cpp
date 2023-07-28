@@ -57,7 +57,7 @@ bool PRM::PathGenerator::checkEdgeForCollisions(
 
         //Visualize visualize_; 
         //std::cout << 33 << std::endl;
-        visualize_->publishT<geometry_msgs::PolygonStamped>("obb_" + std::to_string(PathGenerator::obb_cnt_), msg_);
+        //visualize_->publishT<geometry_msgs::PolygonStamped>("obb_" + std::to_string(PathGenerator::obb_cnt_), msg_);
         //std::cout << 44 << std::endl;
         obb_cnt_++;
 

@@ -9,7 +9,7 @@
 #include <non-holonomic-prm-planner/KDTree.hpp>
 #include <non-holonomic-prm-planner/robot_model.h>
 #include <non-holonomic-prm-planner/visualizations.h>
-
+#include <non-holonomic-prm-planner/sampler.h>
 
 #include <unordered_set>
 #include <unordered_map>
@@ -66,12 +66,7 @@ namespace PRM{
 
             // ===== functions ====
 
-            //bool generateGraph();
             bool buildKDtree();
-            bool generateSamplePoints();
-            bool isObstacleFree
-            (const Node2d &node_) const;     
-            
             void buildGraph();
 
             int generateEdges(const Node2d &a_, const Node2d &b_);
@@ -116,7 +111,7 @@ namespace PRM{
             nav_msgs::OccupancyGridConstPtr grid_;
 
             //** planner tuning params
-            std::unordered_set<Node2d, Node2dHash> sampled_points_; 
+            
 
             kdTreePtr kdTree_;
             kdTree::pointVec points2d_;  //list of (x,y) GRID points  to be inserted into kd-tree
@@ -133,7 +128,7 @@ namespace PRM{
             
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
             
-            std::unordered_set<Vec3f, hashing_func>  vis_;
+            //std::unordered_set<Vec3f, hashing_func>  vis_;
             
 
             Node3d sp_; //start pose
@@ -143,8 +138,10 @@ namespace PRM{
             
           //  Visualize visualize_;
             
-            std::shared_ptr<RobotModel> robot_;
-            
+            //std::shared_ptr<RobotModel> robot_;
+
+            std::shared_ptr<Sampler> sampler_;  
+            std::vector<Node2d> sampledPoints2D_;
            
         
     };

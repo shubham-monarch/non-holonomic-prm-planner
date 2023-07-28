@@ -4,6 +4,17 @@
 #include <string>
 #include <cmath>
 
+/**
+ * Unit Test Cases
+ * Github documentation
+ * Detailed commnets   + DOYGEN
+ * Narrow corridor support
+ * Smoothing
+ * Enhanced sampling
+ * parameterize + disable reverse
+ * Tune params
+*/
+
 namespace PRM{
 
 

@@ -269,12 +269,19 @@ void PRM::SimplePRM::initialize()
 
     ROS_WARN("map_set_ is true!");
 
-
-
+    // ===============================================================================
+    // ======================SUBSCRIBER CALLBACKS=======================================
+    // ===============================================================================
+    
 
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
+    
+
+
+    sampler_ = std::make_shared<Sampler>();
+    //sampledPoints2D_ = sampler_->generate2DSamplePoints();
 
 }
 
@@ -468,16 +475,6 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
     return ros_path_;
 }
 
-bool PRM::SimplePRM::isObstacleFree(const Node2d &node_) const
-{
-
-    return true; 
-}
-
-//void PRM::SimplePRM::generateEdges(const Node2d &a_, const Node)
-
-
-
 bool PRM::SimplePRM::buildKDtree()
 {
 
@@ -499,7 +496,7 @@ bool PRM::SimplePRM::buildKDtree()
     //ROS_DEBUG("nodes2d_.size(): %d", nodes2d_.size());
 
     int cnt_ =0 ; 
-    for(const auto &node_: sampled_points_)
+    for(const auto &node_: sampledPoints2D_)
     {
         cnt_++; 
         
@@ -719,34 +716,25 @@ bool PRM::SimplePRM::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
 
 int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
-    
-    //ROS_DEBUG("generateEdges called!");
-    //ROS_INFO("a_ => (%f,%f)", a2_.x_, a2_.y_);
-    //ROS_INFO("b_ => (%f,%f)", b2_.x_, b2_.y_);
-    
-    //const float ox_ = Constants::MapMetaData::origin_x_; 
-    //const float oy_ = Constants::MapMetaData::origin_y_;
-
-    //TODO ==> fix for these values
-    //const Node2d &a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
-    //const Node2d &b_ = Node2d{ox_ + 28.f, oy_ + 30.f};
-
-    //const Node2d &a2_ = Node2d{ox_  + 31.f, oy_ + 31.f};
-    //  const Node2d &b2_ = Node2d{ox_ + 30.f, oy_ + 31.f};
-
-    //a_ = Node2d{ox_  + 30.f, oy_ + 30.f};
-    //b_ = Node2d{ox_ + 32.f, oy_ + 32.f};
-
-    //int cnt_ = 0 ;
-
-    //std::shared_ptr<Node3d> node_; 
 
     int precision = 10;
+    
     for(int a_i_ = 0;  a_i_ * Constants::Planner::theta_sep_ < 2 * M_PI; a_i_++)
     {
         
         const Vec3f &a_key_{a2_.x_, a2_.y_, a_i_};
-        
+
+        const std::array<float, 2> translation_{a2_.x_ , a2_.y_};
+        const float heading_ =  a_i_ * Constants::Planner::theta_sep_;
+        const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
+
+        bool is_free_ = robot_->isConfigurationFree(obb_);
+
+        if(!is_free_)
+        {
+            continue;
+        }
+
         NodePtr_ a_ptr_;
 
         if(G_.find(a_key_) != G_.end())
@@ -763,7 +751,18 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
             
             const Vec3f &b_key_{b2_.x_, b2_.y_, b_i_};
-        
+
+            const std::array<float, 2> translation_{b2_.x_ , b2_.y_};
+            const float heading_ =  b_i_ * Constants::Planner::theta_sep_;
+            const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
+
+            bool is_free_ = robot_->isConfigurationFree(obb_);
+
+            if(!is_free_)
+            {
+                continue;
+            }
+
             NodePtr_ b_ptr_;
 
             if(G_.find(b_key_) != G_.end())
@@ -800,7 +799,7 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
     //ROS_INFO("cnt_: %d", cnt_);
     int del_cnt_ = 0 ;
   
-    return 1    ; 
+    return 1 ;
 
 }
 
@@ -809,10 +808,13 @@ void PRM::SimplePRM::buildGraph()
 {   
     
     ROS_INFO("Building Roadmap ===> wait for some time!");
-    for(const auto &node_ : sampled_points_)
+
+    int cnt_ =0 ;
+    //std::cout << "sampledPOints2d.size(): " << (int)sampledPoints2D_.size() << std::endl;
+    for(const auto &node_ : sampledPoints2D_)
     {   
         //ROS_DEBUG("build_graph_cnt_: %d", build_graph_cnt_); 
-        
+        //std::cout << cnt_++ << std::endl;
         if(!ros::ok())
         {
             break;
@@ -839,7 +841,7 @@ void PRM::SimplePRM::buildGraph()
             }
         
             int cnt_ = generateEdges(a_, b_);
-           // ROS_DEBUG("%d edges added", cnt_);
+            //ROS_DEBUG("%d edges added", cnt_);
         }
     }   
 
@@ -850,57 +852,13 @@ void PRM::SimplePRM::buildGraph()
 
 bool PRM::SimplePRM::generateRoadMap()
 {
-   // ROS_INFO("Inside PRM::plan()");
 
-
-    //setN();
-    //setSR();  //set neighbour search radius
-
-    //N_ = 30;
-    //sr_ = Constants::Planner::max_res_;
+    sampledPoints2D_= sampler_->generate2DSamplePoints();
     
-
-    generateSamplePoints(); 
     buildKDtree();
-
-    /*auto start = std::chrono::high_resolution_clock::now();
-    
-    ROS_INFO("sr_: %f", Constants::Planner::sr_);
-    
-   // ROS_INFO("Total edges: ")
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start;
-    double seconds = duration.count();
-   
-    */
-
-
     buildGraph();
 
     int cnt_ = 0; 
-
-    /*for(const auto t : G_)
-    {   
-        ROS_ERROR("=========================");
-
-        const NodePtr_ node_ = t.second;
-        
-        generateSteeringCurveFamily(*node_, "family_"  + std::to_string(cnt_));
-        visualize_.drawNodeNeighbours(node_, "neighbours_" + std::to_string(cnt_));
-        cnt_++;
-    
-    }*/
-
-
-
-    //ROS_WARN("Graph generation finished in %f seconds!", seconds);
-    //ROS_WARN("G_.size(): %d", G_.size());
-    
-    
-    //ROS_INFO("cnt_: %d" , cnt_);
-    
-    //djikstra()
-
 
     return true; 
 
@@ -1047,160 +1005,3 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , ge
     return true; 
 
 }
-
-bool PRM::SimplePRM::generateSamplePoints()
-{
-
-    //ROS_INFO("Inside simplePRM::samplePoints!");
-
-    ROS_INFO("Sampling of %d points started!", Constants::Planner::N_);
-    auto start = std::chrono::high_resolution_clock::now();
-
-    const int w_ = Constants::MapMetaData::width_; 
-    const int h_ =  Constants::MapMetaData::height_;
-
-    ROS_INFO("map_dimension: (%d,%d)", h_, w_);
-
-    //range of x in real world and NOT GRID
-    std::vector<float> rx_ = {Constants::MapMetaData::origin_x_ , Constants::MapMetaData::origin_x_ + (w_ + 0.5f) * Constants::MapMetaData::res_}; 
-    std::vector<float> ry_ = {Constants::MapMetaData::origin_y_ , Constants::MapMetaData::origin_y_ + (h_ + 0.5f) * Constants::MapMetaData::res_} ;
-    
-    
-    //std::random_device rd;
-    unsigned int seed_ = 2; 
-    std::mt19937 gen(seed_);
-    
-    //std::uniform_real_distribution<float> dist_x(rx_[0], rx_[1]);
-    //std::uniform_real_distribution<float> dist_y(ry_[0], ry_[1]);
-    
-    std::uniform_real_distribution<float> dist_x(rx_[0] + 100, rx_[0] + 150);
-    std::uniform_real_distribution<float> dist_y(ry_[0] + 100, ry_[0] + 150);
-     
-    int cnt_ =0 ; 
-
-    while(sampled_points_.size() < Constants::Planner::N_ && ros::ok())  
-    {
-        //ROS_INFO("nodes2d_.size(): %d", nodes2d_.size());
-        const float  x_ = dist_x(gen);
-        const float  y_ = dist_y(gen);
-
-        //ROS_INFO("(x,y) => (%f,%f)", x_, y_);
-
-        cnt_++; 
-        const Node2d node_{x_, y_};
-
-        if(sampled_points_.find(node_) == sampled_points_.end())
-        {
-
-            sampled_points_.insert(node_);
-
-        }
-        
-      //  ROS_INFO("sampled_points_cnt_: %d", cnt_);
-
-        //nodes2d_.push_back(node_);
-    }
-
-    /*const float ox_ = Constants::MapMetaData::origin_x_; 
-    const float oy_ = Constants::MapMetaData::origin_y_; 
-
-    for(float x  = ox_ + 50; x <= ox_ + 80; x += 2.f)
-    {
-
-        for(float y = oy_ + 50; y <= oy_ + 80; y+= 1.f)
-        {
-
-            Node2d node_{x, y};
-            sampled_points_.insert(node_);
-        }
-
-    }
-
-
-    auto end = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> duration = end - start;
-    double seconds = duration.count();
-
-    ROS_INFO("Sampling finished  ====> %f seconds", seconds);
-    
-    ///ROS_INFO("EXITED while loop!"); 
-    //ROS_INFO("sampled_pts.size(): %d", sampled_points_.size());
-
-    */ 
-    geometry_msgs::PoseArray pose_array_;
-    pose_array_.header.frame_id = "map"; 
-    pose_array_.header.stamp = ros::Time::now(); 
-
-
-
-    for(const auto &t: sampled_points_) 
-    {
-        
-        geometry_msgs::Pose pose_; 
-        
-        pose_.position.x = t.x_;
-        pose_.position.y = t.y_; 
-        pose_.orientation = Utils::getQuatFromYaw(0.f);
-
-        pose_array_.poses.push_back(pose_);
-
-    }   
-
-    ROS_INFO("Publshing points on RViz started!");
-    
-    
-    //start = std::chrono::high_resolution_clock::now();
-    
-
-    visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
-    
-    //end = std::chrono::high_resolution_clock::now();
-    //duration = end - start;
-    //seconds = duration.count();
-    //ROS_INFO("Rviz publishing finished in %f seconds!", seconds);
-
-    geometry_msgs::PoseArray circles_;;
-    circles_.header.frame_id = "map"; 
-    circles_.header.stamp = ros::Time::now(); 
-
-    const float r_ = Constants::Planner::sr_;
-
-    ROS_INFO("sr_: %f", r_);
-
-    for(const auto t : pose_array_.poses)
-    {
-        const float cx_ = t.position.x , cy_ = t.position.y;
-
-        for(int i_ = 0; i_ * Constants::Planner::theta_sep_ < 2 * M_PI ; i_++)
-        {   
-            const float x_ = cx_ + r_ * cos(i_ * Constants::Planner::theta_sep_); 
-            const float y_ = cy_ + r_ * sin(i_ * Constants::Planner::theta_sep_);
-
-            geometry_msgs::Pose pose_; 
-            pose_.position.x = x_; 
-            pose_.position.y = y_; 
-            
-            circles_.poses.push_back(pose_);
-        }
-
-    }
-
-
-    ROS_INFO("Pulishing circles around sampled points started!");
-    start = std::chrono::high_resolution_clock::now();
-
-    visualize_->publishT<geometry_msgs::PoseArray>("sampled_circles", circles_);
-    
-    //end = std::chrono::high_resolution_clock::now();
-    //duration = end - start;
-    //seconds = duration.count();
-    
-    //ROS_INFO("Finished publishing circles in %f seconds!", seconds);
-
-
-    return true; 
-    //*/
-
-}
-

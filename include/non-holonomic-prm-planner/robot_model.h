@@ -17,7 +17,10 @@ namespace PRM
            RobotModel(  const float front_len, const float hitch_len, \
                         const float left_width, const float right_width);
             
+           
+
             std::vector<float> getOBB(const std::array<float,2>& position, float heading) const;
+
 
 
             bool isConfigurationFree(const std::vector<float> &obb_) const; 
