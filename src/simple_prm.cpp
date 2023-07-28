@@ -672,7 +672,10 @@ bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
     {
 
         std::shared_ptr<Edge> e_ = std::make_shared<Edge>(b_ptr_, dis_cost_, ang_cost_);
-        a_ptr_->addEdge(e_);
+        
+        //const std::string key_ = std::to_string(e_->node_->x_) } 
+        const Vec3f key_{e_->node_->x_, e_->node_->y_, e_->node_->theta_};
+        a_ptr_->addEdge(key_, e_);
         
         return true; 
     

@@ -109,9 +109,9 @@ std::vector<PRM::Node3d> PRM::PathGenerator::getShortestPath(   std::unordered_m
             //ROS_INFO("insideQ!");
            // cnt_++;
             
-            float ec_ = t.tc_;  //edge cost
+            float ec_ = t.second.tc_;  //edge cost
 
-            k_ = Utils::getNode3dkey(*t.node_);
+            k_ = Utils::getNode3dkey(*t.second.node_);
             
             if(G_.find(k_) != G_.end())
             {   
@@ -134,9 +134,6 @@ std::vector<PRM::Node3d> PRM::PathGenerator::getShortestPath(   std::unordered_m
             }
 
         }
-
-        
-
     }
     
     ROS_INFO("cnt_: %d", cnt_);   

@@ -59,7 +59,7 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string
         ROS_DEBUG("Destination Nddes ==>");
     
     }*/
-    for(const auto edge_: *node_->edges_)
+    for(const auto t: *node_->edges_)
     {   
         if(sz_ > 1)
         {
@@ -68,9 +68,9 @@ void PRM::Visualize::drawNodeNeighbours(const NodePtr_ &node_, const std::string
         }
         //node_->print();
         geometry_msgs::Pose p_; 
-        p_.position.x = edge_.node_->x_ ; 
-        p_.position.y = edge_.node_->y_ ; 
-        p_.orientation = Utils::getQuatFromYaw(edge_.node_->theta_) ; 
+        p_.position.x = t.second.node_->x_ ; 
+        p_.position.y = t.second.node_->y_ ; 
+        p_.orientation = Utils::getQuatFromYaw(t.second.node_->theta_) ; 
 
         init_pose_neighbours_.poses.push_back(p_);
     }

@@ -11,7 +11,7 @@
 #include <non-holonomic-prm-planner/utils.h>
 
 
-
+#include <unordered_map>
 
 namespace PRM
 {   
@@ -78,6 +78,41 @@ struct key_equal_fn {
     
     };
 
+
+    struct Edge
+    {
+        
+        explicit Edge(NodePtr_ node, const float dc, const float ac):  node_(node), \
+                                                                            dc_(dc),    \
+                                                                            ac_(ac),    \
+                                                                            tc_(ac_ + dc_)
+                                                                                            
+        {}
+
+        Edge() {};
+
+        /*void print() const
+        {
+
+            ROS_WARN("========================== EDGE =============================="); 
+
+            ROS_INFO("destination node ===> (%f,%f,%d,%f)", node_->x_, node_->y_, node_->theta_idx_, node_->theta_);
+            ROS_INFO("(dc_, ac_, tc_) ==> (%f,%f,%f)", dc_, ac_, tc_);
+            ROS_INFO("========================== EDGE =============================="); 
+
+        }*/
+        
+        float dc_;    //distance cost 
+        float ac_ ;   //angular cost
+        float tc_ ;   // total cost 
+
+                
+        NodePtr_ node_; //destination node
+
+        
+    };
+
+
     struct Node3d
     {
         
@@ -89,23 +124,25 @@ struct key_equal_fn {
 
         std::shared_ptr<Node3d> parent_;   
         
+       std::shared_ptr<std::unordered_map<Vec3f, Edge, hashing_func, key_equal_fn> > edges_;
 
-        std::shared_ptr<std::vector<Edge> > edges_;  //pointer to node edges
+      //  std::shared_ptr<std::vector<Edge> > edges_;  //pointer to node edges
 
         //Node3d():x_(-1.0), y_(1.f), theta_idx_(0), theta_(-1){};
     
-        Node3d(const float x, const float y, const int idx_):   x_(x), y_(y), \
-                                                                theta_idx_(idx_), \
-                                                                theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ ),
-                                                                edges_(std::make_shared<std::vector<Edge> >()),
-                                                                cost_(std::numeric_limits<float>::max()),
-                                                                parent_(nullptr)
+        Node3d(const float x, const float y, const int idx_):   
+                                        x_(x), y_(y), \
+                                        theta_idx_(idx_), \
+                                        theta_(1.f * theta_idx_ * Constants::Planner::theta_sep_ ),
+                                        cost_(std::numeric_limits<float>::max()),
+                                        parent_(nullptr),
+                                        edges_(std::make_shared<std::unordered_map<Vec3f, Edge, hashing_func, key_equal_fn> >())
         {
             
         }
 
         Node3d():   parent_(nullptr), \
-                    edges_(std::make_shared<std::vector<Edge> >()),
+                    edges_(std::make_shared<std::unordered_map<Vec3f, Edge, hashing_func, key_equal_fn> >()),
                      cost_(std::numeric_limits<float>::max())
         {
 
@@ -125,21 +162,30 @@ struct key_equal_fn {
             return x_ == other_.x_ && y_ == other_.y_ && theta_idx_ == other_.theta_idx_;
         }       
 
-        bool addEdge(const std::shared_ptr<Edge const> &e_)
+        
+        bool addEdge(const Vec3f &key_, std::shared_ptr<Edge> &e_)
         {      
-           // ROS_INFO("Inside addEdge function!");
-            edges_->push_back(*e_);
+            
+            if(edges_->count(key_) > 0)
+            {
+                ROS_ERROR("edge is already present ==> something is wrong!");
+            }
+            else
+            {
+                edges_->insert({key_, *e_});
+            }
+            
             return true; 
         }
 
-        void print() const
+        /*void print() const
         {
             ROS_WARN("========== NODE ============================");
             ROS_INFO("Node3d ==> (%f,%f,%d,%f)", x_, y_, theta_idx_, theta_ * 180.f / M_PI);
             ROS_INFO("Edges.size(): %d", edges_->size());
             ROS_INFO("=============================================");
                 
-        }
+        }*/
       
     };
 
@@ -149,39 +195,7 @@ struct key_equal_fn {
         }
     };
 
-    struct Edge
-    {
-        
-        explicit Edge(NodePtr_ node, const float dc, const float ac):  node_(node), \
-                                                                            dc_(dc),    \
-                                                                            ac_(ac),    \
-                                                                            tc_(ac_ + dc_)
-                                                                                            
-        {}
-
-        Edge() {};
-
-        void print() const
-        {
-
-            ROS_WARN("========================== EDGE =============================="); 
-
-            ROS_INFO("destination node ===> (%f,%f,%d,%f)", node_->x_, node_->y_, node_->theta_idx_, node_->theta_);
-            ROS_INFO("(dc_, ac_, tc_) ==> (%f,%f,%f)", dc_, ac_, tc_);
-            ROS_INFO("========================== EDGE =============================="); 
-
-        }
-        
-        float dc_;    //distance cost 
-        float ac_ ;   //angular cost
-        float tc_ ;   // total cost 
-
-                
-        NodePtr_ node_; //destination node
-
-        
-    };
-
+    
 
 };
 
