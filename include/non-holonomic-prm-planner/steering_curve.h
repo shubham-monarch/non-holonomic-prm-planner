@@ -35,6 +35,14 @@ namespace PRM
             static std::vector<geometry_msgs::PoseStamped> generateSteeringCurveTrimmed(const geometry_msgs::Pose &rp_, \
                                                                                         const geometry_msgs::Pose &cp_);
 
+            static bool connectConfigurationToRobot(    const Node3d &rp_, const Node3d &cp_, \
+                                                        const std::string or_topic_, const std::string oc_topic_, \
+                                                        const std::string sc_topic_);
+            
+            static bool connectConfigurationToRobot(   geometry_msgs::Pose or_ , geometry_msgs::Pose oc_, \
+                                                const std::string or_topic_, const std::string oc_topic_, \
+                                                const std::string sc_topic_); 
+
 
         private: 
 

@@ -1,5 +1,6 @@
 #include <non-holonomic-prm-planner/steering_curve.h>
 #include <non-holonomic-prm-planner/ds.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Core>
@@ -388,6 +389,119 @@ std::vector<geometry_msgs::PoseStamped> PRM::SteeringCurve::generateSteeringCurv
     return poses_;
 
 }
+
+bool PRM::SteeringCurve::connectConfigurationToRobot(   const Node3d &rp_, const Node3d &cp_, \
+                                                        const std::string or_topic_, const std::string oc_topic_, \
+                                                        const std::string sc_topic_) 
+{
+
+    geometry_msgs::Pose or_;
+    or_.position.x = rp_.x_;
+    or_.position.y = rp_.y_;
+    or_.orientation = Utils::getQuatFromYaw(1.f * rp_.theta_idx_ * Constants::Planner::theta_sep_); 
+
+    geometry_msgs::Pose oc_; 
+    oc_.position.x = cp_.x_; 
+    oc_.position.y = cp_.y_;
+    oc_.orientation = Utils::getQuatFromYaw(1.f * cp_.theta_idx_ * Constants::Planner::theta_sep_);
+
+    
+    //ROS_INFO("or_: (%f,%f,%f)" ,    or_.position.x, or_.position.y, tf::getYaw(or_.orientation));
+    //ROS_INFO("oc_: (%f,%f,%f)" ,    oc_.position.x, oc_.position.y, tf::getYaw(oc_.orientation));
+    
+    //ROS_INFO("or_topic_: %s", or_topic_.c_str());
+    //ROS_INFO("oc_topic_: %s", oc_topic_.c_str());
+    //ROS_INFO("sc_topic_: %s", sc_topic_.c_str());
+
+    connectConfigurationToRobot(or_, oc_, or_topic_, oc_topic_, sc_topic_);
+
+    return true;
+}
+
+
+bool PRM::SteeringCurve::connectConfigurationToRobot(   geometry_msgs::Pose or_ , geometry_msgs::Pose oc_, \
+                                                        const std::string or_topic_, const std::string oc_topic_, \
+                                                        const std::string sc_topic_) 
+{
+
+    
+    //ROS_INFO("connectConfigToRobot called ==> or_topic_: %s oc_topic: %s sc_topic: %s" , or_topic_.c_str(), oc_topic_.c_str(), sc_topic_.c_str());
+    /*or_.position.x = -937.f;
+    or_.position.y = -245.f;
+    or_.orientation = Utils::getQuatFromYaw(0.f);
+
+    oc_.position.x = -935.f;
+    oc_.position.y = -243.f; 
+    oc_.orientation = Utils::getQuatFromYaw(0.f);
+    */
+
+    Mat3f P_or_; //robot pose in origin frame
+    Mat3f P_oc_; // config pose in origin frame
+    //Mat3f P_rc_; //config pose in robot frame
+
+    Vec2f V_or_{or_.position.x, or_.position.y};
+    float theta_or_ = tf::getYaw(or_.orientation);
+
+    Vec2f V_oc_{oc_.position.x, oc_.position.y};
+    float theta_oc_ = tf::getYaw(oc_.orientation);
+
+
+
+    P_or_ = (Utils::getHomogeneousTransformationMatrix(V_or_, theta_or_));
+    P_oc_ = (Utils::getHomogeneousTransformationMatrix(V_oc_, theta_oc_));
+    
+    std::ostringstream oss_; 
+    
+    oss_ << P_or_; 
+    //ROS_INFO("P_or_: \n%s", oss_.str().c_str());
+
+    oss_.str("");
+    oss_ << P_oc_;
+   // ROS_INFO("P_oc_: \n%s", oss_.str().c_str());
+
+    const Mat3f &P_ro_ = P_or_.inverse();
+
+    oss_.str("");
+    oss_ << P_ro_;
+   // ROS_INFO("P_ro_: \n%s", oss_.str().c_str());
+
+
+    const Mat3f &P_rc_ = P_ro_ * P_oc_;
+
+    oss_.str("");
+    oss_ << P_rc_;
+    //ROS_INFO("P_rc_: \n%s", oss_.str().c_str());
+
+    
+    //config co-ordinates in robot frame
+    const float x_dash_ =  P_rc_(0,2); 
+    const float y_dash_ = P_rc_(1,2); 
+
+    const float R_ = Utils::getR(x_dash_, y_dash_); 
+
+    //ROS_WARN("(x_dash, y_dash) => (%f,%f)", x_dash_, y_dash_);
+
+//    return false;
+    //ROS_DEBUG("Checking R_ inside connectConfigurationToRobot R_: %f", R_);
+  //  ros::Duration(5.0).sleep();
+
+    //geometry_msgs::PoseArray sc_poses_ = generateSteeringCurve(or_, R_);
+    geometry_msgs::PoseArray sc_poses_ = SteeringCurve::generateSteeringCurve(or_,  R_);
+
+    visualize_->publishT<geometry_msgs::PoseArray>(sc_topic_, sc_poses_);
+
+    //ROS_INFO("oc_: (%f,%f)", oc_.position.x, oc_.position.y);
+
+    visualize_->drawPoint(or_, or_topic_);
+    visualize_->drawPoint(oc_, oc_topic_);
+    
+    //add yaw
+    //visualize_.drawPoint(x_, y_); //
+    
+    return true; 
+
+}
+
 
 
 
