@@ -4,7 +4,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <geometry_msgs/PolygonStamped.h>
 
-#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 
 
 namespace PRM

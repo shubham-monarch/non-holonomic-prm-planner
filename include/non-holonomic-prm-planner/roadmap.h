@@ -1,5 +1,5 @@
-#ifndef PRM_PLANNER_H
-#define PRM_PLANNER_H
+#ifndef ROADMAP_H
+#define ROADMAP_H
 
 
 #include <nav_msgs/OccupancyGrid.h>
@@ -14,20 +14,6 @@
 #include <unordered_set>
 #include <unordered_map>
 
-//extern PRM::Visualize visualize_;
-
-/**
- * Simple PRM implementation
-*/
-
-
-//SubRoutines ==> 
-//Sampling
-//Resampling
-//Local planner
-//CollisionDetection ***
-//Distance Metrics
-//k-Nearest neighbours
 
 extern std::shared_ptr<PRM::Visualize> visualize_ ;
 extern std::shared_ptr<PRM::RobotModel> robot_;
@@ -35,24 +21,22 @@ extern std::shared_ptr<PRM::RobotModel> robot_;
 namespace PRM{
     
     
-    typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;
-    
+    typedef std::shared_ptr<kdTree::KDTree> kdTreePtr;    
     typedef kdTree::point_t kdPoint;
     typedef kdTree::pointVec kdPoints;
 
-    class Visualize;
 
     //class CollisionDetectionPolygon;
 
     //represents a sampled point with no heading information in the GRID and not WORLD
     
 
-    class SimplePRM{
+    class Roadmap{
 
         public:
 
        
-            SimplePRM();
+            Roadmap();
 
             
             void setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_);

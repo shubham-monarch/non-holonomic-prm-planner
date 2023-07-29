@@ -4,7 +4,7 @@
 #include <random>
 
 #include <non-holonomic-prm-planner/sampler.h>
-#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 
 
 PRM::Sampler::Sampler() 

@@ -1,4 +1,4 @@
-#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 #include <non-holonomic-prm-planner/helpers.h>
 #include <non-holonomic-prm-planner/path_generator.h>
 
@@ -30,10 +30,10 @@ int PRM::Constants::MapMetaData::height_;
 int PRM::Constants::MapMetaData::width_; 
 
 
-int PRM::SimplePRM::edge_cnt_ = 0 ;
+int PRM::Roadmap::edge_cnt_ = 0 ;
 
 
-PRM::SimplePRM::SimplePRM()
+PRM::Roadmap::Roadmap()
 {   
 
     ROS_WARN("SimplePRM constructor called");
@@ -43,7 +43,7 @@ PRM::SimplePRM::SimplePRM()
 }
 
 
-void PRM::SimplePRM::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
+void PRM::Roadmap::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
 {
 
     ROS_ERROR("========= CLICKED PT CB ===============  ");
@@ -72,7 +72,7 @@ Inside
 }
 
 
-void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
+void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
 {
 
     ROS_WARN("========== START POSE RECEIVED =============="); 
@@ -164,7 +164,7 @@ void PRM::SimplePRM::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConst
     
 }
 
-void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
+void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 {
     ROS_WARN("========== GOAL POSE RECEIVED =============="); 
     
@@ -252,11 +252,11 @@ void PRM::SimplePRM::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 
 }   
 
-void PRM::SimplePRM::initialize()
+void PRM::Roadmap::initialize()
 {
 
     ros::Rate r_(10.0);
-    map_sub_ = nh_.subscribe(Constants::map_topic, 1, &SimplePRM::setMapCb, this);
+    map_sub_ = nh_.subscribe(Constants::map_topic, 1, &Roadmap::setMapCb, this);
 
     
     while(ros::ok() && !map_set_){
@@ -274,9 +274,9 @@ void PRM::SimplePRM::initialize()
     // ===============================================================================
     
 
-    start_pose_sub_ = nh_.subscribe("/initialpose", 1, &SimplePRM::initialPoseCb, this);
-    goal_pose_sub_ = nh_.subscribe("/goal", 1, &SimplePRM::goalPoseCb, this);
-    clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &SimplePRM::clickedPointCb, this);
+    start_pose_sub_ = nh_.subscribe("/initialpose", 1, &Roadmap::initialPoseCb, this);
+    goal_pose_sub_ = nh_.subscribe("/goal", 1, &Roadmap::goalPoseCb, this);
+    clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &Roadmap::clickedPointCb, this);
     
 
 
@@ -285,7 +285,7 @@ void PRM::SimplePRM::initialize()
 
 }
 
-PRM::NodePtr_ PRM::SimplePRM::getNodePtr(const Node3d &node_)
+PRM::NodePtr_ PRM::Roadmap::getNodePtr(const Node3d &node_)
 {   
     NodePtr_ ptr_; 
 
@@ -302,7 +302,7 @@ PRM::NodePtr_ PRM::SimplePRM::getNodePtr(const Node3d &node_)
 
 }
 
-bool PRM::SimplePRM::connectStartPoseToRoadmap(NodePtr_ &node_)
+bool PRM::Roadmap::connectStartPoseToRoadmap(NodePtr_ &node_)
 {   
     
     ROS_INFO("ConnectToRoadmap function!");
@@ -358,7 +358,7 @@ bool PRM::SimplePRM::connectStartPoseToRoadmap(NodePtr_ &node_)
     return flag_; 
 }
 
-bool PRM::SimplePRM::connectGoalPoseToRoadmap(NodePtr_ &node_)
+bool PRM::Roadmap::connectGoalPoseToRoadmap(NodePtr_ &node_)
 {   
     
     ROS_INFO("ConnectToRoadmap function!");
@@ -414,7 +414,7 @@ bool PRM::SimplePRM::connectGoalPoseToRoadmap(NodePtr_ &node_)
 }
 
 
-nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
+nav_msgs::Path PRM::Roadmap::generateROSPath(const std::vector<Node3d>&path_)
 {
 
     ROS_INFO("Inside generateROSPath function!");
@@ -475,7 +475,7 @@ nav_msgs::Path PRM::SimplePRM::generateROSPath(const std::vector<Node3d>&path_)
     return ros_path_;
 }
 
-bool PRM::SimplePRM::buildKDtree()
+bool PRM::Roadmap::buildKDtree()
 {
 
     //kdTree_ = std::make_shared<kdTree::KDTree>(kd_pts_);
@@ -538,7 +538,7 @@ bool PRM::SimplePRM::buildKDtree()
 
 
 
-bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_) 
+bool PRM::Roadmap::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_) 
 {
     
 
@@ -683,7 +683,7 @@ bool PRM::SimplePRM::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
 }
 
 
-bool PRM::SimplePRM::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
+bool PRM::Roadmap::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
 {   
 
     //ROS_INFO("Inside connectNodes function!");
@@ -699,7 +699,7 @@ bool PRM::SimplePRM::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
     
     if(can_connect_)
     {   
-        int cnt_ = SimplePRM::edge_cnt_++;
+        int cnt_ = Roadmap::edge_cnt_++;
         //connectConfigurationToRobot(*a_ptr_, *b_ptr_, "or_" + std::to_string(cnt_), "oc_" + std::to_string(cnt_), "sc_" + std::to_string(cnt_));
         
         if(G_.find(b_key_) == G_.end())
@@ -714,7 +714,7 @@ bool PRM::SimplePRM::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
     return false; 
 }
 
-int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
+int PRM::Roadmap::generateEdges(const Node2d &a2_, const Node2d &b2_)
 {
 
     int precision = 10;
@@ -804,7 +804,7 @@ int PRM::SimplePRM::generateEdges(const Node2d &a2_, const Node2d &b2_)
 }
 
 
-void PRM::SimplePRM::buildGraph()
+void PRM::Roadmap::buildGraph()
 {   
     
     ROS_INFO("Building Roadmap ===> wait for some time!");
@@ -850,7 +850,7 @@ void PRM::SimplePRM::buildGraph()
 
 }
 
-bool PRM::SimplePRM::generateRoadMap()
+bool PRM::Roadmap::generateRoadMap()
 {
 
     sampledPoints2D_= sampler_->generate2DSamplePoints();
@@ -864,7 +864,7 @@ bool PRM::SimplePRM::generateRoadMap()
 
 }
 
-void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
+void PRM::Roadmap::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
 {
 
     Constants::MapMetaData::origin_x_ = map_->info.origin.position.x;
@@ -894,7 +894,7 @@ void PRM::SimplePRM::setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_)
     
 }
 
-bool PRM::SimplePRM::connectConfigurationToRobot(   const Node3d &rp_, const Node3d &cp_, \
+bool PRM::Roadmap::connectConfigurationToRobot(   const Node3d &rp_, const Node3d &cp_, \
                                                     const std::string or_topic_, const std::string oc_topic_, \
                                                     const std::string sc_topic_) 
 {
@@ -923,7 +923,7 @@ bool PRM::SimplePRM::connectConfigurationToRobot(   const Node3d &rp_, const Nod
 }
 
 
-bool PRM::SimplePRM::connectConfigurationToRobot(   geometry_msgs::Pose or_ , geometry_msgs::Pose oc_, \
+bool PRM::Roadmap::connectConfigurationToRobot(   geometry_msgs::Pose or_ , geometry_msgs::Pose oc_, \
                                                     const std::string or_topic_, const std::string oc_topic_, \
                                                     const std::string sc_topic_) 
 {

@@ -1,4 +1,4 @@
-#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 #include <non-holonomic-prm-planner/path_generator.h>
 #include <non-holonomic-prm-planner/helpers.h>
 

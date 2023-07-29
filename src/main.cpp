@@ -1,4 +1,4 @@
-#include <non-holonomic-prm-planner/simple_prm.h>
+#include <non-holonomic-prm-planner/roadmap.h>
 
 #include <ros/console.h>
 
@@ -22,11 +22,11 @@ int main(int argc, char** argv) {
 
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
 
-    std::shared_ptr<PRM::SimplePRM> simple_prm_ = std::make_shared<PRM::SimplePRM>();
+    std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
     
 
-    simple_prm_->initialize();
-    simple_prm_->generateRoadMap();
+    roadmap_->initialize();
+    roadmap_->generateRoadMap();
     ros::spin();
 
     return 0;
