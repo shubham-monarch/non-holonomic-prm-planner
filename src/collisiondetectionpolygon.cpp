@@ -5,6 +5,7 @@
 #include <geometry_msgs/PolygonStamped.h>
 
 #include <non-holonomic-prm-planner/roadmap.h>
+#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
 
 
 namespace PRM
@@ -20,7 +21,7 @@ namespace PRM
 
 	geometry_msgs::Polygon polygonToPolygonMsg(const Polygon_t& polygon) {
 		geometry_msgs::Polygon polygonMsg;
-#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
+
 
 		for (const auto& point : polygon.outer()) {
 			geometry_msgs::Point32 pointMsg;
@@ -125,7 +126,7 @@ namespace PRM
 		ROS_INFO("AFTER ==> obstacle_indices[obstacle].size(): %d", obstacle_indices[name_]->size());
 
 
-
+		publishAllPolygons(false);
 
 	}
 
