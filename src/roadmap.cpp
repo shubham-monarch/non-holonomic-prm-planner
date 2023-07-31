@@ -605,6 +605,12 @@ bool PRM::Roadmap::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
     const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
     const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
     
+
+    if(x_dash_ < 0 && !Constants::Planner::can_reverse_)
+    {
+        return false;
+    }
+
     float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
     
     if(theta_dash_ < 0)
