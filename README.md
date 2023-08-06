@@ -40,15 +40,15 @@ Run ```Rviz``` and pass the config file in the ```Rviz``` folder
 
 ## Headers Overview
 
- * collisiondetectionpolygon.h => manages collision detection between convex polygons  
- * pathgenerator.h => responsible for generating a collision free path between the start and the goal points, given a roadmap
- * sampler.h => implementation of intial sampling strategies
- * roadmap.h => responsible for the roadmap generation 
- * kdtree.h => responsible for kdtree generation from the initial sampled points
- * robotmodel.h => basic robot model representation
- * steeringcurve.h => non-holonomic constraints modelling used to generate the roadmap 
- * utils.h => helper functions
- * visualization.h => constains visualization helpers to see the generated roadmap, steering curves and the final plan
+ * [collisiondetectionpolygon.h](include/non-holonomic-prm-planner/collisiondetectionpolygon.h) => manages collision detection between convex polygons  
+ * [pathgenerator.h](include/non-holonomic-prm-planner/path_generator.h) => responsible for generating a collision free path between the start and the goal points, given a roadmap
+ * [sampler.h](include/non-holonomic-prm-planner/sampler.h) => implementation of intial sampling strategies
+ * [roadmap.h](include/non-holonomic-prm-planner/roadmap.h) => responsible for the roadmap generation 
+ * [kdtree.h](include/non-holonomic-prm-planner/KDTree.hpp) => responsible for kdtree generation from the initial sampled points
+ * [robotmodel.h](include/non-holonomic-prm-planner/robot_model.h) => basic robot model representation
+ * [steeringcurve.h](include/non-holonomic-prm-planner/steering_curve.h) => non-holonomic constraints modelling used to generate the roadmap 
+ * [utils.h](include/non-holonomic-prm-planner/utils.h) => helper functions
+ * [visualization.h](include/non-holonomic-prm-planner/visualizations.h) => constains visualization helpers to see the generated roadmap, steering curves and the final plan
 ## Screenshots
 
 
