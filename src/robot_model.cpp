@@ -7,11 +7,10 @@ PRM::RobotModel::RobotModel(    const float front_len, const float hitch_len, \
                                 const float left_width, const float right_width):  len_to_front(front_len),\
                                                                                 len_to_hitch(hitch_len), \
                                                                                 width_left(left_width), \
-                                                                                width_right(right_width), \
-                                                                                cdp_(std::make_shared<CollisionDetectionPolygon>())
+                                                                                width_right(right_width)
 {   
     ROS_INFO("Inside RobotModel constructor!");
-
+    cdp_ = std::make_shared<CollisionDetectionPolygon>();
 }
 
 std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, float heading) const {
@@ -44,7 +43,7 @@ std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, 
 
 bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb_) const
 {
-
+    return true;
     return cdp_->isConfigurationFree(obb_);
 
 } 

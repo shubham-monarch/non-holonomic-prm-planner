@@ -734,7 +734,11 @@ int PRM::Roadmap::generateEdges(const Node2d &a2_, const Node2d &b2_)
         const float heading_ =  a_i_ * Constants::Planner::theta_sep_;
         const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
 
+        //ROS_DEBUG("Before is_free_");
+        
         bool is_free_ = robot_->isConfigurationFree(obb_);
+
+          //  ROS_DEBUG("After is_free!");
 
         if(!is_free_)
         {
@@ -816,6 +820,7 @@ void PRM::Roadmap::buildGraph()
     ROS_INFO("Building Roadmap ===> wait for some time!");
 
     int cnt_ =0 ;
+
     //std::cout << "sampledPOints2d.size(): " << (int)sampledPoints2D_.size() << std::endl;
     for(const auto &node_ : sampledPoints2D_)
     {   
@@ -845,7 +850,7 @@ void PRM::Roadmap::buildGraph()
             {
                 continue;
             }
-        
+
             int cnt_ = generateEdges(a_, b_);
             //ROS_DEBUG("%d edges added", cnt_);
         }
@@ -861,6 +866,9 @@ bool PRM::Roadmap::generateRoadMap()
 
     sampledPoints2D_= sampler_->generate2DSamplePoints();
     
+
+    ROS_INFO("sampledpoints: %d", sampledPoints2D_.size());
+
     buildKDtree();
     buildGraph();
 

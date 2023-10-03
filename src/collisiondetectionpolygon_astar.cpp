@@ -33,11 +33,14 @@ namespace PRM{
     }
 
     CollisionDetectionPolygon::CollisionDetectionPolygon() {
+        
+        ROS_ERROR("CDP constructor called!");
         initialize();
     }
 
     void CollisionDetectionPolygon::initialize()
-    {
+    {   
+        ROS_INFO("cdp initialization called!");
         ros::NodeHandle nh;
         ros::service::waitForService(polygon_service, -1);
         m_obstacles.clear();
@@ -67,7 +70,7 @@ namespace PRM{
         {
             valid_geofence = false;
         }
-
+        ROS_WARN("valid_geofence: %d", valid_geofence);
         if (valid_geofence)
         {
             packIndex(white_polygons, geofence_index);
@@ -83,7 +86,7 @@ namespace PRM{
             }
         }
 
-        ROS_INFO("white_polygons: %d", white_polygons.size());
+        ROS_WARN("white_polygons: %d", white_polygons.size());
         
         for (auto geofence : white_polygons)
         {
@@ -96,6 +99,8 @@ namespace PRM{
         ros::service::call(polygon_service, poly_srv);
         std::vector<PolyClr> blue_obstacles;
         packObstacleVector(poly_srv.response, blue_obstacles, Color::blue);
+
+        ROS_WARN("blue_obstacles.size(): %d", blue_obstacles.size());
         //cleanRedundantPolygons(blue_obstacles);
         for (auto poly : blue_obstacles)
         {
@@ -108,6 +113,10 @@ namespace PRM{
         packObstacleVector(poly_srv.response,green_obstacles, Color::green);
         cleanRedundantPolygons(green_obstacles);
         
+        ROS_WARN("green_obstacles.size(): %d", green_obstacles.size());
+        
+
+
         //std::vector<PolyClr> obstacles = blue_obstacles;
         for (auto obstacle : green_obstacles)
         {
@@ -123,7 +132,7 @@ namespace PRM{
                 PolyClr const& geofence = std::get<1>(potential_intersect);
                 if (bg::intersects(*(obstacle.polygon.get()),*(geofence.polygon.get())))
                 {
-                    RTree_Ptr current_index = obstacle_indices[geofence.name];
+                    RTree_Ptr current_index= obstacle_indices[geofence.name];
                     insert(obstacle, current_index);
                 }
             }
@@ -155,17 +164,26 @@ namespace PRM{
     }
 
     bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb) const {
+        
         Polygon_t polygon;
         std::vector<Value> result;
         std::vector<Point_t> pts;
         for (size_t i=0; i<obb.size(); i+=2) {
             pts.emplace_back(obb[i],obb[i+1]);
         }
+
         polygon.outer().assign(pts.begin(),pts.end());
+        
+        
+        //ROS_WARN("current_geofence == nullptr: %d", current_geofence == nullptr);
+
         if (!bg::within(polygon,*(current_geofence.get()))) {
             return false;
         }
+
+        //std::cout << "1" << std::endl;
         current_index->query(bgi::intersects(polygon), std::back_inserter(result));
+        //std::cout << "2" << std::endl;
         if (!result.empty()) {
             for (auto potential_collision : result) {
                 if (bg::intersects(polygon,*std::get<1>(potential_collision).polygon)) {
@@ -173,6 +191,8 @@ namespace PRM{
                 }
             }
         }
+        //std::cout << "3" << std::endl;
+
         return true;
     }
 
