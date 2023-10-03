@@ -4,7 +4,7 @@
 #include <vector>
 #include <array>
 
-#include <non-holonomic-prm-planner/collisiondetectionpolygon.h>
+#include <non-holonomic-prm-planner/collisiondetectionpolygon_astar.h>
 
 namespace PRM
 {

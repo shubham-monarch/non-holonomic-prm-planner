@@ -50,7 +50,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/visualizations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KDTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/steering_curve.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/collisiondetectionpolygon_astar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/path_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sampler.cpp
@@ -66,10 +66,12 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/ds.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/helpers.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/steering_curve.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/collisiondetectionpolygon_astar.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/robot_model.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/path_generator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/sampler.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/vector2d.h
+    
     
     )
 
