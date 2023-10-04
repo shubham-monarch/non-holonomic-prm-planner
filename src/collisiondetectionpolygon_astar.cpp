@@ -34,13 +34,11 @@ namespace PRM{
 
     CollisionDetectionPolygon::CollisionDetectionPolygon() {
         
-        ROS_ERROR("CDP constructor called!");
         initialize();
     }
 
     void CollisionDetectionPolygon::initialize()
     {   
-        ROS_INFO("cdp initialization called!");
         ros::NodeHandle nh;
         ros::service::waitForService(polygon_service, -1);
         m_obstacles.clear();
@@ -174,9 +172,6 @@ namespace PRM{
 
         polygon.outer().assign(pts.begin(),pts.end());
         
-        
-        //ROS_WARN("current_geofence == nullptr: %d", current_geofence == nullptr);
-
         if (!bg::within(polygon,*(current_geofence.get()))) {
             return false;
         }

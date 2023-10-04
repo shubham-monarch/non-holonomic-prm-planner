@@ -10,7 +10,8 @@ PRM::RobotModel::RobotModel(    const float front_len, const float hitch_len, \
                                                                                 width_right(right_width)
 {   
     ROS_INFO("Inside RobotModel constructor!");
-    cdp_ = std::make_shared<CollisionDetectionPolygon>();
+    //cdp_ = std::make_shared<CollisionDetectionPolygon>();
+
 }
 
 std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, float heading) const {
@@ -41,12 +42,21 @@ std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, 
     return obb;
 }
 
-bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb_) const
+/*bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb_) const
 {
     return true;
-    return cdp_->isConfigurationFree(obb_);
+    //return cdp_->isConfigurationFree(obb_);
 
-} 
+}*/ 
 
 
 
+bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb) const {
+    
+    if (!collision_p.isConfigurationFree(obb)) {
+        
+        return false;
+    }
+    
+    return true;
+}

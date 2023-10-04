@@ -20,14 +20,19 @@ int main(int argc, char** argv) {
         
 
 
+    robot_->updateCollisionDetection();
+
+
+
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
 
-    std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
+    //std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
     
-    //PRM::Roadmap roadmap_; 
+    PRM::Roadmap roadmap_; 
 
-    roadmap_->initialize();
-    roadmap_->generateRoadMap();
+    roadmap_.initialize();
+    //roadmap_->initialize();
+    //roadmap_->generateRoadMap();
     ros::spin();
 
     return 0;

@@ -25,12 +25,20 @@ namespace PRM
 
             bool isConfigurationFree(const std::vector<float> &obb_) const; 
 
+            void updateCollisionDetection(void)
+            {
+                collision_p.initialize();
+            }
+
+
         private:
 
             float len_to_front, len_to_hitch;
             float width_left, width_right; 
 
-            std::shared_ptr<CollisionDetectionPolygon> cdp_;
+            //std::shared_ptr<CollisionDetectionPolygon> cdp_;
+
+            CollisionDetectionPolygon collision_p;
 
             //Visualize visualize_;
 

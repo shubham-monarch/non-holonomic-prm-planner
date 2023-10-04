@@ -123,9 +123,18 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
 
     ROS_WARN("========== START POSE RECEIVED =============="); 
 
-    int cnt_ =0 ; 
+    //testing
+    const std::array<float, 2> translation_{pose_->pose.pose.position.x , pose_->pose.pose.position.y};
+    const float heading_ =  tf::getYaw(pose_->pose.pose.orientation);
+    const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
+
+    bool flag_ = robot_->isConfigurationFree(obb_);
+
+    ROS_DEBUG("flag_: %d", flag_);
+
+    /*int cnt_ =0 ; 
     
-   ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
+    ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
 
     geometry_msgs::PoseStamped p_;
     p_.pose = pose_->pose.pose;
@@ -146,14 +155,7 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
    
    // sp_ = {-838.735840,-141.841537,55};
     
-    /*geometry_msgs::PoseStamped p_;
-    p_.pose.position.x = sp_.x_; 
-    p_.pose.position.y = sp_.y_;
-    p_.pose.orientation = Utils::getQuatFromYaw(sp_.theta_);
-    p_.header.frame_id = "map"; 
-    p_.header.stamp = ros::Time::now();
-    */
-
+    
     ROS_DEBUG("====== INITIAL POSE =================="); 
     //sp_.print();
     
@@ -161,13 +163,6 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
 
     SteeringCurve::generateSteeringCurveFamily(sp_, "initial_pose_family");
 
-    //ROS_INFO("Steering Curve family generated!");
-
-    //sp_.cost_ = 0; 
-    //sp_.parent_ = nullptr;
-
-    //ROS_WARN("Printing start pose ==> "); 
-    //sp_.print();
     
     const Vec3f &key_ = Utils::getNode3dkey(sp_);
     
@@ -207,6 +202,8 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
     //djikstra(ptr_);
 
     return; 
+    
+    */
     
 }
 
