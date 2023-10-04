@@ -41,7 +41,8 @@ PRM::Roadmap::Roadmap()
 
     //visualize_ = std::make_shared<Visualize>();
 
-    test_pub_ = nh_.advertise<std_msgs::String>("test", 1, true);
+    //test_pub_ = nh_.advertise<std_msgs::String>("test", 1, true);
+    prm_service_ = nh_.advertiseService("prm_service", &Roadmap::getPathService, this);
 }
 
 
@@ -50,28 +51,71 @@ void PRM::Roadmap::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
 
     ROS_ERROR("========= CLICKED PT CB ===============  ");
 
-    /*for(auto t: G_)
-    {
-Inside 
-        const NodePtr_ node_ = t.second; 
-
-        ROS_DEBUG("SOURCE NODE ==>");
-        //node_->print();
-
-        ROS_DEBUG("DESTINATION NODE ==>");
-        for(auto t : *node_->edges_)
-        {
-            
-            const NodePtr_ dst_ = t.node_;
-            //dst_->print();
-        }
-
-    }*/
-
     ROS_INFO("[%f,%f]", pose_->point.x, pose_->point.y);
 
 
 }
+
+PRM::NodePtr_ PRM::Roadmap::getNodePtrFromPose(const geometry_msgs::Pose &pose_)
+{
+    float x_ = pose_.position.x; 
+    float y_ = pose_.position.y; 
+    
+    float theta_ = tf::getYaw(pose_.orientation); 
+    if(theta_ < 0) theta_ += 2 * M_PI;
+
+
+    Node3d node_{x_, y_, theta_/ Constants::Planner::theta_sep_};
+
+    const Vec3f &key_ = Utils::getNode3dkey(node_);
+
+    NodePtr_ ptr_ = ( (G_.find(key_) != G_.end()) ? G_[key_] : std::make_shared<Node3d>(node_) ) ;
+
+    return ptr_; 
+    
+}
+
+
+bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
+{
+    NodePtr_ start_ptr_ = getNodePtrFromPose(req.start.pose.pose);
+
+    NodePtr_ end_ptr_ = getNodePtrFromPose(req.end.pose);
+    
+    bool flag_ = connectStartPoseToRoadmap(start_ptr_);
+
+    if(!flag_)
+    {
+        res.status.data = false; 
+        res.path = nav_msgs::Path(); 
+        return false; 
+    }
+
+    flag_ = connectGoalPoseToRoadmap(end_ptr_);
+
+    if(!flag_)
+    {
+        res.status.data = false; 
+        res.path = nav_msgs::Path(); 
+        return false; 
+    }
+
+    nav_msgs::Path final_path_; 
+    flag_  = PathGenerator::getCollisionFreePath(G_, start_ptr_, end_ptr_, final_path_);
+        
+    if(!flag_)
+    {
+        res.status.data = false; 
+        res.path = nav_msgs::Path(); 
+        return false; 
+    }
+
+    res.status.data = true;
+    res.path = final_path_;
+    return true;
+
+}
+
 
 
 void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -238,7 +282,9 @@ void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         //ROS_INFO("path_.size(): %d", path_.size());
         //generateROSPath(path_);
         
-        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_);
+        nav_msgs::Path final_path_; 
+
+        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, final_path_);
         //bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
         
         ROS_WARN("============================================="); 

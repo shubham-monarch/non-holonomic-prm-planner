@@ -25,7 +25,8 @@ namespace PRM
 
             static bool  getCollisionFreePath(  
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    NodePtr_ &start_, NodePtr_ &goal_);
+                                    NodePtr_ &start_, NodePtr_ &goal_, 
+                                    nav_msgs::Path &path_);
 
             static bool checkPathForCollisions(
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \

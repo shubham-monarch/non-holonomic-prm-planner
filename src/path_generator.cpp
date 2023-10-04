@@ -160,7 +160,8 @@ bool PRM::PathGenerator::checkPathForCollisions(
 
 bool PRM::PathGenerator::getCollisionFreePath(  
                                     std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> &G_, \
-                                    NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_)
+                                    NodePtr_ &start_ptr_, NodePtr_ &goal_ptr_, 
+                                    nav_msgs::Path &final_path_)
 {
 
     //bool found_ = false; 
@@ -202,6 +203,7 @@ bool PRM::PathGenerator::getCollisionFreePath(
             ROS_INFO("=================================================") ;
             ROS_INFO("==============NO COLLISION DETECTED : %d============", found_) ;
             ROS_INFO("=================================================") ;
+            final_path_ = ros_path_; 
             return true; 
         }
 

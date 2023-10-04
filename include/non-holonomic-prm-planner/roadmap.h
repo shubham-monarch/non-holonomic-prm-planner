@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <prm_planner/PRMService.h>
 
 extern std::shared_ptr<PRM::Visualize> visualize_ ;
 extern std::shared_ptr<PRM::RobotModel> robot_;
@@ -70,7 +71,7 @@ namespace PRM{
                                                 const std::string sc_topic_ = "sc_") ;
             
 
-
+            bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
         
            
             bool getObstacleFreePath(NodePtr_ &start_, NodePtr_ &goal_);
@@ -87,7 +88,9 @@ namespace PRM{
             void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
             void goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_);
             void clickedPointCb(geometry_msgs::PointStampedConstPtr pose_);
-            
+
+            NodePtr_ getNodePtrFromPose(const geometry_msgs::Pose &pose_);
+
 
             //==== variables =====
             
@@ -109,6 +112,7 @@ namespace PRM{
             ros::Subscriber map_sub_;
 
             ros::Subscriber start_pose_sub_, goal_pose_sub_, clicked_pt_sub_;
+            ros::ServiceServer prm_service_;
             
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
             
