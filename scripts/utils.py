@@ -12,17 +12,27 @@ def pose_from_point(point):
     pose = Pose()
     pose.position.x = point.x
     pose.position.y = point.y   
+    
     return pose
 
+def getPoseArrayFromPoses(poses: list):
+    
+    sampled_points_arr = PoseArray()
+    sampled_points_arr.header.frame_id = "map"
+    sampled_points_arr.header.stamp = rospy.Time.now()
+    sampled_points_arr.poses = [pose_from_point(point) for point in poses]
+    return sampled_points_arr
 
-'''
+
 def sample_points(num_points: int, polygon_ros: PolygonStamped):
     
     print("sample_points called!")
     
+
+    print("Printing ros polygon vertices: \n")
+
     for point in polygon_ros.polygon.points:
-        print("point: ").format(point)  
-    
+        print("({},{})".format(point.x, point.y))
 
     sampled_points = []
    
@@ -33,8 +43,6 @@ def sample_points(num_points: int, polygon_ros: PolygonStamped):
         cnt += 1
         polygon_vertices.append((point.x, point.y))
         print ("cnt: ", cnt)
-
-    print("polygon_vertices: ").format(polygon_vertices)
 
     polygon = Polygon(polygon_vertices)
 
@@ -48,24 +56,25 @@ def sample_points(num_points: int, polygon_ros: PolygonStamped):
             sampled_points.append(point)
     
     return sampled_points
-'''
 
 class RvizPolygon:
 
-    def __init__(self, num_vertices_=4):
+    def __init__(self, num_vertices_=3):
 
         
         self.clicked_point_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_point_cb)
-        #self.polygon_sub = rospy.Subscriber("/rviz_polygon", PolygonStamped, self.rviz_polygon_cb)
         
         self.rviz_polygon_pub = rospy.Publisher("/rviz_polygon", PolygonStamped, queue_size=1)
         self.rviz_vertices_pub  = rospy.Publisher("/rviz_polygon_vertices", PoseArray, queue_size=1)
+        self.rviz_sampled_points_pub = rospy.Publisher("/rviz_sampled_points", PoseArray, queue_size=1, latch= True)
         #self.sampled_points_pub = rospy.Publisher("/rviz_sampled_points", PoseArray, queue_size=1)
         
         self.num_vertices = num_vertices_
         self.counter = 0 
         self.polygon_msg = PolygonStamped()
         self.polygon_vertices = PoseArray()
+
+        self.sampled_points = []
 
     '''
     def rviz_polygon_cb(self, msg):
@@ -108,10 +117,19 @@ class RvizPolygon:
         
         if self.counter == self.num_vertices:
             self.polygon_msg.header.frame_id = "map"
+            
+            #publish polygon 
             self.rviz_polygon_pub.publish(self.polygon_msg)
+            
+            #reset counter
             self.counter = 0
             #self.polygon_msg.polygon.points = []
-
+            
+            #publish sampled points
+            self.sampled_points = sample_points(100, self.polygon_msg)
+            sampled_points_arr = getPoseArrayFromPoses(self.sampled_points) 
+            self.rviz_sampled_points_pub.publish(sampled_points_arr)
+            
 
 
 
