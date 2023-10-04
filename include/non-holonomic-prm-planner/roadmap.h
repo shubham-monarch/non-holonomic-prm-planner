@@ -37,7 +37,7 @@ namespace PRM{
         public:
 
        
-            Roadmap();
+            Roadmap(const std::string topic_);
 
             
             void setMapCb(nav_msgs::OccupancyGrid::ConstPtr map_);
@@ -132,6 +132,7 @@ namespace PRM{
             std::vector<Node2d> sampledPoints2D_;
 
             ros::Publisher test_pub_; 
+            const std::string sampling_topic_;
            
         
     };

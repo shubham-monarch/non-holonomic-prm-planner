@@ -53,10 +53,12 @@ std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, 
 
 bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb) const {
     
-    if (!collision_p.isConfigurationFree(obb)) {
+    /*if (!collision_p.isConfigurationFree(obb)) {
         
         return false;
-    }
+    }*/
+
+    
     
     return true;
 }

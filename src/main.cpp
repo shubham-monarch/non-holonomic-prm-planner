@@ -6,6 +6,7 @@
 std::shared_ptr<PRM::Visualize> visualize_;
 std::shared_ptr<PRM::RobotModel> robot_;
 
+
 int main(int argc, char** argv) {
 
 
@@ -20,6 +21,7 @@ int main(int argc, char** argv) {
         
 
 
+
     robot_->updateCollisionDetection();
 
 
@@ -27,10 +29,12 @@ int main(int argc, char** argv) {
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
 
     //std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
-    
-    PRM::Roadmap roadmap_; 
+    const std::string sampling_topic_ = "/rviz_sampled_points";
 
+    PRM::Roadmap roadmap_(sampling_topic_);
     roadmap_.initialize();
+
+    roadmap_.generateRoadMap();
     //roadmap_->initialize();
     //roadmap_->generateRoadMap();
     ros::spin();

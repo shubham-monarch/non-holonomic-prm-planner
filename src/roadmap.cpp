@@ -33,7 +33,7 @@ int PRM::Constants::MapMetaData::width_;
 int PRM::Roadmap::edge_cnt_ = 0 ;
 
 
-PRM::Roadmap::Roadmap()
+PRM::Roadmap::Roadmap(const std::string topic_) : sampling_topic_(topic_)
 {   
 
     //ROS_WARN("Roadmap constructor called");
@@ -323,9 +323,9 @@ void PRM::Roadmap::initialize()
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &Roadmap::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &Roadmap::clickedPointCb, this);
     
+    std::cout << "calling sampler" << std::endl;
 
-
-    sampler_ = std::make_shared<Sampler>();
+    sampler_ = std::make_shared<Sampler>(sampling_topic_);
     //sampledPoints2D_ = sampler_->generate2DSamplePoints();
 
 }
@@ -896,7 +896,9 @@ void PRM::Roadmap::buildGraph()
                 continue;
             }
 
+           // std::cout << "before generateEdges" << std::endl;
             int cnt_ = generateEdges(a_, b_);
+            //std::cout << "After generateEdges" << std::endl;
             //ROS_DEBUG("%d edges added", cnt_);
         }
     }   
@@ -908,6 +910,13 @@ void PRM::Roadmap::buildGraph()
 
 bool PRM::Roadmap::generateRoadMap()
 {
+    ROS_DEBUG("Inside generateRoadmap function!");
+    while(ros::ok() && !sampler_->is_ready)
+    {
+        ROS_DEBUG("Waiting for sampler to be ready!");
+        ros::spinOnce();
+        ros::Duration(1.0).sleep();
+    }
 
     sampledPoints2D_= sampler_->generate2DSamplePoints();
     
