@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(non-holonomic-prm-planner)
+project(prm_planner)
 
 
 ## C++11
@@ -35,6 +35,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 
+add_service_files(
+    FILES
+    PRMService.srv
+)
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
@@ -43,6 +47,7 @@ generate_messages(
     geometry_msgs
     nav_msgs
 )
+
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp

@@ -24,9 +24,10 @@ int main(int argc, char** argv) {
 
     std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
     
+    //PRM::Roadmap roadmap_; 
 
-    roadmap_->initialize();
-    roadmap_->generateRoadMap();
+    //roadmap_->initialize();
+    //roadmap_->generateRoadMap();
     ros::spin();
 
     return 0;

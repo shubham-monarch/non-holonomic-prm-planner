@@ -18,7 +18,7 @@
 #include <queue>
 
 
-
+#include <std_msgs/String.h>
 
 
 //forward declaration
@@ -36,10 +36,12 @@ int PRM::Roadmap::edge_cnt_ = 0 ;
 PRM::Roadmap::Roadmap()
 {   
 
-    ROS_WARN("SimplePRM constructor called");
+    //ROS_WARN("Roadmap constructor called");
     //cdp_.initialize();
 
     //visualize_ = std::make_shared<Visualize>();
+
+    test_pub_ = nh_.advertise<std_msgs::String>("test", 1, true);
 }
 
 

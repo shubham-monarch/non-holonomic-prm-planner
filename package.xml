@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>non-holonomic-prm-planner</name>
+  <name>prm_planner</name>
   <version>0.0.2</version>
   <description>Non Holonomic PRM planner</description>
   <maintainer email="skumar@monarchtractor.co">Shubham Kumar</maintainer>

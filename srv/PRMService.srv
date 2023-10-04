@@ -1,0 +1,8 @@
+geometry_msgs/PoseWithCovarianceStamped        start
+geometry_msgs/PoseStamped                      end
+geometry_msgs/Pose[]                           start_runway
+geometry_msgs/Pose[]                           goal_runway
+
+---              
+nav_msgs/Path                                  path
+std_msgs/Bool                                  status

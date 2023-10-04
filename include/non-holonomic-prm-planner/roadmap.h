@@ -126,6 +126,8 @@ namespace PRM{
 
             std::shared_ptr<Sampler> sampler_;  
             std::vector<Node2d> sampledPoints2D_;
+
+            ros::Publisher test_pub_; 
            
         
     };

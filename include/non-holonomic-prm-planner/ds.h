@@ -146,7 +146,7 @@ struct key_equal_fn {
                      cost_(std::numeric_limits<float>::max())
         {
 
-            ROS_WARN("default constructor triggered!");
+           // ROS_WARN("default constructor triggered!");
 
         }
 
