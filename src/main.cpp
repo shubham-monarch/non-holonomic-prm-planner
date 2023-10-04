@@ -26,8 +26,8 @@ int main(int argc, char** argv) {
     
     //PRM::Roadmap roadmap_; 
 
-    //roadmap_->initialize();
-    //roadmap_->generateRoadMap();
+    roadmap_->initialize();
+    roadmap_->generateRoadMap();
     ros::spin();
 
     return 0;
