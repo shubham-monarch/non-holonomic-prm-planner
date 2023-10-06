@@ -5,9 +5,12 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Grid1
+        - /Sampled Points1
         - /Sampled Points1/Status1
         - /Pose1
         - /PolygonArray1
+        - /PoseArray1
+        - /PoseArray2
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -35,10 +38,10 @@ Toolbars:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.20000000298023224
+    - Alpha: 0.10000000149011612
       Cell Size: 1
       Class: rviz/Grid
-      Color: 255; 255; 255
+      Color: 136; 138; 133
       Enabled: true
       Line Style:
         Line Width: 0.029999999329447746
@@ -57,14 +60,14 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /autodrive/occupancy_grid
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
-      Arrow Length: 1
+      Arrow Length: 10
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
@@ -96,119 +99,54 @@ Visualization Manager:
       Topic: /start_pose
       Unreliable: false
       Value: true
-    - Alpha: 1
-      Arrow Length: 100
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 115; 210; 22
-      Enabled: false
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: Steering Curve Family
-      Queue Size: 12
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /gaoL_
-      Unreliable: true
-      Value: false
-    - Alpha: 1
-      Arrow Length: 0.05000000074505806
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 252; 233; 79
-      Enabled: false
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: PoseArray
-      Queue Size: 10
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /final_path
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Arrow Length: 0.10000000149011612
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 138; 226; 52
-      Enabled: false
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: PoseArray
-      Queue Size: 10
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /family_
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 238; 238; 236
-      Enabled: true
-      Head Length: 0.6000000238418579
-      Head Radius: 0.6000000238418579
-      Name: Pose
-      Queue Size: 4
-      Shaft Length: 3
-      Shaft Radius: 0.18000000715255737
-      Shape: Arrow
-      Topic: /goal
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Arrow Length: 0.05000000074505806
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 252; 233; 79
-      Enabled: false
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: PoseArray
-      Queue Size: 10
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /final_family_10
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: true
-      Head Diameter: 0.029999999329447746
-      Head Length: 0.019999999552965164
-      Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
-      Name: Path
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: Arrows
-      Queue Size: 10
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.009999999776482582
-      Shaft Length: 0.009999999776482582
-      Topic: /path
-      Unreliable: false
-      Value: true
     - Class: poly_array_plugin/PolygonArray
       Enabled: true
       Name: PolygonArray
       Queue Size: 10
       Topic: /obstacles
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 3
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 252; 233; 79
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /rviz_sampled_points
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: Polygon
+      Queue Size: 10
+      Topic: /rviz_polygon
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 30
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 211; 215; 207
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /rviz_polygon_vertices
       Unreliable: false
       Value: true
   Enabled: true
@@ -238,7 +176,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -21.98495864868164
+      Angle: -31.424854278564453
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -248,10 +186,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 8.08804702758789
+      Scale: -3.8068482875823975
       Target Frame: <Fixed Frame>
-      X: -818.3414306640625
-      Y: -120.50646209716797
+      X: -123.62532806396484
+      Y: 441.41119384765625
     Saved: ~
 Window Geometry:
   Displays:

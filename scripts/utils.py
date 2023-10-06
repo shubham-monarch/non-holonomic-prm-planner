@@ -70,27 +70,13 @@ class RvizPolygon:
         #self.sampled_points_pub = rospy.Publisher("/rviz_sampled_points", PoseArray, queue_size=1)
         
         self.num_vertices = num_vertices_
+        self.num_sample_points = 500
         self.counter = 0 
         self.polygon_msg = PolygonStamped()
         self.polygon_vertices = PoseArray()
+        self.sampled_points = PoseArray()
 
-        self.sampled_points = []
-
-    '''
-    def rviz_polygon_cb(self, msg):
         
-        if self.counter == self.num_vertices:
-            print("self.counter: ", self.counter)
-            print("rviz_polygon_cb called!")
-            sampled_points = sample_points(100, self.polygon_msg)
-            
-            sampled_points_arr = PoseArray()
-            sampled_points_arr.header.frame_id = "map"
-            sampled_points_arr.header.stamp = rospy.Time.now()
-            sampled_points_arr.poses = [pose_from_point(point) for point in sampled_points]
-            self.sampled_points_pub.publish(sampled_points_arr)             
-    '''    
-
     def clicked_point_cb(self, msg):
     
         print(msg.point.x, msg.point.y, msg.point.z)
@@ -101,9 +87,13 @@ class RvizPolygon:
             self.polygon_msg.header.frame_id = "map"
             self.rviz_polygon_pub.publish(self.polygon_msg) 
 
-            self.vertices = PoseArray()
+            self.polygon_vertices = PoseArray()
             self.polygon_vertices.header.frame_id  = "map"
-            self.rviz_vertices_pub.publish(self.vertices)
+            self.rviz_vertices_pub.publish(self.polygon_vertices)
+
+            self.sampled_points = PoseArray()
+            self.sampled_points.header.frame_id = "map"
+            self.rviz_sampled_points_pub.publish(PoseArray())   
 
         self.counter += 1
 
@@ -116,9 +106,9 @@ class RvizPolygon:
 
         
         if self.counter == self.num_vertices:
-            self.polygon_msg.header.frame_id = "map"
             
             #publish polygon 
+            self.polygon_msg.header.frame_id = "map"
             self.rviz_polygon_pub.publish(self.polygon_msg)
             
             #reset counter
@@ -126,9 +116,9 @@ class RvizPolygon:
             #self.polygon_msg.polygon.points = []
             
             #publish sampled points
-            self.sampled_points = sample_points(100, self.polygon_msg)
-            sampled_points_arr = getPoseArrayFromPoses(self.sampled_points) 
-            self.rviz_sampled_points_pub.publish(sampled_points_arr)
+            sampled_points_ = sample_points(self.num_sample_points, self.polygon_msg)
+            self.sampled_points = getPoseArrayFromPoses(sampled_points_) 
+            self.rviz_sampled_points_pub.publish(self.sampled_points)
             
 
 

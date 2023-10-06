@@ -110,7 +110,7 @@ namespace PRM{
         std::vector<PolyClr> blue_obstacles;
         packObstacleVector(poly_srv.response, blue_obstacles, Color::blue);
 
-        ROS_WARN("blue_obstacles.size(): %d", blue_obstacles.size());
+        //ROS_WARN("blue_obstacles.size(): %d", blue_obstacles.size());
         //cleanRedundantPolygons(blue_obstacles);
         for (auto poly : blue_obstacles)
         {
@@ -188,6 +188,10 @@ namespace PRM{
 
     bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb) const {
         
+        RTree rtree = *current_index;
+        //ROS_ERROR("num_obstacles in current index: %d", rtree.size()); 
+
+
         Polygon_t polygon;
         std::vector<Value> result;
         std::vector<Point_t> pts;
@@ -247,6 +251,10 @@ namespace PRM{
         obstacles.header.frame_id="map";
         packObstacleMessage(obstacles,*(current_index.get()));
         geofence_.polygon.points.reserve(current_geofence->outer().size());
+
+
+        //ROS_ERROR("current_geofence->outer().size(): %d", current_geofence->outer().size());
+
         for (auto pt : current_geofence->outer()) 
         {
             geometry_msgs::Point32 new_point;

@@ -909,22 +909,60 @@ void PRM::Roadmap::buildGraph()
 }
 
 void PRM::Roadmap::processSamplePoints2D(const std::vector<PRM::Node2d> &points)
-{
+{   
+
+    std::vector<Node2d> processedSamplePoints2D_;
+
     int i = 0 ;
     for (auto point : points)
     {
         std::vector<float> obb_ = robot_->getOBB({point.x_, point.y_}, 0.52);
-        //bool is_free_ = robot_->isConfigurationFree(obb_);
-
+        
         CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
 
         Point_t pt_{point.x_ , point.y_};
 
         bool f_ = p.selectCurrentIndex(pt_, pt_ );
 
+        if(!f_){
+
+            ROS_ERROR("Unable to find the point in the collision polygon!");
+            continue;
+        }
+
+        f_ = robot_->isConfigurationFree(obb_);
+
+        if(!f_)
+        {
+            i++;
+            continue;
+        }
+        
+        processedSamplePoints2D_.push_back(point);
+
         //ROS_INFO("i: %d f_: %d", i++, f_);
     }
 
+    ROS_INFO("%d points out of %d points are not free", i , (int)points.size());
+
+    geometry_msgs::PoseArray arr_; 
+    arr_.header.frame_id = "map"; 
+    arr_.header.stamp = ros::Time::now();
+    
+    arr_.poses.reserve(processedSamplePoints2D_.size() + 10);
+
+    for(const auto &p: processedSamplePoints2D_)
+    {
+        geometry_msgs::Pose pose_; 
+        pose_.position.x = p.x_; 
+        pose_.position.y = p.y_;
+        pose_.orientation = Utils::getQuatFromYaw(0.f);
+        arr_.poses.push_back(pose_);
+    }
+
+    visualize_->publishT<geometry_msgs::PoseArray>("processed_sample_points", arr_);    
+
+    
 }
 
 bool PRM::Roadmap::generateRoadMap()
