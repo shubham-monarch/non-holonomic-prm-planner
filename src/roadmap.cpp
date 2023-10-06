@@ -78,6 +78,35 @@ PRM::NodePtr_ PRM::Roadmap::getNodePtrFromPose(const geometry_msgs::Pose &pose_)
 
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
+    
+    Point_t start{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
+    Point_t goal{req.end.pose.position.x, req.end.pose.position.y}; 
+
+    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+
+    if (p.selectCurrentIndex(start, goal)) //index is cleared in plan()
+    {
+        if (!req.start_runway.empty())
+        {
+            p.carveRunway(req.start_runway[0],req.start_runway[1],true);
+        }
+        
+        if (!req.goal_runway.empty())
+        {
+            p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
+        }
+
+        ros::Duration(1.0).sleep();
+        //plan(true);
+        p.repairPolygons();
+        //res.path = smoothedPath.getPath();
+    }
+    
+    //ros::Duration(1.0).sleep(); 
+    //ros::Duration(1.0).sleep();
+    return false; 
+
+
     NodePtr_ start_ptr_ = getNodePtrFromPose(req.start.pose.pose);
 
     NodePtr_ end_ptr_ = getNodePtrFromPose(req.end.pose);
