@@ -70,6 +70,8 @@ namespace PRM{
                                                 const std::string rp_topic_ = "rp_", const std::string cp_topic_ = "cp_", 
                                                 const std::string sc_topic_ = "sc_") ;
             
+      
+            void processSamplePoints2D(const std::vector<Node2d> &points);
 
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
         

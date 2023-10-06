@@ -38,7 +38,9 @@ namespace PRM{
     }
 
     void CollisionDetectionPolygon::initialize()
-    {   
+    {       
+        //ROS_WARN(" ==== INITIALISING COLLISION DETECTION ====");
+        //ROS_INFO("current_geofence == nullptr : %d", current_geofence == nullptr);
         ros::NodeHandle nh;
         ros::service::waitForService(polygon_service, -1);
         m_obstacles.clear();
@@ -84,11 +86,21 @@ namespace PRM{
             }
         }
 
-        ROS_WARN("white_polygons: %d", white_polygons.size());
+        //ROS_WARN("white_polygons: %d", white_polygons.size());
         
         for (auto geofence : white_polygons)
         {
             obstacle_indices.emplace(std::make_pair(geofence.name,std::make_shared<RTree>()));
+        }
+
+        //ROS_WARN("geofence_index.size(): %d", geofence_index.size());
+
+        for(auto t: geofence_index)
+        {
+            //ROS_INFO("color: %s", t.second.color);
+            //ROS_INFO("name: %s", t.second.name.c_str());
+            //ROS_INFO(t.second.polygon.)
+
         }
 
         //Get Obstacle Polygons
@@ -121,6 +133,10 @@ namespace PRM{
             m_obstacles.emplace_back(obstacle);
         }
         std::vector<std::vector<PolyClr>> geofence_obstacle_sets;
+
+        //ROS_INFO("m_obstacles.size(): %d", m_obstacles.size());
+        int icnt = 0 ; 
+
         for (auto obstacle : m_obstacles) {
             // See what geofences this polygon intersects with
             std::vector<Value> result;
@@ -129,12 +145,16 @@ namespace PRM{
             {
                 PolyClr const& geofence = std::get<1>(potential_intersect);
                 if (bg::intersects(*(obstacle.polygon.get()),*(geofence.polygon.get())))
-                {
+                {   
+                    icnt++; 
+                    //std::cout << "geofence.name: " << geofence.name << std::endl;
                     RTree_Ptr current_index= obstacle_indices[geofence.name];
                     insert(obstacle, current_index);
                 }
             }
         }
+
+        //ROS_INFO("icnt: %d", icnt);
     // TODO: Check for empty geofences and report them by name to ROS log?
     /* 	if (!obstacles.empty() && valid_geofence)
         {
@@ -159,6 +179,11 @@ namespace PRM{
         {
             publishErrorState();
         }
+
+        //ROS_INFO("current_geofence == nullptr : %d", current_geofence == nullptr);
+        //ROS_WARN("=== EXITING COLLISION DETECTION ===");
+        
+        
     }
 
     bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb) const {
@@ -478,6 +503,10 @@ namespace PRM{
             Typically p1 and p2 will be start and goal points
             Returns whether geofence are set succesfully, false otherwise
         */
+
+        //ROS_WARN("=== INSIDE SelectCurrentIndex ==="); 
+        //ROS_INFO("current_geofence == nullptr : %d", current_geofence == nullptr);
+
         std::vector<Value> results;
         geofence_index.query(
             bgi::contains(p1),
@@ -529,35 +558,48 @@ namespace PRM{
         }
 
         std::string name;
+
+        //ROS_INFO("current_geofence == nullptr : %d", current_geofence == nullptr);
+
         for (PolyClr poly1 : geofences_1)
         {
             for (PolyClr poly2 : geofences_2)
             {
                 //TODO: Ew quadratic runtime
                 if (poly1.name.compare(poly2.name) == 0)
-                {
+                {   
+                    //std::cout << "C1 poly1.name: " << poly1.name << std::endl;
                     PolyClr match = poly1;
-                    if (current_geofence)
-                    {
+                    if (current_geofence != nullptr)
+                    {   
+                        //std::cout << "C2.0" << std::endl;
                         if (bg::area(*(match.polygon.get())) > bg::area(*(current_geofence.get())))
                         {
+                            //std::cout << "C2.01" << std::endl;
                             current_geofence = match.polygon;
                             name = match.name;
                         }
+                        else
+                        {
+                            name = match.name;
+                        }
                     } else
-                    {
+                    {   
+                        //std::cout << "C2.1" << std::endl;
                         current_geofence = match.polygon;
                         name = match.name;
+                        //std::cout << "name: " << name << std::endl;
                     }
                 }
             }
         }
-        
+        //std::cout << "==== EXITED FOR LOOP ===" << std::endl;
         if (!current_geofence)
         {
             return false;
         }
 
+        //ROS_INFO("name: %s", name.c_str());
         current_index = obstacle_indices[name];
         publishCurrentPolygons();
         return true;

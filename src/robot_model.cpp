@@ -42,12 +42,6 @@ std::vector<float> PRM::RobotModel::getOBB(const std::array<float,2>& position, 
     return obb;
 }
 
-/*bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb_) const
-{
-    return true;
-    //return cdp_->isConfigurationFree(obb_);
-
-}*/ 
 
 
 

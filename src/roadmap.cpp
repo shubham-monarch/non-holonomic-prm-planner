@@ -323,7 +323,7 @@ void PRM::Roadmap::initialize()
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &Roadmap::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &Roadmap::clickedPointCb, this);
     
-    std::cout << "calling sampler" << std::endl;
+    //std::cout << "calling sampler" << std::endl;
 
     sampler_ = std::make_shared<Sampler>(sampling_topic_);
     //sampledPoints2D_ = sampler_->generate2DSamplePoints();
@@ -908,6 +908,25 @@ void PRM::Roadmap::buildGraph()
 
 }
 
+void PRM::Roadmap::processSamplePoints2D(const std::vector<PRM::Node2d> &points)
+{
+    int i = 0 ;
+    for (auto point : points)
+    {
+        std::vector<float> obb_ = robot_->getOBB({point.x_, point.y_}, 0.52);
+        //bool is_free_ = robot_->isConfigurationFree(obb_);
+
+        CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+
+        Point_t pt_{point.x_ , point.y_};
+
+        bool f_ = p.selectCurrentIndex(pt_, pt_ );
+
+        //ROS_INFO("i: %d f_: %d", i++, f_);
+    }
+
+}
+
 bool PRM::Roadmap::generateRoadMap()
 {
     ROS_DEBUG("Inside generateRoadmap function!");
@@ -919,7 +938,17 @@ bool PRM::Roadmap::generateRoadMap()
     }
 
     sampledPoints2D_= sampler_->generate2DSamplePoints();
+
+
+    //robot_->initializeCollisionDetectionPolygon();
+
+    processSamplePoints2D(sampledPoints2D_); 
+
+    return true; 
     
+
+
+
 
     ROS_INFO("sampledpoints: %d", sampledPoints2D_.size());
 

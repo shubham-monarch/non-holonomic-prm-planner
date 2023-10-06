@@ -22,10 +22,6 @@ int main(int argc, char** argv) {
 
 
 
-    robot_->updateCollisionDetection();
-
-
-
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug);
 
     //std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
