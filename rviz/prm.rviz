@@ -11,6 +11,9 @@ Panels:
         - /PolygonArray1
         - /PoseArray1
         - /PoseArray2
+        - /Polygon2
+        - /Pose2
+        - /Pose3
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -67,7 +70,7 @@ Visualization Manager:
       Use Timestamp: false
       Value: false
     - Alpha: 1
-      Arrow Length: 10
+      Arrow Length: 3
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
@@ -80,7 +83,7 @@ Visualization Manager:
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /sampled_points
+      Topic: /processed_sample_points
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -149,6 +152,47 @@ Visualization Manager:
       Topic: /rviz_polygon_vertices
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 238; 238; 236
+      Enabled: true
+      Name: Polygon
+      Queue Size: 10
+      Topic: /geofence
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 115; 210; 22
+      Enabled: true
+      Head Length: 3
+      Head Radius: 1
+      Name: Pose
+      Queue Size: 10
+      Shaft Length: 10
+      Shaft Radius: 0.5
+      Shape: Arrow
+      Topic: /start_pose
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 3
+      Head Radius: 1
+      Name: Pose
+      Queue Size: 10
+      Shaft Length: 10
+      Shaft Radius: 0.5
+      Shape: Arrow
+      Topic: /goal_pose
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -176,7 +220,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -31.424854278564453
+      Angle: -37.72492218017578
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -186,10 +230,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: -3.8068482875823975
+      Scale: 6.785518646240234
       Target Frame: <Fixed Frame>
-      X: -123.62532806396484
-      Y: 441.41119384765625
+      X: -719.8737182617188
+      Y: 291.6765441894531
     Saved: ~
 Window Geometry:
   Displays:

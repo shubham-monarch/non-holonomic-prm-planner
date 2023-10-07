@@ -118,6 +118,7 @@ namespace PRM{
             
             std::unordered_map<Vec3f, std::shared_ptr<Node3d>, hashing_func, key_equal_fn> G_;
             
+            ros::Publisher start_pose_pub, goal_pose_pub;
             //std::unordered_set<Vec3f, hashing_func>  vis_;
             
 

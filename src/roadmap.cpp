@@ -75,12 +75,32 @@ PRM::NodePtr_ PRM::Roadmap::getNodePtrFromPose(const geometry_msgs::Pose &pose_)
     
 }
 
+geometry_msgs::PoseStamped getPoseStamped(const float x_, const float y_, const geometry_msgs::Quaternion q)
+{
+    geometry_msgs::PoseStamped pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now(); 
 
+    pose_.pose.position.x = x_ ; 
+    pose_.pose.position.y = y_;
+    pose_.pose.orientation = q;  
+
+    return pose_;
+}
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
     
     Point_t start{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
     Point_t goal{req.end.pose.position.x, req.end.pose.position.y}; 
+
+    geometry_msgs::PoseStamped start_, goal_; 
+    start_ = getPoseStamped(req.start.pose.pose.position.x, req.start.pose.pose.position.y, req.start.pose.pose.orientation);
+    goal_ = getPoseStamped(req.end.pose.position.x, req.end.pose.position.y, req.end.pose.orientation);   
+
+    start_pose_pub.publish(start_); 
+    goal_pose_pub.publish(goal_);
+
+    //ros::Duration(1.0).sleep(); 
 
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
 
@@ -96,11 +116,17 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
         }
 
-        ros::Duration(1.0).sleep();
+        ros::Duration(3.0).sleep();
         //plan(true);
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }
+
+    return false;
+
+
+
+    
     
     //ros::Duration(1.0).sleep(); 
     //ros::Duration(1.0).sleep();
@@ -352,6 +378,9 @@ void PRM::Roadmap::initialize()
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &Roadmap::goalPoseCb, this);
     clicked_pt_sub_ = nh_.subscribe("/clicked_point", 1, &Roadmap::clickedPointCb, this);
     
+    start_pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("start_pose", 1, true);
+    goal_pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("goal_pose", 1, true);
+
     //std::cout << "calling sampler" << std::endl;
 
     sampler_ = std::make_shared<Sampler>(sampling_topic_);
