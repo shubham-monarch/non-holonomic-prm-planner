@@ -90,21 +90,21 @@ geometry_msgs::PoseStamped getPoseStamped(const float x_, const float y_, const 
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
     
-    Point_t start{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
-    Point_t goal{req.end.pose.position.x, req.end.pose.position.y}; 
+    Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
+    Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
 
-    geometry_msgs::PoseStamped start_, goal_; 
-    start_ = getPoseStamped(req.start.pose.pose.position.x, req.start.pose.pose.position.y, req.start.pose.pose.orientation);
-    goal_ = getPoseStamped(req.end.pose.position.x, req.end.pose.position.y, req.end.pose.orientation);   
+    geometry_msgs::PoseStamped start_pose_, goal_pose_; 
+    start_pose_= getPoseStamped(req.start.pose.pose.position.x, req.start.pose.pose.position.y, req.start.pose.pose.orientation);
+    goal_pose_ = getPoseStamped(req.end.pose.position.x, req.end.pose.position.y, req.end.pose.orientation);   
 
-    start_pose_pub.publish(start_); 
-    goal_pose_pub.publish(goal_);
+    start_pose_pub.publish(start_pose_); 
+    goal_pose_pub.publish(goal_pose_);
 
     //ros::Duration(1.0).sleep(); 
 
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
 
-    if (p.selectCurrentIndex(start, goal)) //index is cleared in plan()
+    if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
     {
         if (!req.start_runway.empty())
         {
@@ -116,8 +116,15 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
         }
 
-        ros::Duration(3.0).sleep();
+        //ros::Duration(5.0).sleep();
+
+        PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
+        p.publishClosestPolygon(closest_poly_);
+        
+       // p.publishCurrentPolygons();  
         //plan(true);
+        
+        ros::Duration(2.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }

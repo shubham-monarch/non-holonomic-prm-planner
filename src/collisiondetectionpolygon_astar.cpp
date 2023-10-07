@@ -244,14 +244,20 @@ namespace PRM{
 
     //#ifdef DEBUG
     void CollisionDetectionPolygon::publishCurrentPolygons(void) {
+        
+        //ROS_WARN(" ==== PUBLISHING CURRENT POLYGONS ====");
         publishAllPolygons(true);
         geometry_msgs::PolygonStamped geofence_;
         poly_array_plugin::polygon_array obstacles;
         geofence_.header.frame_id="map";
         obstacles.header.frame_id="map";
         packObstacleMessage(obstacles,*(current_index.get()));
+        
+        //ROS_INFO("obstacles.polygons.size(): %d", obstacles.polygons.size());
+
         geofence_.polygon.points.reserve(current_geofence->outer().size());
 
+        //ROS_INFO("current_geofence->outer().size(): %d", current_geofence->outer().size());
 
         //ROS_ERROR("current_geofence->outer().size(): %d", current_geofence->outer().size());
 
@@ -267,10 +273,15 @@ namespace PRM{
         geofence_pub.publish(geofence_);
         obstacles.header.stamp = ros::Time::now();
         obstacle_pub.publish(obstacles);
+
+        //ROS_WARN(" ==== EXITING PUBLISH CURRENT POLYGONS ====");
+        //publishAllPolygons(true);
     }
 
     void CollisionDetectionPolygon::publishAllPolygons(bool clear)
     {
+        //ROS_WARN(" ==== PUBLISHING ALL POLYGONS ====");
+        
         poly_array_plugin::polygon_array obstacles;
         obstacles.header.frame_id="map";
         if (clear)
@@ -280,13 +291,21 @@ namespace PRM{
             return;
         }
         packObstacleMessage(obstacles,geofence_index);
+
+        //ROS_INFO("obstacles.polygons.size(): %d", obstacles.polygons.size());
+
         packObstacleMessage(obstacles,m_obstacles);
+
+        //ROS_INFO("obstacles.polygons.size(): %d", obstacles.polygons.size());
+
         geometry_msgs::PolygonStamped empty_geofence;
         empty_geofence.header.frame_id="map";
         empty_geofence.header.stamp = ros::Time::now();
         geofence_pub.publish(empty_geofence);
         obstacles.header.stamp = ros::Time::now();
         obstacle_pub.publish(obstacles);
+
+        //ROS_WARN(" ==== EXITING PUBLISH ALL POLYGONS ====");
     }
 
     void CollisionDetectionPolygon::packObstacleMessage(poly_array_plugin::polygon_array& obstacles, RTree const& index) {
@@ -336,6 +355,9 @@ namespace PRM{
     //#endif //!DEBUG
 
     bool CollisionDetectionPolygon::carveRunway(const geometry_msgs::Pose& p1, const geometry_msgs::Pose& p2, bool start) {
+        
+        //ROS_WARN("==== CARVE RUNWAY ====");
+
         tf2::Quaternion q1(
             p1.orientation.x,
             p1.orientation.y,
@@ -455,7 +477,15 @@ namespace PRM{
     }
 
     PolyPtr CollisionDetectionPolygon::findClosestPoly(const Point_t pt, Color color_) 
-    {
+    {   
+
+        //ROS_INFO(" ===== findClosestPoly ===="); 
+        //ROS_INFO("current_index.size(): %d", current_index->size());
+
+        //ROS_WARN(" === INSIDE findClosestPoly ===");
+
+        //ROS_INFO("current_index.size(): %d", current_index->size());
+
         std::vector<Value> result;
         current_index->query( bgi::nearest(pt,3) //ASSUMPTION
                                                         && bgi::satisfies([color_](Value const& v){return std::get<1>(v).color==color_;}),
@@ -476,6 +506,38 @@ namespace PRM{
             i++;
         }
         return std::get<1>(result[i_min]).polygon;//std::get<1>(*closest_value).polygon;
+    }
+
+    PolyPtr CollisionDetectionPolygon::findClosestPolyMod(const Point_t pt, Color color_) 
+    {   
+
+        //ROS_INFO(" ===== findClosestPoly ===="); 
+        //ROS_INFO("current_index.size(): %d", current_index->size());
+
+        std::vector<Value> result;
+        current_index->query(bgi::satisfies([color_](Value const& v){return std::get<1>(v).color==color_;}),
+                                                        std::back_inserter(result));
+        /*double shortest_distance=100000000;
+        //auto closest_value = obstacle_index.begin();
+        size_t i = 0, i_min=0;
+        for (auto value : result)//(auto value=obstacle_index.begin();value!=obstacle_index.end();value++)// : result)
+        {
+            // AABB means that non-cardinal polygons the closest AABB may not be the one that actually contains the closest polygon
+            double distance = bg::distance(pt, *std::get<1>(value).polygon);
+            if (distance < shortest_distance)
+            {
+                //closest_value=value;
+                shortest_distance = distance;
+                i_min=i;
+            }
+            i++;
+        }
+        return std::get<1>(result[i_min]).polygon;//std::get<1>(*closest_value).polygon;
+        */
+       std::cout << "result.size(): " << result.size() << std::endl;
+
+       return PolyPtr(nullptr);
+
     }
 
     void CollisionDetectionPolygon::packIndex(std::vector<PolyClr> const& polygons, RTree& index)
@@ -722,6 +784,38 @@ namespace PRM{
         }
     }
 
+    void CollisionDetectionPolygon::publishClosestPolygon(PolyPtr &poly)
+    {
+        geometry_msgs::PolygonStamped nearest_poly, empty_poly; 
+        nearest_poly.header.frame_id="map";
+        nearest_poly.polygon.points.reserve(poly->outer().size());
+
+        empty_poly.header.frame_id = "map"; 
+        empty_poly.header.stamp = ros::Time::now(); 
+
+        nearest_poly_pub.publish(empty_poly);
+
+        //ROS_ERROR("current_geofence->outer().size(): %d", current_geofence->outer().size());
+
+        for (auto pt : poly->outer()) 
+        {
+            geometry_msgs::Point32 new_point;
+            new_point.x = pt.get<0>();
+            new_point.y = pt.get<1>();
+            new_point.z = 0.f;
+            nearest_poly.polygon.points.push_back(new_point);
+        }
+        
+
+
+        nearest_poly.header.stamp = ros::Time::now();
+        
+
+        //publishAllPolygons(true);
+        //publishCurrentPolygons();
+        nearest_poly_pub.publish(nearest_poly);
+
+    }
 
 };
 
