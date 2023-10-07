@@ -8,7 +8,8 @@
 
 #include <geometry_msgs/PolygonStamped.h>
 
-
+extern std::shared_ptr<PRM::RobotModel> robot_;
+extern std::shared_ptr<PRM::Visualize> visualize_;
 
 int PRM::PathGenerator::obb_cnt_ = 0 ;
 

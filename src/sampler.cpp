@@ -7,23 +7,102 @@
 #include <non-holonomic-prm-planner/roadmap.h>
 
 #include <ros/topic.h>
+#include <chrono>
+
+
+//extern 
+extern std::shared_ptr<PRM::RobotModel> robot_;
+extern std::shared_ptr<PRM::Visualize> visualize_;
+
 
 PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
 {   
     //std::cout << "Sampler constructor called!" << std::endl;
     ROS_DEBUG("Inside sampler constructor!");
-    sampled_points_sub_ = nh_.subscribe(sampled_points_topic_, 1, &PRM::Sampler::sampledPointsCallback, this);
+    //sampled_points_sub_ = nh_.subscribe(sampled_points_topic_, 1, &PRM::Sampler::sampledPointsCallback, this);
 
     //ros::topic::waitForMessage(sampled_points_topic_, nh_);
 
     //ros::topic::waitForMessage(sampled_points_topic_, nh_)
 
-    ros::topic::waitForMessage<geometry_msgs::PoseArray>(sampled_points_topic_);
+    //ros::topic::waitForMessage<geometry_msgs::PoseArray>(sampled_points_topic_);
 
     //ros::topic::waitForMessage    
+    //samplePointsForRowTransition(geometry_msgs::PoseStamped(), geome);
 }
 
-void PRM::Sampler::sampledPointsCallback(geometry_msgs::PoseArrayPtr msg)
+
+
+std::vector<PRM::Node2d> PRM::Sampler::samplePointsForRowTransition(const geometry_msgs::PoseStamped &start, 
+                                                const geometry_msgs::PoseStamped &goal,
+                                                const int num_points)
+{
+
+    sampled_points_.clear();
+
+
+    struct Point{
+        float x;
+        float y;
+    };
+
+    //robot_->getOBB({0,0},0);
+    Point s_ = {start.pose.position.x, start.pose.position.y};
+    Point g_ = {goal.pose.position.x, goal.pose.position.y};
+
+    Point c_ = {(s_.x + g_.x) / 2, (s_.y + g_.y) / 2};
+    
+    float d_ = sqrt(pow(s_.x - g_.x, 2) + pow(s_.y - g_.y, 2));
+    
+    int cnt = 0 ; 
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    std::uniform_real_distribution<float > r_dis(0, 1.2 * 0.5 * d_); //radius distribution
+    std::uniform_real_distribution<float > theta(0, 2 * M_PI); //theta distribution
+    
+    //std::vector<Point> points_;
+    auto start_time = std::chrono::system_clock::now();
+    // Perform some time-consuming operation
+    
+    while(ros::ok() && cnt < num_points)
+    {
+
+        float r_ = r_dis(gen);
+        float theta_ = theta(gen);
+
+        Point p = {c_.x + r_ * cos(theta_), c_.y + r_ * sin(theta_)};
+
+        bool flag = robot_->isConfigurationFree(p.x, p.y);
+
+        if(!flag) {continue;}
+
+        const Node2d node_{p.x, p.y};
+        if(sampled_points_.count(node_) == 0)
+        {
+            sampled_points_.insert(node_);
+            cnt++;
+        }
+
+    }
+
+    auto end_time = std::chrono::system_clock::now();
+    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+    
+    ROS_WARN("================================================================================") ;
+    ROS_WARN("Sampling of %d points for row transition took %ld seconds!", cnt, elapsed.count());
+    ROS_WARN("================================================================================") ;
+    
+    std::vector<Node2d> points_;
+    points_.reserve(sampled_points_.size());
+    for(const auto t: sampled_points_) {points_.push_back(t);}
+
+    return points_;
+
+}
+
+/*void PRM::Sampler::sampledPointsCallback(geometry_msgs::PoseArrayPtr msg)
 {
 
     ROS_INFO("Inside PRM::Sampler::sampledPointsCallback!");
@@ -54,9 +133,9 @@ void PRM::Sampler::sampledPointsCallback(geometry_msgs::PoseArrayPtr msg)
     is_ready  = true; 
      
 
-}
+}*/
 
-std::vector<PRM::Node2d> PRM::Sampler::generate2DSamplePoints()
+/*std::vector<PRM::Node2d> PRM::Sampler::generate2DSamplePoints()
 {      
 
     while(ros::ok() && !is_ready)
@@ -99,7 +178,7 @@ std::vector<PRM::Node2d> PRM::Sampler::generate2DSamplePoints()
     visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_array_);
     
     return points;
-}
+}*/
 
 /*std::vector<PRM::Node2d> PRM::Sampler::generate2DSamplePoints()
 {

@@ -17,10 +17,14 @@ namespace PRM
 
             Sampler(const std::string sampled_points_topic);
 
-            std::vector<Node2d> generate2DSamplePoints();
-            void sampledPointsCallback(geometry_msgs::PoseArrayPtr msg);
+            //std::vector<Node2d> generate2DSamplePoints();
+            //void sampledPointsCallback(geometry_msgs::PoseArrayPtr msg);
 
-            bool is_ready = false;
+            //bool is_ready = false;
+
+            std::vector<Node2d> samplePointsForRowTransition(  const geometry_msgs::PoseStamped &start, 
+                                                const geometry_msgs::PoseStamped &goal,
+                                                 const int num_points);
 
         private: 
 

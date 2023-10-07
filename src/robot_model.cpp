@@ -56,3 +56,10 @@ bool PRM::RobotModel::isConfigurationFree(const std::vector<float> &obb) const {
     
     return true;
 }
+
+bool PRM::RobotModel::isConfigurationFree(const float x, const float y) const {
+    
+    //std::array<float,2> position = {x,y};
+    //std::vector<float> obb = getOBB(position,0);
+    return collision_p.isConfigurationFree(x, y);
+}

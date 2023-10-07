@@ -16,8 +16,6 @@
 
 #include <prm_planner/PRMService.h>
 
-extern std::shared_ptr<PRM::Visualize> visualize_ ;
-extern std::shared_ptr<PRM::RobotModel> robot_;
 
 namespace PRM{
     
@@ -93,6 +91,9 @@ namespace PRM{
 
             NodePtr_ getNodePtrFromPose(const geometry_msgs::Pose &pose_);
 
+
+            geometry_msgs::PoseArray poseArrayFromNode2dVec(const std::vector<Node2d> &points_);
+            //void samplePoints()
 
             //==== variables =====
             

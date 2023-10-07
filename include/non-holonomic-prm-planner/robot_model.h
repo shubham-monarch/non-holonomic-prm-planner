@@ -24,6 +24,7 @@ namespace PRM
 
 
             bool isConfigurationFree(const std::vector<float> &obb_) const; 
+            bool isConfigurationFree(const float x, const float y) const;
 
 
             CollisionDetectionPolygon& getCollisionPolyRef(void) {return collision_p;}

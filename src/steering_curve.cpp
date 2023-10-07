@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Core>
 
+extern std::shared_ptr<PRM::Visualize> visualize_;
 
 geometry_msgs::PoseArray PRM::SteeringCurve::generateSteeringCurve( geometry_msgs::Pose rp_, const float R_, \
                                                                 const bool trim_, \

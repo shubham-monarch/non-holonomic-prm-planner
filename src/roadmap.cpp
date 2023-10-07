@@ -20,6 +20,9 @@
 
 #include <std_msgs/String.h>
 
+extern std::shared_ptr<PRM::Visualize> visualize_ ;
+extern std::shared_ptr<PRM::RobotModel> robot_;
+
 
 //forward declaration
 float PRM::Constants::MapMetaData::cell_size_; 
@@ -87,6 +90,24 @@ geometry_msgs::PoseStamped getPoseStamped(const float x_, const float y_, const 
 
     return pose_;
 }
+
+geometry_msgs::PoseArray PRM::Roadmap::poseArrayFromNode2dVec(const std::vector<PRM::Node2d> &vec)
+{
+    geometry_msgs::PoseArray pose_array_; 
+    pose_array_.header.frame_id = "map"; 
+    pose_array_.header.stamp = ros::Time::now(); 
+
+    for(const auto &t: vec)
+    {
+        geometry_msgs::Pose pose_; 
+        pose_.position.x = t.x_; 
+        pose_.position.y = t.y_; 
+        pose_array_.poses.push_back(pose_);
+    }
+
+    return pose_array_;
+}
+
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
     
@@ -121,10 +142,20 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
         p.publishClosestPolygon(closest_poly_);
         
-       // p.publishCurrentPolygons();  
-        //plan(true);
-        
-        ros::Duration(2.0).sleep();
+        std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
+
+        geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(points2D_);
+
+        visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
+
+
+
+
+
+
+
+
+        ros::Duration(20.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }
@@ -1032,7 +1063,7 @@ void PRM::Roadmap::processSamplePoints2D(const std::vector<PRM::Node2d> &points)
 
 bool PRM::Roadmap::generateRoadMap()
 {
-    ROS_DEBUG("Inside generateRoadmap function!");
+   /* ROS_DEBUG("Inside generateRoadmap function!");
     while(ros::ok() && !sampler_->is_ready)
     {
         ROS_DEBUG("Waiting for sampler to be ready!");
@@ -1049,7 +1080,7 @@ bool PRM::Roadmap::generateRoadMap()
 
     return true; 
     
-
+    */
 
 
 
