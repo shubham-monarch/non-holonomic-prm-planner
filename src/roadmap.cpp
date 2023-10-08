@@ -117,7 +117,7 @@ geometry_msgs::PoseArray PRM::Roadmap::poseArrayFromNode2dVec(const std::vector<
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
     
-    std::cout << "H0" << std::endl;
+    //std::cout << "H0" << std::endl;
     Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
     Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
 
@@ -132,7 +132,7 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
     if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
     {
-        /*if (!req.start_runway.empty())
+        if (!req.start_runway.empty())
         {
             p.carveRunway(req.start_runway[0],req.start_runway[1],true);
         }
@@ -140,7 +140,7 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         if (!req.goal_runway.empty())
         {
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
-        }*/
+        }
 
         //ros::Duration(5.0).sleep();
 

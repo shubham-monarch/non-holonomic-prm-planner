@@ -46,7 +46,7 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
 
     float theta_ = std::atan2((p1.x - p2.x),  (p2.y - p1.y));
 
-    ROS_INFO("theta_: %f", theta_ * 180 / M_PI);
+    //ROS_INFO("theta_: %f", theta_ * 180 / M_PI);
 
     float sz_ = 0.1;  //step-size 
 
@@ -54,6 +54,7 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
     int iter_cnt = 0 ; 
     bool found = false;
 
+    Point end_;
     //float dir_; //direction 
 
     // === direction detection
@@ -71,8 +72,8 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
 
         if(!p.isInsideGreenPolygon(Point_t{x1, y1}) && !p.isConfigurationFree(x1, y1)) {
 
-            centre_.x = x1;
-            centre_.y = y1;
+            end_.x = x1;
+            end_.y = y1;
             found = true;
             break; 
         }
@@ -82,8 +83,8 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
 
         if(!p.isInsideGreenPolygon(Point_t{x2, y2}) && !p.isConfigurationFree(x2, y2)) {
 
-            centre_.x = x2;
-            centre_.y = y2;
+            end_.x = x2;
+            end_.y = y2;
             found = true;
             break; 
         }
@@ -93,6 +94,8 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
 
     if(found)
     {
+        
+        centre_ = Point((mid.x + end_.x) / 2.f, (mid.y + end_.y) / 2.f);
         geometry_msgs::PoseStamped pose_; 
         pose_.header.frame_id = "map";
         pose_.header.stamp = ros::Time::now();
