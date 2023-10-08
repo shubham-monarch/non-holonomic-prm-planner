@@ -44,6 +44,8 @@ namespace PRM{
 
             static int edge_cnt_;
 
+            
+
         private: 
 
 
@@ -57,6 +59,8 @@ namespace PRM{
             bool canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_); 
 
             bool isReachable();
+
+            NodePtr_ getNodePtr(float x, float y, float heading);
 
             NodePtr_ getNodePtr(const Node3d &node_) ;
 

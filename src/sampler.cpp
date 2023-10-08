@@ -59,7 +59,7 @@ std::vector<PRM::Node2d> PRM::Sampler::samplePointsForRowTransition(const geomet
     std::random_device rd;
     std::mt19937 gen(rd());
     
-    std::uniform_real_distribution<float > r_dis(0, 1.2 * 0.5 * d_); //radius distribution
+    std::uniform_real_distribution<float > r_dis(0, 2.4 * 0.5 * d_); //radius distribution
     std::uniform_real_distribution<float > theta(0, 2 * M_PI); //theta distribution
     
     //std::vector<Point> points_;

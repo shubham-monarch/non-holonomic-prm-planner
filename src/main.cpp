@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     PRM::Roadmap roadmap_(sampling_topic_);
     roadmap_.initialize();
 
-    roadmap_.generateRoadMap();
+   // roadmap_.generateRoadMap();
     //roadmap_->initialize();
     //roadmap_->generateRoadMap();
     ros::spin();

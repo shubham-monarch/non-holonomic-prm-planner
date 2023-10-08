@@ -142,20 +142,46 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
         p.publishClosestPolygon(closest_poly_);
         
-        std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
+        //std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
+        sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 100);
 
-        geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(points2D_);
+        //adding start and goal pose to sampled points
+        sampledPoints2D_.push_back(Node2d{start_pose_.pose.position.x, start_pose_.pose.position.y});
+        sampledPoints2D_.push_back(Node2d{goal_pose_.pose.position.x, goal_pose_.pose.position.y});
+
+        geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(sampledPoints2D_);
+
+        ROS_INFO("pose_arr_.poses.size(): %d", pose_arr_.poses.size()); 
 
         visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
 
 
+        generateRoadMap();
+        
+        NodePtr_ start_ptr_ = getNodePtr(start_pose_.pose.position.x, start_pose_.pose.position.y, tf::getYaw(start_pose_.pose.orientation));
+        NodePtr_ goal_ptr_ = getNodePtr(goal_pose_.pose.position.x, goal_pose_.pose.position.y, tf::getYaw(goal_pose_.pose.orientation));
 
 
 
+        nav_msgs::Path final_path_; 
+
+        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, final_path_);
+        
+        
+        ROS_WARN("============================================="); 
+        ROS_WARN("==========FOUND: %d===========================", found_); 
+        ROS_WARN("============================================="); 
+
+        if(found_)
+        {   
+            ROS_INFO("final_path.size(): %d", (int)final_path_.poses.size());
+            visualize_->publishT<nav_msgs::Path>("final_path", final_path_);
+        }
+        
 
 
 
-        ros::Duration(20.0).sleep();
+        ros::Duration(5.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }
@@ -424,6 +450,25 @@ void PRM::Roadmap::initialize()
     sampler_ = std::make_shared<Sampler>(sampling_topic_);
     //sampledPoints2D_ = sampler_->generate2DSamplePoints();
 
+}
+
+PRM::NodePtr_ PRM::Roadmap::getNodePtr(float x, float y, float yaw_)
+{
+    
+    if(yaw_ < 0)
+    {
+        yaw_  += 2 * M_PI;
+    }
+
+    
+    Node3d gp_ = {x, y, yaw_ / Constants::Planner::theta_sep_};
+    
+    const Vec3f &key_ = Utils::getNode3dkey(gp_);
+    
+    NodePtr_ ptr_ = getNodePtr(gp_); 
+
+    return ptr_;
+    
 }
 
 PRM::NodePtr_ PRM::Roadmap::getNodePtr(const Node3d &node_)
@@ -954,7 +999,24 @@ int PRM::Roadmap::generateEdges(const Node2d &a2_, const Node2d &b2_)
 
 }
 
+void updateProgessBar(int curr, int total)
+{
 
+    int num = 100; 
+    float frac = (float)curr / (float)total;
+
+    int filled = frac * num;
+
+    for(int i = 0 ; i < filled; i++)
+    {
+        std::cout << "=";
+    }
+
+    std::cout << " " << frac* 100 << "%" << std::endl;
+
+
+
+}
 void PRM::Roadmap::buildGraph()
 {   
     
@@ -962,11 +1024,17 @@ void PRM::Roadmap::buildGraph()
 
     int cnt_ =0 ;
 
-    //std::cout << "sampledPOints2d.size(): " << (int)sampledPoints2D_.size() << std::endl;
+    std::cout << "sampledPOints2d.size(): " << (int)sampledPoints2D_.size() << std::endl;
+    int point_cnt = 0 ; 
+
+    auto start_time = std::chrono::system_clock::now();
+    
     for(const auto &node_ : sampledPoints2D_)
     {   
         //ROS_DEBUG("build_graph_cnt_: %d", build_graph_cnt_); 
         //std::cout << cnt_++ << std::endl;
+        point_cnt++; 
+       // std::cout << "point_cnt: " << point_cnt << std::endl;
         if(!ros::ok())
         {
             break;
@@ -996,8 +1064,18 @@ void PRM::Roadmap::buildGraph()
             int cnt_ = generateEdges(a_, b_);
             //std::cout << "After generateEdges" << std::endl;
             //ROS_DEBUG("%d edges added", cnt_);
+            
         }
+
+        if(point_cnt % 10 == 0)updateProgessBar(point_cnt, sampledPoints2D_.size());
     }   
+
+    auto end_time = std::chrono::system_clock::now();
+    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+    
+    ROS_WARN("================================================================================") ;
+    ROS_WARN("Roadmap generation with %d points took %ld seconds!", sampledPoints2D_.size(), elapsed.count());
+    ROS_WARN("================================================================================") ;
 
     ROS_INFO("ROADMAP BUILT!");
     ROS_DEBUG("G_.size(): %d", G_.size());
