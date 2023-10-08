@@ -34,7 +34,8 @@ namespace PRM
 
 
             bool getPolygonCenter(const geometry_msgs::PoseStamped &start, 
-                                                const geometry_msgs::PoseStamped &goal, Point &centre_);
+                                                const geometry_msgs::PoseStamped &goal, 
+                                                 geometry_msgs::PoseStamped &centre_) const;
             
 
             float getCorrectDirection(const Point mid_, const float theta, const float  sz = 0.1) const; 

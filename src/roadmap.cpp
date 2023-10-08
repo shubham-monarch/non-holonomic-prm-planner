@@ -148,8 +148,8 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         //p.publishClosestPolygon(closest_poly_);
         
         //std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
-        Point centre_;
-        bool found_ = sampler_->getPolygonCenter(start_pose_, goal_pose_, centre_);
+        geometry_msgs::PoseStamped centre_pose_;
+        bool found_ = sampler_->getPolygonCenter(start_pose_, goal_pose_, centre_pose_);
 
         if(!found_)
         {

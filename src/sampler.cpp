@@ -35,7 +35,8 @@ PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
 
 
 
-bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, Point &centre_)
+bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
+                                                                                geometry_msgs::PoseStamped &centre_pose_) const
 {
 
     //ROS_WARN("======== Inside PRM::Sampler::getPolygonCenter() ========");   
@@ -94,16 +95,15 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
 
     if(found)
     {
+        Point centre_ = Point((mid.x + end_.x) / 2.f, (mid.y + end_.y) / 2.f);
         
-        centre_ = Point((mid.x + end_.x) / 2.f, (mid.y + end_.y) / 2.f);
-        geometry_msgs::PoseStamped pose_; 
-        pose_.header.frame_id = "map";
-        pose_.header.stamp = ros::Time::now();
-        pose_.pose.position.x = centre_.x;
-        pose_.pose.position.y = centre_.y;
-        pose_.pose.orientation = Utils::getQuatFromYaw(theta_);
+        centre_pose_.header.frame_id = "map";
+        centre_pose_.header.stamp = ros::Time::now();
+        centre_pose_.pose.position.x = centre_.x;
+        centre_pose_.pose.position.y = centre_.y;
+        centre_pose_.pose.orientation = Utils::getQuatFromYaw(theta_);
 
-        centre_pose_pub_.publish(pose_);
+        centre_pose_pub_.publish(centre_pose_);
     }
     
     //ROS_WARN(" End of PRM::Sampler::getPolygonCenter() function!");
