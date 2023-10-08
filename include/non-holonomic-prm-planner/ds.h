@@ -30,6 +30,14 @@ namespace PRM
 
     struct Edge;
 
+    struct Point
+    {
+        float x, y; 
+
+        Point() = default;
+        Point(const float x_, const float y_): x(x_), y(y_) {}  
+    };
+    
     struct Node2d 
     {
 

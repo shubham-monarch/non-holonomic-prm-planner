@@ -3,6 +3,9 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
+
+#include <geometry_msgs/PoseStamped.h>
+
 #include <non-holonomic-prm-planner/vector2d.h>
 #include <non-holonomic-prm-planner/collisiondetectionpolygon_astar.h>
 
@@ -278,6 +281,24 @@ namespace PRM{
         //publishAllPolygons(true);
     }
 
+    PolyPtr CollisionDetectionPolygon::getBoundingPolygon(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal)
+    {
+
+        struct Point {
+
+            float x;
+            float y;
+        };
+
+        Point p1{start_.pose.position.x, start_.pose.position.y};
+        Point p2{goal.pose.position.x, goal.pose.position.y};
+
+
+
+        
+        
+    }
+
     void CollisionDetectionPolygon::publishAllPolygons(bool clear)
     {
         //ROS_WARN(" ==== PUBLISHING ALL POLYGONS ====");
@@ -448,7 +469,7 @@ namespace PRM{
         bg::append(runway.outer(),r2);
         bg::append(runway.outer(),r3);
         bg::append(runway.outer(),r4);
-        bg::correct(runway);
+        bg::correct(runway);     
         std::vector<Polygon_t> output;
         bg::difference(*runway_m[i_ptr_array],runway,output);
         size_t i_max = 0;
@@ -474,6 +495,27 @@ namespace PRM{
             goal_modified=true;
         }
         return true;
+    }
+
+
+
+    bool CollisionDetectionPolygon::isInsideGreenPolygon(Point_t pt) const
+    {
+        bool inside_ = false; 
+
+        int cnt = 0 ;
+        for(const auto t : *current_index)
+        {   
+            if(t.second.color == Color::green)
+            {   
+                inside_ = bg::within(pt,*(t.second.polygon.get()));
+
+                if(inside_) {return true; }
+            }
+
+        }
+
+        return false; 
     }
 
     PolyPtr CollisionDetectionPolygon::findClosestPoly(const Point_t pt, Color color_) 
@@ -506,38 +548,6 @@ namespace PRM{
             i++;
         }
         return std::get<1>(result[i_min]).polygon;//std::get<1>(*closest_value).polygon;
-    }
-
-    PolyPtr CollisionDetectionPolygon::findClosestPolyMod(const Point_t pt, Color color_) 
-    {   
-
-        //ROS_INFO(" ===== findClosestPoly ===="); 
-        //ROS_INFO("current_index.size(): %d", current_index->size());
-
-        std::vector<Value> result;
-        current_index->query(bgi::satisfies([color_](Value const& v){return std::get<1>(v).color==color_;}),
-                                                        std::back_inserter(result));
-        /*double shortest_distance=100000000;
-        //auto closest_value = obstacle_index.begin();
-        size_t i = 0, i_min=0;
-        for (auto value : result)//(auto value=obstacle_index.begin();value!=obstacle_index.end();value++)// : result)
-        {
-            // AABB means that non-cardinal polygons the closest AABB may not be the one that actually contains the closest polygon
-            double distance = bg::distance(pt, *std::get<1>(value).polygon);
-            if (distance < shortest_distance)
-            {
-                //closest_value=value;
-                shortest_distance = distance;
-                i_min=i;
-            }
-            i++;
-        }
-        return std::get<1>(result[i_min]).polygon;//std::get<1>(*closest_value).polygon;
-        */
-       std::cout << "result.size(): " << result.size() << std::endl;
-
-       return PolyPtr(nullptr);
-
     }
 
     void CollisionDetectionPolygon::packIndex(std::vector<PolyClr> const& polygons, RTree& index)

@@ -56,6 +56,12 @@ void PRM::Roadmap::clickedPointCb(geometry_msgs::PointStampedConstPtr pose_)
 
     ROS_INFO("[%f,%f]", pose_->point.x, pose_->point.y);
 
+    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+
+    bool inside_ = p.isInsideGreenPolygon(Point_t{pose_->point.x, pose_->point.y}); 
+
+    if(inside_) {ROS_ERROR("Inside white polygons!") ;}
+    else {  ROS_INFO("Outside white polygon!") ;}
 
 }
 
@@ -111,6 +117,7 @@ geometry_msgs::PoseArray PRM::Roadmap::poseArrayFromNode2dVec(const std::vector<
 bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
 {
     
+    std::cout << "H0" << std::endl;
     Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
     Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
 
@@ -121,13 +128,11 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
     start_pose_pub.publish(start_pose_); 
     goal_pose_pub.publish(goal_pose_);
 
-    //ros::Duration(1.0).sleep(); 
-
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
 
     if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
     {
-        if (!req.start_runway.empty())
+        /*if (!req.start_runway.empty())
         {
             p.carveRunway(req.start_runway[0],req.start_runway[1],true);
         }
@@ -135,28 +140,37 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         if (!req.goal_runway.empty())
         {
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
-        }
+        }*/
 
         //ros::Duration(5.0).sleep();
 
-        PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
-        p.publishClosestPolygon(closest_poly_);
+        //PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
+        //p.publishClosestPolygon(closest_poly_);
         
         //std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
-        sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 100);
+        Point centre_;
+        bool found_ = sampler_->getPolygonCenter(start_pose_, goal_pose_, centre_);
 
+        if(!found_)
+        {
+            ROS_ERROR("mid_point not found! ==> Something is wrong!");
+            return false;
+        }
+        
+        //sampledPoints2D_  = sampler_->gaussianSamplePointsForRowTransition(start_pose_, goal_pose_, 500);
+        //sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
         //adding start and goal pose to sampled points
-        sampledPoints2D_.push_back(Node2d{start_pose_.pose.position.x, start_pose_.pose.position.y});
-        sampledPoints2D_.push_back(Node2d{goal_pose_.pose.position.x, goal_pose_.pose.position.y});
+        //sampledPoints2D_.push_back(Node2d{start_pose_.pose.position.x, start_pose_.pose.position.y});
+        //sampledPoints2D_.push_back(Node2d{goal_pose_.pose.position.x, goal_pose_.pose.position.y});
 
-        geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(sampledPoints2D_);
+        //geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(sampledPoints2D_);
 
-        ROS_INFO("pose_arr_.poses.size(): %d", pose_arr_.poses.size()); 
+        //ROS_INFO("pose_arr_.poses.size(): %d", pose_arr_.poses.size()); 
 
-        visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
+        // /visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
 
 
-        generateRoadMap();
+        /*generateRoadMap();
         
         NodePtr_ start_ptr_ = getNodePtr(start_pose_.pose.position.x, start_pose_.pose.position.y, tf::getYaw(start_pose_.pose.orientation));
         NodePtr_ goal_ptr_ = getNodePtr(goal_pose_.pose.position.x, goal_pose_.pose.position.y, tf::getYaw(goal_pose_.pose.orientation));
@@ -177,61 +191,17 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
             ROS_INFO("final_path.size(): %d", (int)final_path_.poses.size());
             visualize_->publishT<nav_msgs::Path>("final_path", final_path_);
         }
-        
+        */
 
 
 
-        ros::Duration(5.0).sleep();
+        ros::Duration(1.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }
 
     return false;
 
-
-
-    
-    
-    //ros::Duration(1.0).sleep(); 
-    //ros::Duration(1.0).sleep();
-    return false; 
-
-
-    NodePtr_ start_ptr_ = getNodePtrFromPose(req.start.pose.pose);
-
-    NodePtr_ end_ptr_ = getNodePtrFromPose(req.end.pose);
-    
-    bool flag_ = connectStartPoseToRoadmap(start_ptr_);
-
-    if(!flag_)
-    {
-        res.status.data = false; 
-        res.path = nav_msgs::Path(); 
-        return false; 
-    }
-
-    flag_ = connectGoalPoseToRoadmap(end_ptr_);
-
-    if(!flag_)
-    {
-        res.status.data = false; 
-        res.path = nav_msgs::Path(); 
-        return false; 
-    }
-
-    nav_msgs::Path final_path_; 
-    flag_  = PathGenerator::getCollisionFreePath(G_, start_ptr_, end_ptr_, final_path_);
-        
-    if(!flag_)
-    {
-        res.status.data = false; 
-        res.path = nav_msgs::Path(); 
-        return false; 
-    }
-
-    res.status.data = true;
-    res.path = final_path_;
-    return true;
 
 }
 

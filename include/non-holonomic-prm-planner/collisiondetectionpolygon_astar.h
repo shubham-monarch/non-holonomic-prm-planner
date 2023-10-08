@@ -18,9 +18,12 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <geometry_msgs/Polygon.h>
 #include <poly_array_plugin/polygon_array.h>
+#include <geometry_msgs/PoseStamped.h>
 //#endif //!DEBUG
 
 #include "ros/ros.h"
+
+#include <non-holonomic-prm-planner/ds.h>
 
 namespace PRM {
   enum class Color {white, blue, green};
@@ -72,8 +75,13 @@ class CollisionDetectionPolygon {
     bool ready() const {return !error_state;}
     bool indexSelected() const {return (current_geofence && current_index);}
 
-    void publishClosestPolygon(PolyPtr &poly);
     
+    //=== helper functions for vine testing
+    void publishClosestPolygon(PolyPtr &poly);
+    PolyPtr getBoundingPolygon(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal);
+    bool isInsideGreenPolygon(Point_t pt) const;
+
+
 
   private:
     ros::NodeHandle n;

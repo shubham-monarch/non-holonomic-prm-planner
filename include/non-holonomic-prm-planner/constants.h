@@ -41,7 +41,7 @@ namespace PRM{
 
         namespace Vehicle {
         
-            static const float delta_max_ = 40 *M_PI / 180.0;  //max steering angle in radians
+            static const float delta_max_ = 60 *M_PI / 180.0;  //max steering angle in radians
             static const float a2_ = 0.8; //len_to_hitch 
             static const float l_ = 1.84; //wheelbase
             static const float R_MIN_ = sqrt(pow(a2_, 2) + pow(l_ * (1.f/std::tan(delta_max_)), 2)); //minimum turning radius
