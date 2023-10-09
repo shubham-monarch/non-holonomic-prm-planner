@@ -157,8 +157,11 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         //sampler_->getRunwayPolygon(start_pose_, goal_pose_, 0);
         
         //Polygon polygon_ = sampler_->getRunwayPolygon(start_pose_, goal_pose_, 1);
-        Polygon polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
-        sampledPoints2D_ = sampler_->uniformSamplingInsidePolygon(polygon_, 100);
+        //Polygon polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
+        
+        sampler_->publishAllPolygons(start_pose_, goal_pose_);
+
+        //sampledPoints2D_ = sampler_->uniformSamplingInsidePolygon(polygon_, 100);
 
 
 
@@ -203,7 +206,7 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
 
 
-        ros::Duration(2.0).sleep();
+        ros::Duration(10.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }

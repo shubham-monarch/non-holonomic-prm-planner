@@ -33,10 +33,15 @@ PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
     //samplePointsForRowTransition(geometry_msgs::PoseStamped(), geome);
 
     lowest_pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("centre_pose", 1, true);
-    current_polygon_pub = nh_.advertise<geometry_msgs::PolygonStamped>("current_polygon", 1, true);
+    start_runway_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("start_runway_polygon", 1, true); 
+    goal_runway_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("goal_runway_polygon", 1, true);
+    cross_section_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("cross_section_polygon", 1, true);
+
+    
+    //current_polygon_pub = nh_.advertise<geometry_msgs::PolygonStamped>("current_polygon", 1, true);
 }
 
-void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topic)
+/*void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topic)
 {
 
     //ROS_WARN(" ==== Inside publishPolygon() ====");
@@ -60,7 +65,45 @@ void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topi
     
     current_polygon_pub.publish(poly_msg);
 
+}*/
+
+geometry_msgs::PolygonStamped PRM::Sampler::getPolygonStampedMsg(const Polygon &polygon)
+{
+    if(!bg::is_valid(polygon))
+    {
+        ROS_ERROR("Polygon is not valid!");
+        return geometry_msgs::PolygonStamped();
+    }
+    
+    geometry_msgs::PolygonStamped poly_msg_; 
+    poly_msg_.header.frame_id = "map";
+    poly_msg_.header.stamp = ros::Time::now();
+
+    for(auto t: polygon.outer())
+    {
+        geometry_msgs::Point32 pt;
+        pt.x = t.x();
+        pt.y = t.y();
+        pt.z = 0;
+        poly_msg_.polygon.points.push_back(pt);     
+    }
+
+    return poly_msg_;
 }
+
+void PRM::Sampler::publishAllPolygons(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
+{
+    
+    Polygon start_runway_polygon = getRunwayPolygon(start_pose_, goal_pose_, true);
+    Polygon goal_runway_polygon_ = getRunwayPolygon(start_pose_, goal_pose_, false);
+    Polygon cross_section_polygon_= getCrossSectionPolygon(start_pose_, goal_pose_);
+
+    start_runway_polygon_pub_.publish(getPolygonStampedMsg(start_runway_polygon));
+    goal_runway_polygon_pub_.publish(getPolygonStampedMsg(goal_runway_polygon_));
+    cross_section_polygon_pub_.publish(getPolygonStampedMsg(cross_section_polygon_));
+
+}
+
 
 geometry_msgs::PoseStamped shiftPose(const geometry_msgs::PoseStamped &pose_, float dis_, bool fwd)
 {   
@@ -94,7 +137,7 @@ std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingInsidePolygon(const Polygo
 
     //ROS_INFO("is_valid_: %d", is_valid_);
     
-    publishPolygon(polygon);
+    //publishPolygon(polygon);
 
     std::vector<Node2d> points_;
 

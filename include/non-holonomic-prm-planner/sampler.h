@@ -77,10 +77,14 @@ namespace PRM
 
             Polygon getCrossSectionPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_); 
 
-            
+
             std::vector<Node2d> uniformSamplingInsidePolygon(const Polygon &polygon_, const int num_points);
 
-            void publishPolygon(const Polygon &polygon_, const std::string topic_ = "current_polygon");
+            //void publishPolygon(const Polygon &polygon_, const std::string topic_ = "current_polygon");
+
+            void publishAllPolygons(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);
+
+            geometry_msgs::PolygonStamped getPolygonStampedMsg(const Polygon &polygon_);
 
         private: 
 
@@ -90,7 +94,7 @@ namespace PRM
             ros::NodeHandle nh_; 
             const std::string sampled_points_topic_;
             ros::Publisher lowest_pose_pub;
-            ros::Publisher current_polygon_pub;
+            ros::Publisher start_runway_polygon_pub_, goal_runway_polygon_pub_, cross_section_polygon_pub_;
             //ros::Publisher shifted_pose_;
           
     };

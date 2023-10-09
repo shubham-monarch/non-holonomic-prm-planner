@@ -9,9 +9,11 @@ Panels:
         - /Polygon1
         - /Pose1
         - /Pose2
-        - /Polygon2
         - /PoseArray1
         - /Path1
+        - /Start Runway1
+        - /Goal Runway1
+        - /Cross section1
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -116,15 +118,6 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Alpha: 1
-      Class: rviz/Polygon
-      Color: 0; 0; 0
-      Enabled: true
-      Name: Polygon
-      Queue Size: 10
-      Topic: /nearest_polygon
-      Unreliable: false
-      Value: true
-    - Alpha: 1
       Arrow Length: 0.30000001192092896
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
@@ -165,6 +158,33 @@ Visualization Manager:
       Topic: /final_path
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 245; 121; 0
+      Enabled: true
+      Name: Start Runway
+      Queue Size: 10
+      Topic: /start_runway_polygon
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 252; 175; 62
+      Enabled: true
+      Name: Goal Runway
+      Queue Size: 10
+      Topic: /goal_runway_polygon
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 252; 233; 79
+      Enabled: true
+      Name: Cross section
+      Queue Size: 10
+      Topic: /cross_section_polygon
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -192,7 +212,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -109.85932922363281
+      Angle: -119.33919525146484
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -202,10 +222,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: -8.3441801071167
+      Scale: 7.053140640258789
       Target Frame: <Fixed Frame>
-      X: -740.8321533203125
-      Y: 269.4663391113281
+      X: -664.71923828125
+      Y: 216.72833251953125
     Saved: ~
 Window Geometry:
   Displays:
