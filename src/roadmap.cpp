@@ -154,7 +154,11 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         
         //sampledPoints2D_ = sampler_->uniformSamplingForRunway(start_pose_, goal_pose_, 1000);
 
-        sampler_->getRunwayPolygon(start_pose_, goal_pose_, 0);
+        //sampler_->getRunwayPolygon(start_pose_, goal_pose_, 0);
+        
+        Polygon polygon_ = sampler_->getRunwayPolygon(start_pose_, goal_pose_, 1);
+        sampledPoints2D_ = sampler_->uniformSamplingInsidePolygon(polygon_, 100);
+
         //sampledPoints2D_  = sampler_->gaussianSamplePointsForRowTransition(start_pose_, goal_pose_, 500);
         //sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
         

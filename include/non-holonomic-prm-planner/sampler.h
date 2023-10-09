@@ -17,6 +17,7 @@
 namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point_;
 typedef bg::model::polygon<Point_> Polygon;
+typedef bg::model::box<Point_> Box;
 
 namespace PRM
 {
@@ -71,8 +72,12 @@ namespace PRM
 
 
             // geometry functions
-            void getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
+            Polygon getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
                                 const bool start_);
+
+            std::vector<Node2d> uniformSamplingInsidePolygon(const Polygon &polygon_, const int num_points);
+
+            void publishPolygon(const Polygon &polygon_, const std::string topic_ = "current_polygon");
 
         private: 
 

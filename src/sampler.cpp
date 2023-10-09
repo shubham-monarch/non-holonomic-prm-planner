@@ -9,6 +9,8 @@
 #include <ros/topic.h>
 #include <chrono>
 
+#include <boost/geometry/geometries/box.hpp>
+
 
 //extern 
 extern std::shared_ptr<PRM::RobotModel> robot_;
@@ -32,6 +34,32 @@ PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
 
     lowest_pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("centre_pose", 1, true);
     current_polygon_pub = nh_.advertise<geometry_msgs::PolygonStamped>("current_polygon", 1, true);
+}
+
+void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topic)
+{
+
+    ROS_WARN(" ==== Inside publishPolygon() ====");
+    geometry_msgs::PolygonStamped poly_msg;
+    poly_msg.header.frame_id = "map";
+    poly_msg.header.stamp = ros::Time::now(); 
+
+    ROS_INFO("polygon.outer().size(): %d", polygon.outer().size());
+
+    for(auto t: polygon.outer())
+    {
+        geometry_msgs::Point32 pt;
+        pt.x = t.x();
+        pt.y = t.y();
+        pt.z = 0;
+        poly_msg.polygon.points.push_back(pt);     
+    }
+
+    ROS_INFO("polygon_msg.polygon.points.size(): %d", poly_msg.polygon.points.size());  
+    ROS_INFO("Publishing polygon on topic: %s", topic.c_str());
+    
+    current_polygon_pub.publish(poly_msg);
+
 }
 
 geometry_msgs::PoseStamped shiftPose(const geometry_msgs::PoseStamped &pose_, float dis_, bool fwd)
@@ -59,8 +87,59 @@ geometry_msgs::PoseStamped shiftPose(const geometry_msgs::PoseStamped &pose_, fl
 
 
 
+std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingInsidePolygon(const Polygon &polygon, const int num_points)
+{
 
-void PRM::Sampler::getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
+    bool is_valid_ = bg::is_valid(polygon);
+
+    ROS_INFO("is_valid_: %d", is_valid_);
+    
+    publishPolygon(polygon);
+
+    std::vector<Node2d> points_;
+
+    std::vector<Point_> randomPoints;
+    Box envelope;
+    bg::envelope(polygon, envelope);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> distX(bg::get<bg::min_corner, 0>(envelope), bg::get<bg::max_corner, 0>(envelope));
+    std::uniform_real_distribution<double> distY(bg::get<bg::min_corner, 1>(envelope), bg::get<bg::max_corner, 1>(envelope));
+
+    int cnt =0 ; 
+
+    while (ros::ok() && cnt < num_points) {
+
+        Point_ randomPoint(distX(gen), distY(gen));
+
+        if (bg::within(randomPoint, polygon)) {
+            
+            //float x = randomPoint.x();
+            //float y = randomPoint.y();
+
+
+            float x = bg::get<0>(randomPoint);
+            float y = bg::get<1>(randomPoint);
+
+            bool is_free_ = robot_->isConfigurationFree(x, y);
+            
+            //if(!is_free_) continue; 
+            
+            
+            Node2d node{x, y};
+            points_.push_back(node);
+            cnt++;
+
+        }
+    }
+
+    ROS_INFO("points_.size(): %d", points_.size()); 
+    return points_;
+}
+
+
+Polygon PRM::Sampler::getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
                                 const bool start_)
 {
 
@@ -87,25 +166,47 @@ void PRM::Sampler::getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose
     Point v3 = Point{v2.x + 2 * width_ * std::cos(theta_parallel), v2.y + 2 * width_ * std::sin(theta_parallel)}; 
     Point v4 = Point{v3.x -  fwd_ * length_ * std::cos(theta_perependicular_), v3.y -  fwd_ * length_ * std::sin(theta_perependicular_)};
     
-    std::vector<Point> vertices_{v1, v2, v3, v4};
+    
+    /*std::vector<Point> vertices_{v1, v2, v3, v4};
 
     geometry_msgs::PolygonStamped poly_msg;
     poly_msg.header.frame_id = "map";
     poly_msg.header.stamp = ros::Time::now();
 
-    for(auto t: vertices_)
+    for(auto t: vertices_)current_polygon
     {
         geometry_msgs::Point32 pt;
         pt.x = t.x;
         pt.y = t.y;
         pt.z = 0;
         poly_msg.polygon.points.push_back(pt);
-    }
+    }*/
 
    // visualize_->publishT<geometry_msgs::PolygonStamped>("current_polygon", poly_msg);
-    current_polygon_pub.publish(poly_msg);
+    //current_polygon_pub.publish(poly_msg);
 
-    return ;
+    std::vector<Point_> poly_vertices_ = {
+
+        Point_{v1.x, v1.y},
+        Point_{v2.x, v2.y},
+        Point_{v3.x, v3.y},
+        Point_{v4.x, v4.y}
+    };
+
+    Polygon polygon_; 
+    bg::assign_points(polygon_, poly_vertices_);
+    bg::correct(polygon_);
+
+    if(bg::is_valid(polygon_)) {return polygon_; }
+
+    else{
+        ROS_ERROR("Returning invalid polygon!");
+        return Polygon();
+    }
+
+    //return polygon_;
+
+    //return ;
 }   
 
 
@@ -476,7 +577,7 @@ std::vector<PRM::Node2d> PRM::Sampler::gaussianSampleAlongWhitePolygon(const geo
 
         else if (!p1_free_ && !poly_.isInsideGreenPolygon(Point_t(p1.x, p2.x))  && p2_free_) {
             pt_ = p2; 
-            valid_ = true; 
+            valid_ = true;  
         }
 
         if(valid_)
