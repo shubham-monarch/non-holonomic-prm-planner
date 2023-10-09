@@ -206,7 +206,7 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
 
 
-        ros::Duration(10.0).sleep();
+        ros::Duration(5.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }

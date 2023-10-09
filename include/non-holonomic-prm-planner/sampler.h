@@ -18,6 +18,7 @@ namespace bg = boost::geometry;
 typedef bg::model::d2::point_xy<double> Point_;
 typedef bg::model::polygon<Point_> Polygon;
 typedef bg::model::box<Point_> Box;
+typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 
 namespace PRM
 {
@@ -67,7 +68,11 @@ namespace PRM
                                                 const geometry_msgs::PoseStamped &goal,
                                                  const int num_points);
 
-            bool getLowestPoint(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
+            bool getPerpendicularLowestPoint(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
+                                const geometry_msgs::PoseStamped target_pose, geometry_msgs::PoseStamped &lowest_pose);
+
+
+            bool getParallelLowestPoint(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
                                 const geometry_msgs::PoseStamped target_pose, geometry_msgs::PoseStamped &lowest_pose);
 
 
@@ -85,6 +90,10 @@ namespace PRM
             void publishAllPolygons(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);
 
             geometry_msgs::PolygonStamped getPolygonStampedMsg(const Polygon &polygon_);
+
+            Polygon getPolygonFromVertices(const std::vector<geometry_msgs::PoseStamped> &vertices);
+
+            float getIntersectionArea(const Polygon &p1, const Polygon &p2);
 
         private: 
 
