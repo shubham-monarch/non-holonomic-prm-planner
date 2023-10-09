@@ -36,6 +36,8 @@ namespace PRM
 
         Point() = default;
         Point(const float x_, const float y_): x(x_), y(y_) {}  
+
+        Point(const geometry_msgs::PoseStamped &p): x(p.pose.position.x), y(p.pose.position.y) {}
     };
     
     struct Node2d 
