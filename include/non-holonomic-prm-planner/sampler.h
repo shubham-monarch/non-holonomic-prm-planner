@@ -34,7 +34,13 @@ namespace PRM
 
             float getCorrectDirection(const Point mid_, const float theta, const float  sz = 0.1) const; 
 
-            std::vector<Node2d> gaussianSample(const geometry_msgs::PoseStamped &start, 
+
+            std::vector<Node2d> gaussianSampleAlongWhitePolygon(const geometry_msgs::PoseStamped &start, 
+                                                const geometry_msgs::PoseStamped &goal,
+                                                 const int num_points);
+
+
+            std::vector<Node2d> uniformSample(const geometry_msgs::PoseStamped &start, 
                                                 const geometry_msgs::PoseStamped &goal,
                                                  const int num_points);
 

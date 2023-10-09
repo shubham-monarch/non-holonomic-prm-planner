@@ -148,7 +148,8 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
         //ROS_INFO("flag_: %d", flag_);   
 
-        sampledPoints2D_ = sampler_->gaussianSample(start_pose_, goal_pose_, 1000);
+        //sampledPoints2D_ = sampler_->uniformSample(start_pose_, goal_pose_, 1000);
+        sampledPoints2D_ = sampler_->gaussianSampleAlongWhitePolygon(start_pose_, goal_pose_, 1000);
 
         //sampledPoints2D_  = sampler_->gaussianSamplePointsForRowTransition(start_pose_, goal_pose_, 500);
         //sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
