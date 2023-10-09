@@ -30,15 +30,16 @@ namespace PRM
 
             std::vector<Node2d> gaussianSamplePointsForRowTransition(  const geometry_msgs::PoseStamped &start, 
                                                 const geometry_msgs::PoseStamped &goal,
-                                                 const int num_points);
-
-
-            bool getPolygonCenter(const geometry_msgs::PoseStamped &start, 
-                                                const geometry_msgs::PoseStamped &goal, 
-                                                 geometry_msgs::PoseStamped &centre_) const;
-            
+                                                 const int num_points);            
 
             float getCorrectDirection(const Point mid_, const float theta, const float  sz = 0.1) const; 
+
+            std::vector<Node2d> gaussianSample(const geometry_msgs::PoseStamped &start, 
+                                                const geometry_msgs::PoseStamped &goal,
+                                                 const int num_points);
+
+            bool getLowestPoint(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
+                                const geometry_msgs::PoseStamped target_pose, geometry_msgs::PoseStamped &lowest_pose);
         
         private: 
 
@@ -47,7 +48,7 @@ namespace PRM
             ros::Subscriber sampled_points_sub_;
             ros::NodeHandle nh_; 
             const std::string sampled_points_topic_;
-            ros::Publisher centre_pose_pub_;
+            ros::Publisher lowest_pose_pub;
           
     };
 

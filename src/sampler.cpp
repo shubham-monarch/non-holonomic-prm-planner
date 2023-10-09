@@ -30,20 +30,122 @@ PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
     //ros::topic::waitForMessage    
     //samplePointsForRowTransition(geometry_msgs::PoseStamped(), geome);
 
-    centre_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("centre_pose", 1, true);
+    lowest_pose_pub = nh_.advertise<geometry_msgs::PoseStamped>("centre_pose", 1, true);
 }
 
 
+std::vector<PRM::Node2d> PRM::Sampler::gaussianSample(const geometry_msgs::PoseStamped &start_pose_, \
+                                                        const geometry_msgs::PoseStamped &goal_pose_, 
+                                                        const int num_points)
+{
 
-bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
-                                                                                geometry_msgs::PoseStamped &centre_pose_) const
+    //== 'section' => horizontal section between the start and the goal row 
+
+    //ROS_WARN("=== Gaussian Sample! ====");
+
+    geometry_msgs::PoseStamped section_centre_; 
+
+    //std::cout << "start_pose: (" << start_pose_.pose.position.x << "," << start_pose_.pose.position.y << ")" << std::endl;
+    //std::cout << "goal_pose: (" << goal_pose_.pose.position.x << "," << goal_pose_.pose.position.y << ")" << std::endl;
+    
+   // bool flag_ = getPolygonCenter(start_pose_, goal_pose_, section_centre_);
+
+    geometry_msgs::PoseStamped l1_, l2_; //lowest pose for start and goal poses 
+    bool f1_, f2_; 
+    
+    f1_ = getLowestPoint(start_pose_, goal_pose_, start_pose_, l1_);
+    f2_ = getLowestPoint(start_pose_, goal_pose_, goal_pose_, l2_);
+
+    if(!f1_ || !f2_)
+    {
+        ROS_ERROR("unable to find lowest point for start OR goal pose!");
+        return std::vector<Node2d>();
+    }
+
+    Point st_pt{start_pose_.pose.position.x, start_pose_.pose.position.y}; 
+    Point go_pt{goal_pose_.pose.position.x, goal_pose_.pose.position.y};
+
+    Point l1_pt{l1_.pose.position.x, l1_.pose.position.y}; 
+    Point l2_pt{l2_.pose.position.x, l2_.pose.position.y};
+
+    float x_mx, x_mn; 
+    float y_mx, y_mn; 
+
+    std::vector<float> vx{st_pt.x, go_pt.x , l1_pt.x, l2_pt.x}; 
+    std::vector<float> vy{st_pt.y, go_pt.y, l1_pt.y, l2_pt.y};
+
+    x_mx = *std::max_element(vx.begin()  , vx.end());
+    x_mn = *std::min_element(vx.begin(), vx.end()); 
+
+    y_mx = *std::max_element(vy.begin()  , vy.end());
+    y_mn = *std::min_element(vy.begin(), vy.end()); 
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    //std::uniform_real_distribution<float > x_dis(p_centre.x - 0.5 * section_width * cos(theta), p_centre.x +  0.5 * section_width * cos(theta)); 
+    //std::uniform_real_distribution<float > y_dis(p_centre.y - section_len * sin(theta), p_centre.y +  section_len * sin(theta)); 
+
+    std::uniform_real_distribution<float > x_dis(x_mn - 5, x_mx + 5); 
+    std::uniform_real_distribution<float > y_dis(y_mn - 5, y_mx + 5); 
+
+
+    auto start_time = std::chrono::system_clock::now();
+    // Perform some time-consuming operation
+    int cnt= 0 ; 
+
+    sampled_points_.clear();
+    
+    while(ros::ok() && cnt < num_points)
+    {
+
+        //float r_ = r_dis(gen);
+        //float theta_ = theta(gen);
+
+        float x = x_dis(gen);
+        float y = y_dis(gen);
+
+        Point p = {x, y};
+
+        bool flag = robot_->isConfigurationFree(p.x, p.y);
+
+        //if(!flag) {continue;}
+
+        const Node2d node_{p.x, p.y};
+        if(sampled_points_.count(node_) == 0)
+        {
+            sampled_points_.insert(node_);
+            cnt++;
+        }
+
+    }
+
+    auto end_time = std::chrono::system_clock::now();
+    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+    
+    ROS_WARN("================================================================================") ;
+    ROS_WARN("Sampling of %d points for row transition took %ld seconds!", cnt, elapsed.count());
+    ROS_WARN("================================================================================") ;
+    
+    std::vector<Node2d> points_;
+    points_.reserve(sampled_points_.size());
+    for(const auto t: sampled_points_) {points_.push_back(t);}
+
+
+
+    return points_;
+    
+}
+
+bool PRM::Sampler::getLowestPoint(const geometry_msgs::PoseStamped &start_, const geometry_msgs::PoseStamped &goal, \
+                                geometry_msgs::PoseStamped target_pose_, geometry_msgs::PoseStamped &lowest_pose) 
 {
 
     //ROS_WARN("======== Inside PRM::Sampler::getPolygonCenter() ========");   
     Point p1{start_.pose.position.x, start_.pose.position.y};
     Point p2{goal.pose.position.x, goal.pose.position.y};
 
-    Point mid((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+    //Point mid((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
 
     float theta_ = std::atan2((p1.x - p2.x),  (p2.y - p1.y));
 
@@ -61,15 +163,18 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
     // === direction detection
     //dir_ = getCorrectDirection(mid, theta_, sz_);
 
+    Point target = {target_pose_.pose.position.x, target_pose_.pose.position.y};
+
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
+    
     while(ros::ok() && iter_cnt < limit)
     {   
         iter_cnt++; 
 
         Point pt;
 
-        float x1 = mid.x +  iter_cnt * sz_ *  std::cos(theta_);
-        float y1 = mid.y +  iter_cnt * sz_ * std::sin(theta_);
+        float x1 = target.x +  iter_cnt * sz_ *  std::cos(theta_);
+        float y1 = target.y +  iter_cnt * sz_ * std::sin(theta_);
 
         if(!p.isInsideGreenPolygon(Point_t{x1, y1}) && !p.isConfigurationFree(x1, y1)) {
 
@@ -79,8 +184,8 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
             break; 
         }
         
-        float x2 = mid.x -  iter_cnt * sz_ *  std::cos(theta_);
-        float y2 = mid.y -  iter_cnt * sz_ * std::sin(theta_);
+        float x2 = target.x -  iter_cnt * sz_ *  std::cos(theta_);
+        float y2 = target.y -  iter_cnt * sz_ * std::sin(theta_);
 
         if(!p.isInsideGreenPolygon(Point_t{x2, y2}) && !p.isConfigurationFree(x2, y2)) {
 
@@ -92,22 +197,21 @@ bool PRM::Sampler::getPolygonCenter(const geometry_msgs::PoseStamped &start_, co
         
         
     }
-
+    
     if(found)
     {
-        Point centre_ = Point((mid.x + end_.x) / 2.f, (mid.y + end_.y) / 2.f);
+    // Point centre_ = Point((mid.x + end_.x) / 2.f, (mid.y + end_.y) / 2.f);
         
-        centre_pose_.header.frame_id = "map";
-        centre_pose_.header.stamp = ros::Time::now();
-        centre_pose_.pose.position.x = centre_.x;
-        centre_pose_.pose.position.y = centre_.y;
-        centre_pose_.pose.orientation = Utils::getQuatFromYaw(theta_);
+        lowest_pose.header.frame_id = "map";
+        lowest_pose.header.stamp = ros::Time::now();
+        lowest_pose.pose.position.x = end_.x;
+        lowest_pose.pose.position.y = end_.y;
+        lowest_pose.pose.orientation = Utils::getQuatFromYaw(theta_);
 
-        centre_pose_pub_.publish(centre_pose_);
+        lowest_pose_pub.publish(lowest_pose);
     }
     
     //ROS_WARN(" End of PRM::Sampler::getPolygonCenter() function!");
-
     return found;
 }
 

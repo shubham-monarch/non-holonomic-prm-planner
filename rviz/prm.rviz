@@ -179,7 +179,7 @@ Visualization Manager:
       Shaft Length: 10
       Shaft Radius: 0.5
       Shape: Arrow
-      Topic: /mid_point
+      Topic: /centre_pose
       Unreliable: false
       Value: true
   Enabled: true
@@ -209,7 +209,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -81.42964172363281
+      Angle: -106.92925262451172
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -219,10 +219,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 3.2623469829559326
+      Scale: 4.666693210601807
       Target Frame: <Fixed Frame>
-      X: -688.7186279296875
-      Y: 242.35238647460938
+      X: -698.0214233398438
+      Y: 251.7375946044922
     Saved: ~
 Window Geometry:
   Displays:

@@ -142,32 +142,28 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
         }
 
-        //ros::Duration(5.0).sleep();
-
-        //PolyPtr closest_poly_ =  p.findClosestPoly(start_t, Color::green);
-        //p.publishClosestPolygon(closest_poly_);
         
-        //std::vector<Node2d> points2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
-        geometry_msgs::PoseStamped centre_pose_;
-        bool found_ = sampler_->getPolygonCenter(start_pose_, goal_pose_, centre_pose_);
+        //geometry_msgs::PoseStamped pose_; 
+        //bool flag_= sampler_->getPolygonCenter(start_pose_, goal_pose_, pose_);
 
-        if(!found_)
-        {
-            ROS_ERROR("mid_point not found! ==> Something is wrong!");
-            return false;
-        }
-        
+        //ROS_INFO("flag_: %d", flag_);   
+
+        sampledPoints2D_ = sampler_->gaussianSample(start_pose_, goal_pose_, 1000);
+
         //sampledPoints2D_  = sampler_->gaussianSamplePointsForRowTransition(start_pose_, goal_pose_, 500);
         //sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
+        
+        //sampledPoints2D_  = sampler_->gaussianSample(start_pose_, goal_pose_, 1000);
+        
         //adding start and goal pose to sampled points
         //sampledPoints2D_.push_back(Node2d{start_pose_.pose.position.x, start_pose_.pose.position.y});
         //sampledPoints2D_.push_back(Node2d{goal_pose_.pose.position.x, goal_pose_.pose.position.y});
 
-        //geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(sampledPoints2D_);
+        geometry_msgs::PoseArray pose_arr_ = poseArrayFromNode2dVec(sampledPoints2D_);
 
-        //ROS_INFO("pose_arr_.poses.size(): %d", pose_arr_.poses.size()); 
+        ROS_INFO("pose_arr_.poses.size(): %d", pose_arr_.poses.size()); 
 
-        // /visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
+        visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
 
 
         /*generateRoadMap();
@@ -195,7 +191,7 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
 
 
-        ros::Duration(1.0).sleep();
+        ros::Duration(10.0).sleep();
         p.repairPolygons();
         //res.path = smoothedPath.getPath();
     }
