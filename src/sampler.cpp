@@ -20,7 +20,7 @@ extern std::shared_ptr<PRM::Visualize> visualize_;
 PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
 {   
     //std::cout << "Sampler constructor called!" << std::endl;
-    ROS_DEBUG("Inside sampler constructor!");
+   // ROS_DEBUG("Inside sampler constructor!");
     //sampled_points_sub_ = nh_.subscribe(sampled_points_topic_, 1, &PRM::Sampler::sampledPointsCallback, this);
 
     //ros::topic::waitForMessage(sampled_points_topic_, nh_);
@@ -39,12 +39,12 @@ PRM::Sampler::Sampler(const std::string topic): sampled_points_topic_(topic)
 void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topic)
 {
 
-    ROS_WARN(" ==== Inside publishPolygon() ====");
+    //ROS_WARN(" ==== Inside publishPolygon() ====");
     geometry_msgs::PolygonStamped poly_msg;
     poly_msg.header.frame_id = "map";
     poly_msg.header.stamp = ros::Time::now(); 
 
-    ROS_INFO("polygon.outer().size(): %d", polygon.outer().size());
+    //ROS_INFO("polygon.outer().size(): %d", polygon.outer().size());
 
     for(auto t: polygon.outer())
     {
@@ -55,8 +55,8 @@ void PRM::Sampler::publishPolygon(const Polygon &polygon, const std::string topi
         poly_msg.polygon.points.push_back(pt);     
     }
 
-    ROS_INFO("polygon_msg.polygon.points.size(): %d", poly_msg.polygon.points.size());  
-    ROS_INFO("Publishing polygon on topic: %s", topic.c_str());
+    //ROS_INFO("polygon_msg.polygon.points.size(): %d", poly_msg.polygon.points.size());  
+    // ROS_INFO("Publishing polygon on topic: %s", topic.c_str());
     
     current_polygon_pub.publish(poly_msg);
 
@@ -92,7 +92,7 @@ std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingInsidePolygon(const Polygo
 
     bool is_valid_ = bg::is_valid(polygon);
 
-    ROS_INFO("is_valid_: %d", is_valid_);
+    //ROS_INFO("is_valid_: %d", is_valid_);
     
     publishPolygon(polygon);
 
@@ -136,6 +136,49 @@ std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingInsidePolygon(const Polygo
 
     ROS_INFO("points_.size(): %d", points_.size()); 
     return points_;
+}
+
+Polygon PRM::Sampler::getCrossSectionPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
+{
+
+    bool f1_, f2_; 
+    geometry_msgs::PoseStamped st_lp_, go_lp_ ;// lowest pose corresponding to start_pose_  and goal pose
+
+    f1_ = getLowestPoint(start_pose_, goal_pose_, start_pose_, st_lp_);
+
+    if(!f1_)
+    {
+        ROS_ERROR("unable to find lowest point for start pose!");
+        return Polygon();
+    }
+
+    f2_ = getLowestPoint(start_pose_, goal_pose_, goal_pose_, go_lp_);
+
+    if(!f2_)
+    {
+        ROS_ERROR("unable to find lowest point for start pose!");
+        return Polygon();
+    }
+
+    std::vector<Point_> vertices_ = {
+        Point_(start_pose_.pose.position.x, start_pose_.pose.position.y),
+        Point_(st_lp_.pose.position.x, st_lp_.pose.position.y),
+        Point_(go_lp_.pose.position.x, go_lp_.pose.position.y),
+        Point_(goal_pose_.pose.position.x, goal_pose_.pose.position.y)
+    };
+
+    Polygon polygon_; 
+    bg::assign_points(polygon_, vertices_);
+    bg::correct(polygon_);
+
+    if(bg::is_valid(polygon_)) {return polygon_; }
+
+    else{
+        
+        ROS_ERROR("Returning invalid polygon!");
+        return Polygon();
+    }
+
 }
 
 

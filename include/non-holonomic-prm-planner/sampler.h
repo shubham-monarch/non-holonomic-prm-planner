@@ -75,6 +75,9 @@ namespace PRM
             Polygon getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
                                 const bool start_);
 
+            Polygon getCrossSectionPolygon(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_); 
+
+            
             std::vector<Node2d> uniformSamplingInsidePolygon(const Polygon &polygon_, const int num_points);
 
             void publishPolygon(const Polygon &polygon_, const std::string topic_ = "current_polygon");
