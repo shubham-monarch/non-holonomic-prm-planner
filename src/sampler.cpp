@@ -71,20 +71,21 @@ void PRM::Sampler::getRunwayPolygon(const geometry_msgs::PoseStamped &start_pose
 
     bool dir_ = (start_ ? 0 : 1);
 
-    Point shifted_pt_ = shiftPose(target_pose_, 10, dir_);
+    geometry_msgs::PoseStamped shifted_pose_ = shiftPose(target_pose_, 1, dir_);
 
-    Point pt_ = Point{target_pose_};
-
+    Point pt_ = Point{shifted_pose_};
+    
     float theta_parallel = std::atan2(goal_pt.y - start_pt.y, goal_pt.x - start_pt.x);
     float theta_perependicular_ = tf::getYaw(target_pose_.pose.orientation);
 
     float fwd_ = (start_ ? 1.0 : -1.f); 
 
+    float length_ = 12.f, width_ = 2.f; 
 
-    Point v1 = Point{pt_.x - 2.f * std::cos(theta_parallel), pt_.y - 2.f * std::sin(theta_parallel)}; 
-    Point v2 = Point{v1.x +   fwd_ * 10 * std::cos(theta_perependicular_), v1.y + fwd_ * 10 *  std::sin(theta_perependicular_)};
-    Point v3 = Point{v2.x + 4.f * std::cos(theta_parallel), v2.y + 4.f * std::sin(theta_parallel)}; 
-    Point v4 = Point{v3.x -  fwd_ * 10 * std::cos(theta_perependicular_), v3.y -  fwd_ * 10 * std::sin(theta_perependicular_)};
+    Point v1 = Point{pt_.x - width_ * std::cos(theta_parallel), pt_.y - width_ * std::sin(theta_parallel)}; 
+    Point v2 = Point{v1.x +   fwd_ * length_* std::cos(theta_perependicular_), v1.y + fwd_ * length_ *  std::sin(theta_perependicular_)};
+    Point v3 = Point{v2.x + 2 * width_ * std::cos(theta_parallel), v2.y + 2 * width_ * std::sin(theta_parallel)}; 
+    Point v4 = Point{v3.x -  fwd_ * length_ * std::cos(theta_perependicular_), v3.y -  fwd_ * length_ * std::sin(theta_perependicular_)};
     
     std::vector<Point> vertices_{v1, v2, v3, v4};
 
