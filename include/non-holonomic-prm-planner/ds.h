@@ -30,12 +30,7 @@ namespace PRM
 
     struct Edge;
 
-    struct rrt_node
-    {
 
-        float x, y, theta; 
-        
-    };
 
     struct Point
     {

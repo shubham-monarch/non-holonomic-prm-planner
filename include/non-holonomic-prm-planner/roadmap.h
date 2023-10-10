@@ -42,6 +42,8 @@ namespace PRM{
             void initialize();
             bool generateRoadMap();    
 
+//            bool plan();
+
             static int edge_cnt_;
 
             
