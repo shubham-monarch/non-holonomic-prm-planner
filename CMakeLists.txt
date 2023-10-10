@@ -59,6 +59,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/robot_model.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/path_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sampler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rrt.cpp
+    
     
     )
 
@@ -76,6 +78,8 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/path_generator.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/sampler.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/vector2d.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/non-holonomic-prm-planner/rrt.h
+    
     
     
     )

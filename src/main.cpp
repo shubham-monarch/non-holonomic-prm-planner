@@ -1,4 +1,8 @@
-#include <non-holonomic-prm-planner/roadmap.h>
+//#include <non-holonomic-prm-planner/roadmap.h>
+#include <non-holonomic-prm-planner/rrt.h>
+#include <non-holonomic-prm-planner/robot_model.h>
+#include <non-holonomic-prm-planner/visualizations.h>
+
 
 #include <ros/console.h>
 
@@ -27,12 +31,14 @@ int main(int argc, char** argv) {
     //std::shared_ptr<PRM::Roadmap> roadmap_ = std::make_shared<PRM::Roadmap>();
     const std::string sampling_topic_ = "/rviz_sampled_points";
 
-    PRM::Roadmap roadmap_(sampling_topic_);
-    roadmap_.initialize();
+    //PRM::Roadmap roadmap_(sampling_topic_);
+    //roadmap_.initialize();
 
    // roadmap_.generateRoadMap();
     //roadmap_->initialize();
     //roadmap_->generateRoadMap();
+    
+    PRM::rrt rrt_;
     ros::spin();
 
     return 0;
