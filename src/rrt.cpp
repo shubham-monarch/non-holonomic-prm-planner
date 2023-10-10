@@ -1,4 +1,11 @@
 #include <non-holonomic-prm-planner/rrt.h>
+#include <non-holonomic-prm-planner/path_generator.h>
+
+#include <random>
+
+
+extern std::shared_ptr<PRM::RobotModel> robot_;
+
 
 PRM::rrt::rrt()
 {
@@ -120,8 +127,66 @@ void PRM::rrt::reset()
 }
 
 
+PRM::Pose_ PRM::rrt::getRandomPoint(const Polygon &polygon)
+{
+
+    bool is_valid_ = bg::is_valid(polygon);
+
+    if(!is_valid_)
+    {
+        ROS_ERROR("polygon is not valid!");
+        return Pose_();
+    }
+    
+    Box envelope;
+    bg::envelope(polygon, envelope);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::uniform_real_distribution<double> distX(bg::get<bg::min_corner, 0>(envelope), bg::get<bg::max_corner, 0>(envelope));
+    std::uniform_real_distribution<double> distY(bg::get<bg::min_corner, 1>(envelope), bg::get<bg::max_corner, 1>(envelope));
+    std::uniform_real_distribution<double> disTheta(0, 2 * M_PI);
+
+    bool found_ = false; 
+
+    int iter_limit_ = 100 * 100 * 100; 
+    int num_iters_  = 0 ;
+
+    while (ros::ok() && num_iters_++ < iter_limit_) 
+    {
+        point_t randomPoint(distX(gen), distY(gen));
+
+        if (bg::within(randomPoint, polygon)) {
+            
+            //float x = randomPoint.x();
+            //float y = randomPoint.y();
 
 
+            float x = bg::get<0>(randomPoint);
+            float y = bg::get<1>(randomPoint);
+            float theta = disTheta(gen);
+
+            auto obb_ = robot_->getOBB({x,y}, theta); 
+
+            if(robot_->isConfigurationFree(obb_))
+            {
+                return Pose_{x, y, theta}; 
+            }
+
+        }
+    }
+
+
+}
+
+
+PRM::Pose_ PRM::rrt::sampleValidPose(const Polygon &polygon)
+{
+
+
+
+}
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
 {   
@@ -131,10 +196,15 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
         return false;
     }
 
-    tree_.push_back(rrt_node{start_pose_});
+    rrt_node root_;
+    root_.parent_ = nullptr; 
+    root_.pose_ = Pose_{start_pose_};
+    
+    //tree_.push_back(rrt_node{start_pose_});
 
     while(ros::ok())
     {
+
 
 
 

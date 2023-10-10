@@ -25,12 +25,22 @@ typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 namespace PRM
 {
 
-    struct rrt_node
+    struct Pose_
     {
-        float x, y, theta;
-        rrt_node(float x_, float y_, float theta_): x(x_), y(y_), theta(theta_){}
-        rrt_node(const geometry_msgs::PoseStamped &p): x(p.pose.position.x), y(p.pose.position.y),theta(tf::getYaw(p.pose.orientation)){}
+        float x, y, theta; 
+        Pose_(float x_, float y_, float theta_): x(x_), y(y_), theta(theta_){}
+        Pose_(const geometry_msgs::PoseStamped &pose): x(pose.pose.position.x), y(pose.pose.position.y), theta(tf::getYaw(pose.pose.orientation)){}
+        Pose_() = default;
+    };
 
+    struct rrt_node
+    {   
+
+        std::shared_ptr<rrt_node> parent_;
+        Pose_ pose_;
+        std::vector<std::shared_ptr<rrt_node>> children_;
+        rrt_node() = default;
+        
     };
 
     class rrt
@@ -50,7 +60,8 @@ namespace PRM
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
-            
+            Pose_ sampleValidPose(const Polygon &polygon_);
+            Pose_ getRandomPoint(const Polygon &polygon);
 
         private: 
 
