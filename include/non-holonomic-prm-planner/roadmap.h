@@ -149,6 +149,8 @@ namespace PRM{
             geometry_msgs::PoseStamped test_start_pose_,test_goal_pose_;
 
             bool start_pose_set_, goal_pose_set_;
+
+            static int success_cnt_;
            
         
     };

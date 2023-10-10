@@ -7,13 +7,12 @@ Panels:
         - /Grid1
         - /PolygonArray1
         - /Polygon1
-        - /Pose1
-        - /Pose2
-        - /PoseArray1
+        - /Start Pose1
+        - /Goal Pose1
         - /Path1
         - /Start Runway1
-        - /Goal Runway1
-        - /Cross section1
+        - /test_start_pose1
+        - /test_goal_pose1
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -29,7 +28,7 @@ Panels:
     Expanded:
       - /Current View1
     Name: Views
-    Splitter Ratio: 0.5
+    Splitter Ratio: 0.7918215394020081
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
@@ -91,11 +90,11 @@ Visualization Manager:
       Class: rviz/Pose
       Color: 115; 210; 22
       Enabled: true
-      Head Length: 3
-      Head Radius: 1
-      Name: Pose
+      Head Length: 1
+      Head Radius: 0.5
+      Name: Start Pose
       Queue Size: 10
-      Shaft Length: 10
+      Shaft Length: 1
       Shaft Radius: 0.10000000149011612
       Shape: Arrow
       Topic: /start_pose
@@ -107,12 +106,12 @@ Visualization Manager:
       Class: rviz/Pose
       Color: 255; 25; 0
       Enabled: true
-      Head Length: 3
-      Head Radius: 1
-      Name: Pose
+      Head Length: 1
+      Head Radius: 0.5
+      Name: Goal Pose
       Queue Size: 10
-      Shaft Length: 10
-      Shaft Radius: 0.5
+      Shaft Length: 1
+      Shaft Radius: 0.10000000149011612
       Shape: Arrow
       Topic: /goal_pose
       Unreliable: false
@@ -185,6 +184,38 @@ Visualization Manager:
       Topic: /cross_section_polygon
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 255; 255
+      Enabled: true
+      Head Length: 1
+      Head Radius: 0.5
+      Name: test_start_pose
+      Queue Size: 10
+      Shaft Length: 1.5
+      Shaft Radius: 0.10000000149011612
+      Shape: Arrow
+      Topic: /test_start_pose
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 252; 233; 79
+      Enabled: true
+      Head Length: 1
+      Head Radius: 0.5
+      Name: test_goal_pose
+      Queue Size: 10
+      Shaft Length: 1.5
+      Shaft Radius: 0.10000000149011612
+      Shape: Arrow
+      Topic: /test_goal_pose
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -212,7 +243,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -119.33919525146484
+      Angle: -128.8492431640625
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -222,10 +253,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 27.657182693481445
+      Scale: -27.190540313720703
       Target Frame: <Fixed Frame>
-      X: -674.6124267578125
-      Y: 211.1426239013672
+      X: -743.2693481445312
+      Y: 278.965087890625
     Saved: ~
 Window Geometry:
   Displays:

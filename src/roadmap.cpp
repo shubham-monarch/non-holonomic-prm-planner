@@ -34,7 +34,7 @@ int PRM::Constants::MapMetaData::width_;
 
 
 int PRM::Roadmap::edge_cnt_ = 0 ;
-
+int PRM::Roadmap::success_cnt_ = 0 ;
 
 PRM::Roadmap::Roadmap(const std::string topic_) : sampling_topic_(topic_)
 {   
@@ -121,9 +121,10 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
     Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
     Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
 
-    G_.clear();
-    sampledPoints2D_.clear();
+    //G_.clear();
+    //sampledPoints2D_.clear();
 
+    reset();
 
     geometry_msgs::PoseStamped start_pose_, goal_pose_; 
     start_pose_= getPoseStamped(req.start.pose.pose.position.x, req.start.pose.pose.position.y, req.start.pose.pose.orientation);
@@ -162,9 +163,6 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         
         //Polygon polygon_ = sampler_->getRunwayPolygon(start_pose_, goal_pose_, 1);
 
-        start_pose_set_ = false;
-        goal_pose_set_ = false;
-
         sampler_->publishAllPolygons(start_pose_, goal_pose_);    
 
         std::vector<Node2d> p1_ = sampler_->sampleAlongPose(start_pose_, true);
@@ -172,13 +170,14 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         
         
         Polygon cross_section_polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
-        std::vector<Node2d> p3_  = sampler_->gaussianSampleAlongWhitePolygon(cross_section_polygon_, 600);
-       // std::vector<Node2d> p4_ = sampler_->uniformSamplingInsidePolygon(cross_section_polygon_, 500);
+        //std::vector<Node2d> p3_  = sampler_->gaussianSampleAlongWhitePolygon(cross_section_polygon_, 600);
+        std::vector<Node2d> p4_ = sampler_->uniformSamplingInsidePolygon(cross_section_polygon_, 500);
 
         sampledPoints2D_.clear(); 
         for(auto t: p1_) sampledPoints2D_.push_back(t);
         for(auto t: p2_) sampledPoints2D_.push_back(t);
-        for(auto t: p3_) sampledPoints2D_.push_back(t);
+        //for(auto t: p3_) sampledPoints2D_.push_back(t);
+        for(auto t: p4_) sampledPoints2D_.push_back(t);
 
         
 
@@ -208,10 +207,9 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
 
         generateRoadMap();
+    
 
-        bool success_ = false; 
 
-        int attempt_cnt_ =0 ;
 
         /*while(!goal_pose_set_ || !start_pose_set_) 
         {
@@ -231,12 +229,20 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
         //ROS_ERROR("success_ is true!");
 
-        ROS_ERROR("success_: %d", success_);    
+       // ROS_ERROR("success_: %d", success_);    
 
         //bool success_ = plan(start_pose_, goal_pose_);
 
         
 
+        while(ros::ok() && Roadmap::success_cnt_ < 10 )
+        {   
+            ROS_INFO("Inside getPathService while loop!");
+            ros::Duration(0.1).sleep(); 
+            ros::spinOnce();
+        }
+
+        ROS_INFO("Roadmap::success_cnt_: %d", Roadmap::success_cnt_);
         /*generateRoadMap();
         
         NodePtr_ start_ptr_ = getNodePtr(start_pose_.pose.position.x, start_pose_.pose.position.y, tf::getYaw(start_pose_.pose.orientation));
@@ -262,10 +268,9 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
 
 
-        ros::Duration(5.0).sleep();
+        //ros::Duration(5.0).sleep();
         p.repairPolygons();
-
-        return success_;
+        return false;
         //res.path = smoothedPath.getPath();
     }
 
@@ -286,94 +291,13 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
 
     test_start_pose_.pose.position.x = pose_->pose.pose.position.x; 
     test_start_pose_.pose.position.y = pose_->pose.pose.position.y;
-    test_start_pose_.pose.orientation = pose_->pose.pose.orientation;
+    test_start_pose_.pose.orientation = pose_->pose.pose.orientation;   
 
     start_pose_set_ = true; 
 
     visualize_->publishT<geometry_msgs::PoseStamped>("test_start_pose", test_start_pose_, true);
 
-    //testing
-    /*const std::array<float, 2> translation_{pose_->pose.pose.position.x , pose_->pose.pose.position.y};
-    const float heading_ =  tf::getYaw(pose_->pose.pose.orientation);
-    const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
-
-    bool flag_ = robot_->isConfigurationFree(obb_);
-
-    ROS_DEBUG("flag_: %d", flag_);
-    */
-    /*int cnt_ =0 ; 
-    
-    ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
-
-    geometry_msgs::PoseStamped p_;
-    p_.pose = pose_->pose.pose;
-    p_.header.frame_id = "map"; 
-    p_.header.stamp = ros::Time::now();
-    
-    //ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
-
-    float yaw_ = tf::getYaw(pose_->pose.pose.orientation); 
-
-    if(yaw_ < 0)
-    {
-        yaw_  += 2 * M_PI;
-    }
-    
-    sp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
-   //sp_ = {-827.245544,-140.275894,17};
-   
-   // sp_ = {-838.735840,-141.841537,55};
-    
-    
-    ROS_DEBUG("====== INITIAL POSE =================="); 
-    //sp_.print();
-    
-    visualize_->publishT<geometry_msgs::PoseStamped>("start_pose", p_);
-
-    SteeringCurve::generateSteeringCurveFamily(sp_, "initial_pose_family");
-
-    
-    const Vec3f &key_ = Utils::getNode3dkey(sp_);
-    
-    NodePtr_ ptr_; 
-
-    if(G_.find(key_) != G_.end())
-    {
-        ptr_ = G_[key_];
-    }
-    else
-    {
-        ptr_ = std::make_shared<Node3d>(sp_);
-    }
-
-
-    bool flag_ = connectStartPoseToRoadmap(ptr_);
-
-    if(!flag_)
-    {
-        
-        ROS_ERROR("ROADMAP CONNECT FLAG ==> FALSE");
-    
-    }
-    else
-    {
-        ROS_ERROR("ROADMAP CONNECT FLAG ==> TRUE");
-        //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(sp_)]->edges_->size());
-        visualize_->drawNodeNeighbours(ptr_, "inital_pose_neighbours_");
-        G_[key_] = ptr_;
-        //ROS_INFO("start_edges_cnt_: %d", G_[Utils::getNode3dkey(*ptr_)]->edges_->size());
-        
-
-        ROS_DEBUG("G_.size(): %d", G_.size());
-    
-    }
-
-    //djikstra(ptr_);
-
     return; 
-    
-    */
-    
 }
 
 void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
@@ -385,90 +309,23 @@ void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     goal_pose_set_ = true; 
 
     visualize_->publishT<geometry_msgs::PoseStamped>("test_goal_pose", test_goal_pose_, true);
-    
-    /*int cnt_ =0 ; 
-    
-    //ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
 
-    geometry_msgs::PoseStamped p_ = *pose_;
-    
-    //ROS_INFO("start_yaw_: %f", tf::getYaw(pose_->pose.pose.orientation));
-
-    float yaw_ = tf::getYaw(p_.pose.orientation); 
-
-    if(yaw_ < 0)
+    if(!start_pose_set_)
     {
-        yaw_  += 2 * M_PI;
+        ROS_ERROR("start_pose is not set!");
+        return;
     }
 
-    
-    Node3d gp_ = {p_.pose.position.x, p_.pose.position.y, yaw_ / Constants::Planner::theta_sep_};
-    
-    visualize_->publishT<geometry_msgs::PoseStamped>("goal_pose", p_);
+    bool flag_ = plan(test_start_pose_, test_goal_pose_);
 
-    
-    //generateSteeringCurveFamily(gp_);
-    SteeringCurve::generateSteeringCurveFamily(p_.pose);
-
-
-    const Vec3f &key_ = Utils::getNode3dkey(gp_);
-    
-    NodePtr_ ptr_; 
-
-    if(G_.find(key_) != G_.end())
+    if(flag_)
     {
-        ptr_ = G_[key_];
-    }
-    else
-    {
-        ptr_ = std::make_shared<Node3d>(gp_);
-    }
-
-
-    bool flag_ = connectGoalPoseToRoadmap(ptr_);
-
-    if(!flag_)
-    {
-        
-        ROS_ERROR("ROADMAP CONNECT FLAG ==> FALSE");
+        ROS_WARN("======= PLAN WAS FOUND ======");
+        Roadmap::success_cnt_++;
+    }   
     
-    }
-    else
-    {
-        ROS_DEBUG("ROADMAP CONNECT FLAG ==> TRUE");
-    
-        G_[key_] = ptr_;
-        
-        ROS_DEBUG("G_.size(): %d", G_.size());
+    return;
 
-        NodePtr_ start_ptr_ = G_[Utils::getNode3dkey(sp_)];
-        NodePtr_ goal_ptr_ = ptr_;
-
-        int cnt_ = 0 ;
-
-
-        //std::vector<Node3d> path_ = PathGenerator::getShortestPath(G_, vis_,  start_ptr_, goal_ptr_, visualize_);
-        
-        
-        //ROS_INFO("path_.size(): %d", path_.size());
-        //generateROSPath(path_);
-        
-        nav_msgs::Path final_path_; 
-
-        bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, final_path_);
-        //bool found_ = PathGenerator::checkPathForCollisions(G_, path_, robot_, visualize_);
-        
-        ROS_WARN("============================================="); 
-        ROS_WARN("==========FOUND: %d===========================", found_); 
-        ROS_WARN("============================================="); 
-        
-
-    }
-
-    //djikstra(ptr_);
-
-    //return; 
-    */
 }   
 
 void PRM::Roadmap::initialize()
@@ -944,6 +801,8 @@ bool PRM::Roadmap::plan(const geometry_msgs::PoseStamped &start_pose_, const geo
         return false;
     }
 
+    ROS_INFO("Connected start pose to the roadmap!");
+
     can_connect_ = connectGoalPoseToRoadmap(goal_ptr_);
     if(!can_connect_)
     {
@@ -951,6 +810,8 @@ bool PRM::Roadmap::plan(const geometry_msgs::PoseStamped &start_pose_, const geo
         return false;
     }
 
+    ROS_INFO("Connected goal pose to the roadmap!");
+    
     nav_msgs::Path final_path_; 
 
     bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, final_path_);
@@ -1107,10 +968,9 @@ void updateProgessBar(int curr, int total)
     }
 
     std::cout << " " << frac* 100 << "%" << std::endl;
-
-
-
 }
+
+
 void PRM::Roadmap::buildGraph()
 {   
     
@@ -1174,6 +1034,16 @@ void PRM::Roadmap::buildGraph()
     ROS_INFO("ROADMAP BUILT!");
     ROS_DEBUG("G_.size(): %d", G_.size());
 
+}
+
+void PRM::Roadmap::reset()
+{
+
+    G_.clear(); 
+    sampledPoints2D_.clear(); 
+    Roadmap::success_cnt_ = 0 ;
+    goal_pose_set_ = false;
+    start_pose_set_ = false;    
 }
 
 void PRM::Roadmap::processSamplePoints2D(const std::vector<PRM::Node2d> &points)
