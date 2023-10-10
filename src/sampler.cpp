@@ -622,6 +622,45 @@ std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingForRunway(const geometry_m
 }
 
 
+std::vector<PRM::Node2d> PRM::Sampler::sampleAlongPose(const geometry_msgs::PoseStamped &pose_, const bool along)
+{
+
+    Point pt{pose_};
+    float theta_ = tf::getYaw(pose_.pose.orientation);
+
+    std::vector<Node2d> points_;
+    
+    float sigma = 1.f;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> normal_dis(0.f, sigma);
+    std::uniform_real_distribution<float > theta_dis(0, 2 * M_PI); //theta distribution
+    
+    int num_neighbours = 10;
+    float dir_ = (along ? 1.f : -1.f);
+    float step_sz = 1.f;
+    while(true) 
+    {       
+        if(!robot_->isConfigurationFree(pt.x, pt.y)) {break;}
+
+        points_.push_back(Node2d{pt.x, pt.y});
+        
+        
+        for(int i =0 ; i< num_neighbours; i++)
+        {
+            float theta = theta_dis(gen);
+            float r = normal_dis(gen);
+             
+            Point p = {pt.x + r * cos(theta), pt.y + r * sin(theta)};
+            points_.push_back(Node2d{p.x, p.y});
+        }
+
+        pt = Point{pt.x +  dir_ * step_sz * cos(theta_), pt.y + dir_ * step_sz * sin(theta_)};
+
+    }
+
+    return points_;
+}
 
 
 std::vector<PRM::Node2d> PRM::Sampler::gaussianSampleAlongWhitePolygon(const geometry_msgs::PoseStamped &start_pose_, \

@@ -95,6 +95,8 @@ namespace PRM
 
             float getIntersectionArea(const Polygon &p1, const Polygon &p2);
 
+            std::vector<Node2d> sampleAlongPose(const geometry_msgs::PoseStamped &start, const bool along);
+
         private: 
 
             std::unordered_set<Node2d, Node2dHash> sampled_points_; 
