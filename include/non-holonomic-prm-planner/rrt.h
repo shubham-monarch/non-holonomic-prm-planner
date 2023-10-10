@@ -35,13 +35,15 @@ namespace PRM
 
     struct rrt_node
     {   
-
+        float cost_;
         std::shared_ptr<rrt_node> parent_;
         Pose_ pose_;
         std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
         
     };
+
+    typedef std::shared_ptr<rrt_node> rrt_nodePtr;
 
     class rrt
     {
@@ -60,8 +62,12 @@ namespace PRM
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
-            Pose_ sampleValidPose(const Polygon &polygon_);
-            Pose_ getRandomPoint(const Polygon &polygon);
+            Pose_ getNextPoint(const Polygon &polygon_);
+            Pose_ sampleRandomPoint(const Polygon &polygon);
+            float getCost(const Pose_ &a_, const Pose_ &b_);
+            bool canConnect(const Pose_ &a_, const Pose_ &b_);
+            bool connectToTree(const Pose_ &pose);
+
 
         private: 
 
@@ -75,7 +81,7 @@ namespace PRM
 
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
 
-            std::vector<rrt_node> tree_;
+            std::vector<rrt_nodePtr> tree_;
     };
 
 

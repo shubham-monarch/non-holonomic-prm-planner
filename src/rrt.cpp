@@ -127,7 +127,7 @@ void PRM::rrt::reset()
 }
 
 
-PRM::Pose_ PRM::rrt::getRandomPoint(const Polygon &polygon)
+PRM::Pose_ PRM::rrt::sampleRandomPoint(const Polygon &polygon)
 {
 
     bool is_valid_ = bg::is_valid(polygon);
@@ -170,27 +170,237 @@ PRM::Pose_ PRM::rrt::getRandomPoint(const Polygon &polygon)
             auto obb_ = robot_->getOBB({x,y}, theta); 
 
             if(robot_->isConfigurationFree(obb_))
-            {
+            {   
+                found_ = true; 
                 return Pose_{x, y, theta}; 
             }
 
         }
     }
 
+    if(!found_)
+    {
+        ROS_ERROR("valid pose not found!");
+        return Pose_();
+    }
+
+
+}
+
+float PRM::rrt::getCost(const PRM::Pose_ &p1,  const PRM::Pose_ &p2) 
+{
+    
+    float dis_ = sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+        
+    const float xa_ = p1.x, ya_ = p1.y;
+    const float xb_ = p2.x, yb_ = p2.y;
+
+    
+    const Vec2f V_oa_{xa_, ya_};
+    const Vec2f V_ob_{xb_, yb_};
+    
+    const float yaw_a_ = p1.theta; 
+    const float yaw_b_ = p2.theta;
+
+    const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+    const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
+
+    const Mat3f &P_ao_ = P_oa_.inverse();
+            
+    const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
+    
+    const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
+    const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
+    
+
+    float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
+    
+    if(theta_dash_ < 0)
+    {
+        theta_dash_ += 2 *  M_PI; 
+    }
+    
+    const float r_ = Utils::getR(x_dash_, y_dash_);
+
+    
+
+    const float steering_dir_ = Utils::signDelta(x_dash_, y_dash_);
+    const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
+
+   // ROS_INFO("theta_dash_ => %f theta_c => %f", theta_dash_ * 180.f / M_PI, theta_c_ * 180.f / M_PI);   
+    float dis_cost_, ang_cost_; 
+    float total_cost_; 
+
+    if(r_ > 0.f)
+    {   
+        if(x_dash_ > 0)
+        {
+            
+            dis_cost_ =  10 * Constants::Planner::w_dis_ * r_ * theta_dash_;
+            ang_cost_ =  Constants::Planner::w_ang_ * theta_dash_ ;
+        
+        }
+        else
+        {
+            dis_cost_ = Constants::Planner::w_dis_ * r_ * theta_dash_ * 1000;;
+            ang_cost_ = Constants::Planner::w_ang_ * theta_dash_;
+        
+        }
+        
+    }
+    else 
+    {
+        if(x_dash_ >= 0)
+        {   
+
+            ang_cost_ = 0 ; 
+            dis_cost_ = Constants::Planner::w_dis_ * x_dash_;
+        } 
+        else
+        {
+            //implies reverse movement without turning
+            ang_cost_ = 0 ; 
+            dis_cost_ = Constants::Planner::w_rev_ * std::fabs(x_dash_);
+        }
+    }
+    
+    total_cost_ = dis_cost_ + ang_cost_;
+    return total_cost_; 
 
 }
 
 
-PRM::Pose_ PRM::rrt::sampleValidPose(const Polygon &polygon)
+bool PRM::rrt::canConnect(const PRM::Pose_ &p1,  const PRM::Pose_ &p2) 
+{
+    
+    float dis_ = sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+    
+
+    if(dis_ > Constants::Planner::max_res_) {return false; }
+    
+    if(dis_ < 0.001f) { return false; }      
+    
+
+    const float xa_ = p1.x, ya_ = p1.y;
+    const float xb_ = p2.x, yb_ = p2.y;
+
+    
+    const Vec2f V_oa_{xa_, ya_};
+    const Vec2f V_ob_{xb_, yb_};
+    
+    const float yaw_a_ = p1.theta; 
+    const float yaw_b_ = p2.theta;
+
+    const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+    const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
+
+    const Mat3f &P_ao_ = P_oa_.inverse();
+            
+    const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
+    
+    const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
+    const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
+    
+
+    if(x_dash_ < 0 && !Constants::Planner::can_reverse_)
+    {
+        return false;
+    }
+
+    float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
+    
+    if(theta_dash_ < 0)
+    {
+        theta_dash_ += 2 *  M_PI; 
+    }
+    
+    const float r_ = Utils::getR(x_dash_, y_dash_);
+
+        
+    if(r_ > 0.f && r_ < Constants::Vehicle::R_MIN_)
+    {   
+        
+        // ROS_WARN("yaw_a_: %f === yaw_b_: %f r_: %f", yaw_a_ * 180.f / M_PI, yaw_b_ * 180.f / M_PI, r_);
+        return false;
+    }
+
+    const float steering_dir_ = Utils::signDelta(x_dash_, y_dash_);
+    const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
+
+
+    if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
+    {
+
+        return true; 
+    
+    }
+
+    return false;
+
+}
+
+
+
+PRM::Pose_ PRM::rrt::getNextPoint(const Polygon &polygon)
 {
 
+    bool found_  = false; 
 
+    int iter_limit_ = 100 * 100 * 100;
+    int num_iters_ = 0 ;
 
+    while(ros::ok() && num_iters_++ < iter_limit_)
+    {
+        Pose_ random_pose_ = sampleRandomPoint(polygon);   
+        for(auto t: tree_)
+        {   
+            bool can_connect_ = canConnect(t->pose_, random_pose_); 
+            if(can_connect_) { return random_pose_; }
+        }
+    }
+
+    ROS_ERROR("valid pose not found!");
+    return Pose_();
+
+}
+
+bool PRM::rrt::connectToTree(const PRM::Pose_ &pose)
+{
+    bool found = false; 
+    rrt_nodePtr nearest_node_ = nullptr; 
+    float min_cost_ = std::numeric_limits<float>::max();
+
+    for(auto ptr_ : tree_)
+    {
+        float cost = getCost(ptr_->pose_, pose);
+        if(cost < min_cost_)
+        {
+            min_cost_ = cost; 
+            nearest_node_ = ptr_;
+            found = true; 
+        } 
+    }
+
+    if(!found) {
+        ROS_ERROR("Unable to connect to tree => something is wrong!");
+        return false; 
+    }
+
+    rrt_nodePtr new_node_ = std::make_shared<rrt_node>();
+    new_node_->pose_ = pose;
+    new_node_->parent_ = nearest_node_;
+    new_node_->cost_ = nearest_node_->cost_ + min_cost_;
+    
+    nearest_node_->children_.push_back(new_node_);
+    
+    tree_.push_back(new_node_);
+
+    return true; 
 }
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
 {   
-    if(!goal_pose_set_ || !start_pose_set_)
+    if(!goal_pose_set_ || !start_pose_set_ || !polygon_set_)
     {
         ROS_ERROR("start or goal pose is not set!");
         return false;
@@ -199,14 +409,18 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     rrt_node root_;
     root_.parent_ = nullptr; 
     root_.pose_ = Pose_{start_pose_};
-    
+    root_.cost_ = 0 ;
     //tree_.push_back(rrt_node{start_pose_});
+
+    Polygon polygon_ = rrt_polygon_;
 
     while(ros::ok())
     {
 
-
-
+        Pose_ nxt_pose_ = getNextPoint(polygon_);
+        
+        
+        
 
 
     }
