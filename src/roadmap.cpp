@@ -121,6 +121,10 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
     Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
     Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
 
+    G_.clear();
+    sampledPoints2D_.clear();
+
+
     geometry_msgs::PoseStamped start_pose_, goal_pose_; 
     start_pose_= getPoseStamped(req.start.pose.pose.position.x, req.start.pose.pose.position.y, req.start.pose.pose.orientation);
     goal_pose_ = getPoseStamped(req.end.pose.position.x, req.end.pose.position.y, req.end.pose.orientation);   
@@ -157,10 +161,29 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         //sampler_->getRunwayPolygon(start_pose_, goal_pose_, 0);
         
         //Polygon polygon_ = sampler_->getRunwayPolygon(start_pose_, goal_pose_, 1);
+
+        start_pose_set_ = false;
+        goal_pose_set_ = false;
+
+        sampler_->publishAllPolygons(start_pose_, goal_pose_);    
+
+        std::vector<Node2d> p1_ = sampler_->sampleAlongPose(start_pose_, true);
+        std::vector<Node2d> p2_ = sampler_->sampleAlongPose(goal_pose_, false);
         
         
-        Polygon polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
-        sampledPoints2D_  = sampler_->gaussianSampleAlongWhitePolygon(polygon_, 1000);
+        Polygon cross_section_polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
+        std::vector<Node2d> p3_  = sampler_->gaussianSampleAlongWhitePolygon(cross_section_polygon_, 600);
+       // std::vector<Node2d> p4_ = sampler_->uniformSamplingInsidePolygon(cross_section_polygon_, 500);
+
+        sampledPoints2D_.clear(); 
+        for(auto t: p1_) sampledPoints2D_.push_back(t);
+        for(auto t: p2_) sampledPoints2D_.push_back(t);
+        for(auto t: p3_) sampledPoints2D_.push_back(t);
+
+        
+
+       // for(auto t: p4_) sampledPoints2D_.push_back(t);
+        
 
 
         //sampler_->publishAllPolygons(start_pose_, goal_pose_);
@@ -184,6 +207,35 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
         visualize_->publishT<geometry_msgs::PoseArray>("sampled_points", pose_arr_);
 
+        generateRoadMap();
+
+        bool success_ = false; 
+
+        int attempt_cnt_ =0 ;
+
+        /*while(!goal_pose_set_ || !start_pose_set_) 
+        {
+            ros::Duration(0.1).sleep(); 
+            ros::spinOnce();
+        }
+
+        while(!success_ && attempt_cnt_++ < 10 )
+        {
+            success_ = plan(test_start_pose_, test_goal_pose_);
+
+            if(!success_)
+            {
+                ROS_ERROR("success_ is false!");
+            }   
+        }*/
+
+        //ROS_ERROR("success_ is true!");
+
+        ROS_ERROR("success_: %d", success_);    
+
+        //bool success_ = plan(start_pose_, goal_pose_);
+
+        
 
         /*generateRoadMap();
         
@@ -212,6 +264,8 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
 
         ros::Duration(5.0).sleep();
         p.repairPolygons();
+
+        return success_;
         //res.path = smoothedPath.getPath();
     }
 
@@ -227,15 +281,26 @@ void PRM::Roadmap::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPt
 
     ROS_WARN("========== START POSE RECEIVED =============="); 
 
+    test_start_pose_.header.frame_id= "map" ; 
+    test_start_pose_.header.stamp = ros::Time::now(); 
+
+    test_start_pose_.pose.position.x = pose_->pose.pose.position.x; 
+    test_start_pose_.pose.position.y = pose_->pose.pose.position.y;
+    test_start_pose_.pose.orientation = pose_->pose.pose.orientation;
+
+    start_pose_set_ = true; 
+
+    visualize_->publishT<geometry_msgs::PoseStamped>("test_start_pose", test_start_pose_, true);
+
     //testing
-    const std::array<float, 2> translation_{pose_->pose.pose.position.x , pose_->pose.pose.position.y};
+    /*const std::array<float, 2> translation_{pose_->pose.pose.position.x , pose_->pose.pose.position.y};
     const float heading_ =  tf::getYaw(pose_->pose.pose.orientation);
     const std::vector<float> obb_ = robot_->getOBB(translation_, heading_);
 
     bool flag_ = robot_->isConfigurationFree(obb_);
 
     ROS_DEBUG("flag_: %d", flag_);
-
+    */
     /*int cnt_ =0 ; 
     
     ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
@@ -315,8 +380,13 @@ void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
 {
     ROS_WARN("========== GOAL POSE RECEIVED =============="); 
     
+    test_goal_pose_ = *pose_;
+
+    goal_pose_set_ = true; 
+
+    visualize_->publishT<geometry_msgs::PoseStamped>("test_goal_pose", test_goal_pose_, true);
     
-    int cnt_ =0 ; 
+    /*int cnt_ =0 ; 
     
     //ROS_INFO("start_pose.frame: %s", pose_->header.frame_id.c_str());
 
@@ -398,7 +468,7 @@ void PRM::Roadmap::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     //djikstra(ptr_);
 
     //return; 
-
+    */
 }   
 
 void PRM::Roadmap::initialize()
@@ -859,6 +929,45 @@ bool PRM::Roadmap::canConnect(NodePtr_ &a_ptr_, NodePtr_&b_ptr_)
     
 }
 
+bool PRM::Roadmap::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
+{
+    NodePtr_ start_ptr_ = getNodePtr(start_pose_.pose.position.x, start_pose_.pose.position.y, tf::getYaw(start_pose_.pose.orientation));
+    NodePtr_ goal_ptr_ = getNodePtr(goal_pose_.pose.position.x, goal_pose_.pose.position.y, tf::getYaw(goal_pose_.pose.orientation));
+
+    bool can_connect_; 
+
+    can_connect_ = connectStartPoseToRoadmap(start_ptr_);
+
+    if(!can_connect_)
+    {
+        ROS_ERROR("Can't connect start pose to the roadmap!");
+        return false;
+    }
+
+    can_connect_ = connectGoalPoseToRoadmap(goal_ptr_);
+    if(!can_connect_)
+    {
+        ROS_ERROR("Can't connect goal pose to the roadmap!");
+        return false;
+    }
+
+    nav_msgs::Path final_path_; 
+
+    bool found_ = PathGenerator::getCollisionFreePath(G_, start_ptr_, goal_ptr_, final_path_);
+    
+    ROS_WARN("============================================="); 
+    ROS_WARN("==========FOUND: %d===========================", found_); 
+    ROS_WARN("============================================="); 
+
+    if(found_)
+    {   
+        ROS_INFO("final_path.size(): %d", (int)final_path_.poses.size());
+        visualize_->publishT<nav_msgs::Path>("final_path", final_path_);
+    }
+
+    return found_;
+    
+}
 
 bool PRM::Roadmap::connectNodes(NodePtr_ &a_ptr_,  NodePtr_ &b_ptr_)
 {   
@@ -1126,26 +1235,6 @@ void PRM::Roadmap::processSamplePoints2D(const std::vector<PRM::Node2d> &points)
 
 bool PRM::Roadmap::generateRoadMap()
 {
-   /* ROS_DEBUG("Inside generateRoadmap function!");
-    while(ros::ok() && !sampler_->is_ready)
-    {
-        ROS_DEBUG("Waiting for sampler to be ready!");
-        ros::spinOnce();
-        ros::Duration(1.0).sleep();
-    }
-
-    sampledPoints2D_= sampler_->generate2DSamplePoints();
-
-
-    //robot_->initializeCollisionDetectionPolygon();
-
-    processSamplePoints2D(sampledPoints2D_); 
-
-    return true; 
-    
-    */
-
-
 
     ROS_INFO("sampledpoints: %d", sampledPoints2D_.size());
 

@@ -97,6 +97,10 @@ namespace PRM{
 
 
             geometry_msgs::PoseArray poseArrayFromNode2dVec(const std::vector<Node2d> &points_);
+
+            bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);
+
+            void reset();
             //void samplePoints()
 
             //==== variables =====
@@ -141,6 +145,10 @@ namespace PRM{
 
             ros::Publisher test_pub_; 
             const std::string sampling_topic_;
+
+            geometry_msgs::PoseStamped test_start_pose_,test_goal_pose_;
+
+            bool start_pose_set_, goal_pose_set_;
            
         
     };

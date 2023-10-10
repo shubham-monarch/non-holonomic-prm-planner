@@ -301,7 +301,7 @@ Polygon PRM::Sampler::getRunwayPolygon(const geometry_msgs::PoseStamped &start_p
 
     float fwd_ = (start_ ? 1.0 : -1.f); 
 
-    float length_ = 12.f, width_ = 2.f; 
+    float length_ = 12.f, width_ = 3.f; 
 
     Point v1 = Point{pt_.x - width_ * std::cos(theta_parallel), pt_.y - width_ * std::sin(theta_parallel)}; 
     Point v2 = Point{v1.x +   fwd_ * length_* std::cos(theta_perependicular_), v1.y + fwd_ * length_ *  std::sin(theta_perependicular_)};
@@ -632,21 +632,23 @@ std::vector<PRM::Node2d> PRM::Sampler::sampleAlongPose(const geometry_msgs::Pose
 
     std::vector<Node2d> points_;
 
-    float sigma = 1.f;
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<> normal_dis(0.f, sigma);
     std::uniform_real_distribution<float > theta_dis(0, 2 * M_PI); //theta distribution
     
-    int num_neighbours = 10;
+    int num_neighbours = 5;
     float dir_ = (along ? 1.f : -1.f);
     float step_sz = 1.f;
+    float sigma = 1.f;    
+        
     while(true) 
     {       
         if(!robot_->isConfigurationFree(pt.x, pt.y)) {break;}
 
         points_.push_back(Node2d{pt.x, pt.y});
-        
+
+        //sigma *= 1.10;
+        std::normal_distribution<> normal_dis(0.f, sigma);
         
         for(int i =0 ; i< num_neighbours; i++)
         {
