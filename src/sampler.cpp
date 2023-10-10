@@ -622,6 +622,8 @@ std::vector<PRM::Node2d> PRM::Sampler::uniformSamplingForRunway(const geometry_m
 }
 
 
+
+
 std::vector<PRM::Node2d> PRM::Sampler::sampleAlongPose(const geometry_msgs::PoseStamped &pose_, const bool along)
 {
 
@@ -629,7 +631,7 @@ std::vector<PRM::Node2d> PRM::Sampler::sampleAlongPose(const geometry_msgs::Pose
     float theta_ = tf::getYaw(pose_.pose.orientation);
 
     std::vector<Node2d> points_;
-    
+
     float sigma = 1.f;
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -661,6 +663,87 @@ std::vector<PRM::Node2d> PRM::Sampler::sampleAlongPose(const geometry_msgs::Pose
 
     return points_;
 }
+
+
+
+std::vector<PRM::Node2d> PRM::Sampler::gaussianSampleAlongWhitePolygon(const Polygon &polygon,  
+                                                        const int num_points)
+{
+    bool is_valid_ = bg::is_valid(polygon);
+
+    if(!is_valid_)
+    {
+        ROS_ERROR("Invalid polygon send to gaussianSampleAlongWhitePolygon()!");
+        return std::vector<Node2d>();
+    }
+
+    std::vector<Node2d> points_;
+
+    std::vector<Point_> randomPoints;
+    Box envelope;
+    bg::envelope(polygon, envelope);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> distX(bg::get<bg::min_corner, 0>(envelope), bg::get<bg::max_corner, 0>(envelope));
+    std::uniform_real_distribution<double> distY(bg::get<bg::min_corner, 1>(envelope), bg::get<bg::max_corner, 1>(envelope));
+    std::uniform_real_distribution<float > theta_dis(0, 2 * M_PI); //theta distribution
+    
+    
+    float sigma = 3.f; 
+    std::normal_distribution<> normal_dis(0.f, sigma);
+
+    int cnt =0 ; 
+
+    CollisionDetectionPolygon &poly_ = robot_->getCollisionPolyRef();
+    
+    auto start_time = std::chrono::system_clock::now();
+    
+    while(ros::ok() && cnt < num_points)
+    {
+        
+        float r_ = normal_dis(gen);
+        float theta_ = theta_dis(gen);
+
+        Point p1 = Point{distX(gen), distY(gen)};
+        
+        Point p2 = {p1.x + r_ * cos(theta_), p1.y + r_ * sin(theta_)};
+
+        bool p1_free_ = robot_->isConfigurationFree(p1.x, p1.y);
+        bool p2_free_ = robot_->isConfigurationFree(p2.x, p2.y);
+    
+        Point pt_; // point to insert
+        bool valid_ = false; 
+
+        if(p1_free_  && !p2_free_ && !poly_.isInsideGreenPolygon(Point_t(p2.x, p2.y)))  {
+            pt_ = p1 ; 
+            valid_ = true; 
+        }
+
+        else if (!p1_free_ && !poly_.isInsideGreenPolygon(Point_t(p1.x, p2.x))  && p2_free_) {
+            pt_ = p2; 
+            valid_ = true;  
+        }
+
+        if(valid_)
+        {
+            points_.push_back(Node2d{pt_.x, pt_.y});
+            cnt++;
+        
+        }
+    }
+
+    auto end_time = std::chrono::system_clock::now();
+    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+    
+    ROS_WARN("================================================================================") ;
+    ROS_WARN("Sampling of %d points for row transition took %ld seconds!", cnt, elapsed.count());
+    ROS_WARN("================================================================================") ;
+    
+    return points_;
+    
+}
+
 
 
 std::vector<PRM::Node2d> PRM::Sampler::gaussianSampleAlongWhitePolygon(const geometry_msgs::PoseStamped &start_pose_, \

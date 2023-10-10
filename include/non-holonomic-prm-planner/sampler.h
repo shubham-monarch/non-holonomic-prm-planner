@@ -63,6 +63,8 @@ namespace PRM
                                                 const geometry_msgs::PoseStamped &goal,
                                                  const int num_points);
 
+            std::vector<Node2d> gaussianSampleAlongWhitePolygon(const Polygon &polygon_, const int num_points);
+
 
             std::vector<Node2d> uniformSample(const geometry_msgs::PoseStamped &start, 
                                                 const geometry_msgs::PoseStamped &goal,

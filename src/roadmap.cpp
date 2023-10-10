@@ -157,13 +157,17 @@ bool PRM::Roadmap::getPathService(prm_planner::PRMService::Request& req, prm_pla
         //sampler_->getRunwayPolygon(start_pose_, goal_pose_, 0);
         
         //Polygon polygon_ = sampler_->getRunwayPolygon(start_pose_, goal_pose_, 1);
-        //Polygon polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
         
-        sampler_->publishAllPolygons(start_pose_, goal_pose_);
+        
+        Polygon polygon_ = sampler_->getCrossSectionPolygon(start_pose_, goal_pose_);
+        sampledPoints2D_  = sampler_->gaussianSampleAlongWhitePolygon(polygon_, 1000);
+
+
+        //sampler_->publishAllPolygons(start_pose_, goal_pose_);
 
         //sampledPoints2D_ = sampler_->uniformSamplingInsidePolygon(polygon_, 100);
 
-        sampledPoints2D_ = sampler_->sampleAlongPose(goal_pose_, false);
+        //sampledPoints2D_ = sampler_->sampleAlongPose(goal_pose_, false);
 
         //sampledPoints2D_  = sampler_->gaussianSamplePointsForRowTransition(start_pose_, goal_pose_, 500);
         //sampledPoints2D_  = sampler_->samplePointsForRowTransition(start_pose_, goal_pose_, 1000);
