@@ -111,60 +111,44 @@ void PRM::rrt::reset()
 }
 
 
-PRM::Pose_ PRM::rrt::sampleRandomPoint(const Polygon &polygon)
+bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
 {   
-    //ROS_INFO("==== Inside sampleRandomPoint ====");
     bool is_valid_ = bg::is_valid(polygon);
 
-    if(!is_valid_)
-    {
+    if(!is_valid_){ 
         ROS_ERROR("[sampleRandomPoint] => polygon is not valid!");
-        return Pose_();
+        return false;
     }
-    
+
     Box envelope;
     bg::envelope(polygon, envelope);
 
     std::random_device rd;
     std::mt19937 gen(rd());
-
     std::uniform_real_distribution<double> distX(bg::get<bg::min_corner, 0>(envelope), bg::get<bg::max_corner, 0>(envelope));
     std::uniform_real_distribution<double> distY(bg::get<bg::min_corner, 1>(envelope), bg::get<bg::max_corner, 1>(envelope));
     std::uniform_real_distribution<double> disTheta(0, 2 * M_PI);
 
-    bool found_ = false; 
-
     int iter_limit_ = 100 * 100 * 100; 
     int num_iters_  = 0 ;
 
-
     while (ros::ok() && num_iters_++ < iter_limit_) 
     {
-        //ROS_INFO("[sampleRandomPoint] => num_iters_: %d", num_iters_);
         point_t randomPoint(distX(gen), distY(gen));
-
         if (bg::within(randomPoint, polygon)) {
             float x = bg::get<0>(randomPoint);
             float y = bg::get<1>(randomPoint);
             float theta = disTheta(gen);
 
             auto obb_ = robot_->getOBB({x,y}, theta); 
-
-            //std::cout << "before isConfigurationFree" << std::endl;
             if(robot_->isConfigurationFree(obb_))
-            {   
-                found_ = true; 
-                return Pose_{x, y, theta}; 
+            {
+                pose = Pose_{x,y,theta};
+                return true; 
             }
-            //std::cout << "after isConfigurationFree" << std::endl;
         }
     }
-
-    if(!found_)
-    {
-        ROS_ERROR("valid pose not found!");
-        return Pose_();
-    }
+    return false; 
 }
 
 void PRM::rrt::publishTree()
@@ -301,8 +285,9 @@ bool PRM::rrt::getNextPoint(const Polygon &polygon, PRM::Pose_ &nxt_pose_)
     int num_iters_ = 0 ;
     while(ros::ok() && num_iters_++ < iter_limit_)
     {   
-        //ROS_INFO("num_iters_: %d", num_iters_);
-        Pose_ random_pose_ = sampleRandomPoint(polygon);   
+        Pose_ random_pose_; 
+        bool can_sample_ = sampleRandomPoint(polygon, random_pose_);   
+        if(!can_sample_) {continue;}
         for(auto t: tree_)
         {   
             bool can_connect_ = canConnect(t->pose_, random_pose_); 

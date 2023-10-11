@@ -22,6 +22,12 @@ typedef bg::model::box<point_t> Box;
 typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 
 
+//sampling goal with bias
+// two rrts
+//vornoi bias
+//goal biasing
+//hrrt vs ikrrt vs 
+
 namespace PRM
 {
 
@@ -63,7 +69,7 @@ namespace PRM
             void reset();
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
             bool getNextPoint(const Polygon &polygon_, Pose_ &nxt_pose_);
-            Pose_ sampleRandomPoint(const Polygon &polygon);
+            bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
             bool getCost(const Pose_ &a_, const Pose_ &b_, float &cost);
             bool canConnect(const Pose_ &a_, const Pose_ &b_);
             bool connectToTree(const Pose_ &pose, rrt_nodePtr &new_node_);
