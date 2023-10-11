@@ -67,6 +67,8 @@ namespace PRM
             float getCost(const Pose_ &a_, const Pose_ &b_);
             bool canConnect(const Pose_ &a_, const Pose_ &b_);
             bool connectToTree(const Pose_ &pose);
+            bool isGoalInVictinity(const Pose_ &pose);
+            void publishTree();
 
 
         private: 
@@ -80,6 +82,7 @@ namespace PRM
             bool polygon_set_;
 
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
+            ros::Publisher rrt_tree_pub_;
 
             std::vector<rrt_nodePtr> tree_;
     };

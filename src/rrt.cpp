@@ -3,6 +3,7 @@
 
 #include <random>
 
+#include <geometry_msgs/PoseArray.h>
 
 extern std::shared_ptr<PRM::RobotModel> robot_;
 
@@ -20,17 +21,15 @@ PRM::rrt::rrt()
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &rrt::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &rrt::goalPoseCb, this);
     rrt_polygon_sub_ = nh_.subscribe("/rviz_polygon", 1, &rrt::polygonCb, this);
-    
+    rrt_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_tree", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
 {
-
     ROS_WARN("========== START POSE RECEIVED =============="); 
 
     test_start_pose_.header.frame_id= "map" ; 
     test_start_pose_.header.stamp = ros::Time::now(); 
-
     test_start_pose_.pose.position.x = pose_->pose.pose.position.x; 
     test_start_pose_.pose.position.y = pose_->pose.pose.position.y;
     test_start_pose_.pose.orientation = pose_->pose.pose.orientation;   
@@ -109,11 +108,12 @@ void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
     
     if(polygon_.outer().size() > 0)
     {
+        rrt_polygon_ = polygon_;
         polygon_set_ = true; 
     }
     else
     {
-        ROS_ERROR("polygon is not valid!");
+        ROS_ERROR("[polygonCb] => polygon is not valid!");
         return;
     }
 
@@ -128,13 +128,13 @@ void PRM::rrt::reset()
 
 
 PRM::Pose_ PRM::rrt::sampleRandomPoint(const Polygon &polygon)
-{
-
+{   
+    //ROS_INFO("==== Inside sampleRandomPoint ====");
     bool is_valid_ = bg::is_valid(polygon);
 
     if(!is_valid_)
     {
-        ROS_ERROR("polygon is not valid!");
+        ROS_ERROR("[sampleRandomPoint] => polygon is not valid!");
         return Pose_();
     }
     
@@ -153,28 +153,26 @@ PRM::Pose_ PRM::rrt::sampleRandomPoint(const Polygon &polygon)
     int iter_limit_ = 100 * 100 * 100; 
     int num_iters_  = 0 ;
 
+
     while (ros::ok() && num_iters_++ < iter_limit_) 
     {
+        //ROS_INFO("[sampleRandomPoint] => num_iters_: %d", num_iters_);
         point_t randomPoint(distX(gen), distY(gen));
 
         if (bg::within(randomPoint, polygon)) {
-            
-            //float x = randomPoint.x();
-            //float y = randomPoint.y();
-
-
             float x = bg::get<0>(randomPoint);
             float y = bg::get<1>(randomPoint);
             float theta = disTheta(gen);
 
             auto obb_ = robot_->getOBB({x,y}, theta); 
 
+            //std::cout << "before isConfigurationFree" << std::endl;
             if(robot_->isConfigurationFree(obb_))
             {   
                 found_ = true; 
                 return Pose_{x, y, theta}; 
             }
-
+            //std::cout << "after isConfigurationFree" << std::endl;
         }
     }
 
@@ -183,7 +181,23 @@ PRM::Pose_ PRM::rrt::sampleRandomPoint(const Polygon &polygon)
         ROS_ERROR("valid pose not found!");
         return Pose_();
     }
+}
 
+void PRM::rrt::publishTree()
+{
+    geometry_msgs::PoseArray tree_msg_;
+    tree_msg_.header.frame_id = "map";
+    tree_msg_.header.stamp = ros::Time::now();
+    for(auto t: tree_)
+    {
+        geometry_msgs::Pose pose_;
+        pose_.position.x = t->pose_.x;
+        pose_.position.y = t->pose_.y;
+        pose_.orientation = tf::createQuaternionMsgFromYaw(t->pose_.theta);
+        tree_msg_.poses.push_back(pose_);   
+    }
+
+    rrt_tree_pub_.publish(tree_msg_);
 
 }
 
@@ -330,9 +344,7 @@ bool PRM::rrt::canConnect(const PRM::Pose_ &p1,  const PRM::Pose_ &p2)
 
     if(std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_)
     {
-
-        return true; 
-    
+        return true;    
     }
 
     return false;
@@ -340,17 +352,18 @@ bool PRM::rrt::canConnect(const PRM::Pose_ &p1,  const PRM::Pose_ &p2)
 }
 
 
-
+//generates a VALID random point inside the polygon 
+            
 PRM::Pose_ PRM::rrt::getNextPoint(const Polygon &polygon)
 {
-
     bool found_  = false; 
 
     int iter_limit_ = 100 * 100 * 100;
     int num_iters_ = 0 ;
 
     while(ros::ok() && num_iters_++ < iter_limit_)
-    {
+    {   
+        //ROS_INFO("num_iters_: %d", num_iters_);
         Pose_ random_pose_ = sampleRandomPoint(polygon);   
         for(auto t: tree_)
         {   
@@ -361,9 +374,24 @@ PRM::Pose_ PRM::rrt::getNextPoint(const Polygon &polygon)
 
     ROS_ERROR("valid pose not found!");
     return Pose_();
-
 }
 
+// check if possible to reach goal from the current tree
+bool PRM::rrt::isGoalInVictinity(const PRM::Pose_ &pose)
+{
+    bool flag_ = false; 
+    for(auto t: tree_)
+    {
+        Pose_ p = t->pose_; 
+        if(canConnect(p, pose))
+        {
+            return flag_; 
+        }
+    }
+    return flag_; 
+}
+
+//adds a new node to the tree
 bool PRM::rrt::connectToTree(const PRM::Pose_ &pose)
 {
     bool found = false; 
@@ -406,30 +434,45 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
         return false;
     }
 
-    rrt_node root_;
-    root_.parent_ = nullptr; 
-    root_.pose_ = Pose_{start_pose_};
-    root_.cost_ = 0 ;
-    //tree_.push_back(rrt_node{start_pose_});
+    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
+    bool f_ = p.selectCurrentIndex(Point_t(start_pose_.pose.position.x, start_pose_.pose.position.y), \
+                                            Point_t(goal_pose_.pose.position.x, goal_pose_.pose.position.y));
+
+    if(!f_) 
+    {
+        ROS_ERROR("unable to select current index!");
+        return false;
+    }
+
+    Pose_ goal_{goal_pose_};
+
+    rrt_nodePtr root_= std::make_shared<rrt_node>();
+    root_->parent_ = nullptr; 
+    root_->pose_ = Pose_{start_pose_};
+    root_->cost_ = 0 ;
+    tree_.push_back(root_);
 
     Polygon polygon_ = rrt_polygon_;
 
+    int num_points = 0 ;
     while(ros::ok())
     {
-
         Pose_ nxt_pose_ = getNextPoint(polygon_);
-        
-        
-        
-
-
+        bool connect_flag_= connectToTree(nxt_pose_);
+        ROS_INFO("tree_.size(): %d", tree_.size()); 
+        if(isGoalInVictinity(goal_))
+        {
+            ROS_INFO("Goal in vicinity!");
+            break;
+        }
+        num_points++;
+        if(num_points % 10 == 0)
+        {
+            publishTree();
+        }
     }
 
-
-
-
-
-
+    return true; 
 }
 
 

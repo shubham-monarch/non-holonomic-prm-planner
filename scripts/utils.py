@@ -64,7 +64,7 @@ class RvizPolygon:
         
         self.clicked_point_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_point_cb)
         
-        self.rviz_polygon_pub = rospy.Publisher("/rviz_polygon", PolygonStamped, queue_size=1)
+        self.rviz_polygon_pub = rospy.Publisher("/rviz_polygon", PolygonStamped, queue_size=1, latch=True)
         self.rviz_vertices_pub  = rospy.Publisher("/rviz_polygon_vertices", PoseArray, queue_size=1)
         self.rviz_sampled_points_pub = rospy.Publisher("/rviz_sampled_points", PoseArray, queue_size=1, latch= True)
         #self.sampled_points_pub = rospy.Publisher("/rviz_sampled_points", PoseArray, queue_size=1)
