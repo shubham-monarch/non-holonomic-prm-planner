@@ -293,8 +293,7 @@ bool PRM::rrt::canConnect(const PRM::Pose_ &p1,  const PRM::Pose_ &p2)
 }
 
 
-//generates a VALID random point inside the polygon 
-            
+//generates a VALID random point inside the polygon          
 bool PRM::rrt::getNextPoint(const Polygon &polygon, PRM::Pose_ &nxt_pose_)
 {
     bool found_  = false; 
@@ -333,7 +332,7 @@ float PRM::rrt::euclidDis(const PRM::Pose_ &a, const PRM::Pose_ &b)
 }
 
 //adds a new node to the tree
-bool PRM::rrt::connectToTree(const PRM::Pose_ &pose)
+bool PRM::rrt::connectToTree(const PRM::Pose_ &pose, rrt_nodePtr &new_node_)
 {   
     //ROS_WARN("==== Inside connectToTree ====");
     bool found_ = false; 
@@ -362,15 +361,84 @@ bool PRM::rrt::connectToTree(const PRM::Pose_ &pose)
         ROS_ERROR("Unable to connect to tree => something is wrong!");
         return false; 
     }
-
-    rrt_nodePtr new_node_ = std::make_shared<rrt_node>();
+    
+    new_node_ = std::make_shared<rrt_node>();
     new_node_->pose_ = pose;
     new_node_->parent_ = nearest_node_;
     new_node_->cost_ = nearest_node_->cost_ + min_cost_;
-
-    nearest_node_->children_.push_back(new_node_);
+    
     tree_.push_back(new_node_);
+    return true; 
+}
 
+
+void PRM::rrt::printNode(const rrt_nodePtr &node)
+{
+    ROS_INFO("============================================");
+    ROS_INFO("pose: (%f,%f,%f)", node->pose_.x, node->pose_.y, node->pose_.theta);
+    ROS_INFO("cost: %f", node->cost_);
+    ROS_INFO("parent: (%f,%f,%f)", node->parent_->pose_.x, node->parent_->pose_.y, node->parent_->pose_.theta);
+    ROS_INFO("============================================");
+}
+
+// tries to correct the tree by checking if the new node can be connected to any other node in the tree
+bool PRM::rrt::correctTree(rrt_nodePtr &new_node, const float sr)
+{
+    Pose_ pose_ = new_node->pose_;
+    float node_cost_ = new_node->cost_;
+    bool parent_updated_ = false; 
+
+   // printNode(new_node);
+
+    //attempt to update new_node parent
+    for(auto t : tree_)
+    {   
+        if(t == new_node) {continue; }
+        float dis_ = euclidDis(t->pose_, pose_);
+        if(dis_ < sr)
+        {
+            bool can_connect_ = canConnect(t->pose_, pose_);
+            if(can_connect_)
+            {
+                float curr_cost;
+                bool f_ = getCost(t->pose_, pose_, curr_cost);
+
+                if(f_ && (t->cost_ + curr_cost < node_cost_))
+                {
+                    //node parent need to be updated
+                    parent_updated_ = true; 
+                    new_node->parent_ = t;
+                    new_node->cost_ = t->cost_ + curr_cost;
+                }
+            }
+        }
+    }
+    
+    /*if(parent_updated_)
+    {
+        ROS_WARN("======= parent updated ======="); 
+        printNode(new_node); 
+    }*/
+
+    //attempt to update the nodes in the vicinity of the new node
+    for(auto t: tree_)
+    {
+        if(t == new_node) {continue;}
+        float dis = euclidDis(pose_, pose_);
+        if(dis < sr)
+        {
+            float curr_cost;
+            if(getCost(pose_, t->pose_, curr_cost))
+            {
+                if(node_cost_ + curr_cost < t->cost_)
+                {
+                    //t parent need to be updated
+                    t->parent_ = new_node;
+                    t->cost_ = node_cost_ + curr_cost;
+                } 
+            };
+        }
+    }
     return true; 
 }
 
@@ -406,6 +474,9 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
     int num_points = 0 ;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
     while(ros::ok())
     {
         Pose_ nxt_pose_; 
@@ -416,16 +487,17 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
             ROS_ERROR(" === Can't expand RRT TREE =="); 
             return false;
         }
-        
-        bool connect_flag_= connectToTree(nxt_pose_);
+
+        rrt_nodePtr nxt_node_ = nullptr;
+        bool connect_flag_= connectToTree(nxt_pose_, nxt_node_);
         if(!connect_flag_)
         {
             ROS_ERROR("Unable to connect next point to tree ==> Something is wrong!");
             return false;
         }
 
-        //ROS_INFO("tree_.size(): %d", tree_.size()); 
-        
+        bool correct_flag_= correctTree(nxt_node_, Constants::Planner::sr_);
+
         if(isGoalInVicinity(start_))
         {
             ROS_INFO("Goal in vicinity!");
@@ -433,13 +505,24 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
             break;
         }
 
-        num_points++;
-        if(num_points % 10 == 0)
+        //num_points++;
+        //ros::Duration(1.0).sleep();
+        if(num_points % 100 == 0)
         {
-            publishTree();
+              publishTree();
+              ros::Duration(1.0).sleep();
+              ros::spinOnce();
         }
+
         //ros::Duration(0.1).sleep();
     }
+
+    auto end_time = std::chrono::system_clock::now();
+    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+    
+    ROS_WARN("================================================================================") ;
+    ROS_WARN("RRT Trre with %d nodes took %ld seconds!", (int)tree_.size(), elapsed.count());
+    ROS_WARN("================================================================================") ;
 
     return true; 
 }

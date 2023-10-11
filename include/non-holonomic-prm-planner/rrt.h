@@ -38,7 +38,7 @@ namespace PRM
         float cost_;
         std::shared_ptr<rrt_node> parent_;
         Pose_ pose_;
-        std::vector<std::shared_ptr<rrt_node>> children_;
+        //std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
         
     };
@@ -66,10 +66,12 @@ namespace PRM
             Pose_ sampleRandomPoint(const Polygon &polygon);
             bool getCost(const Pose_ &a_, const Pose_ &b_, float &cost);
             bool canConnect(const Pose_ &a_, const Pose_ &b_);
-            bool connectToTree(const Pose_ &pose);
+            bool connectToTree(const Pose_ &pose, rrt_nodePtr &new_node_);
             bool isGoalInVicinity(const Pose_ &pose);
             void publishTree();
             float euclidDis(const Pose_ &a_, const Pose_ &b_);
+            bool correctTree(rrt_nodePtr &node_, const float sr);
+            void printNode(const rrt_nodePtr &node_);
 
 
         private: 
