@@ -58,7 +58,7 @@ namespace PRM{
 
             
             static const int N_ = 2000;
-            static const float theta_sep_ = 10.f * M_PI / 180.f;  //5 degree separation
+            static const float theta_sep_ = 100.f * M_PI / 180.f;  //5 degree separation
             static const float dis_sep_ = 0.1f; //10  cm
 
             static const bool can_reverse_ = false;

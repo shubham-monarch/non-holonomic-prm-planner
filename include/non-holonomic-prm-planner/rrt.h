@@ -62,13 +62,14 @@ namespace PRM
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
-            Pose_ getNextPoint(const Polygon &polygon_);
+            bool getNextPoint(const Polygon &polygon_, Pose_ &nxt_pose_);
             Pose_ sampleRandomPoint(const Polygon &polygon);
-            float getCost(const Pose_ &a_, const Pose_ &b_);
+            bool getCost(const Pose_ &a_, const Pose_ &b_, float &cost);
             bool canConnect(const Pose_ &a_, const Pose_ &b_);
             bool connectToTree(const Pose_ &pose);
-            bool isGoalInVictinity(const Pose_ &pose);
+            bool isGoalInVicinity(const Pose_ &pose);
             void publishTree();
+            float euclidDis(const Pose_ &a_, const Pose_ &b_);
 
 
         private: 
@@ -83,6 +84,7 @@ namespace PRM
 
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
             ros::Publisher rrt_tree_pub_;
+            ros::Publisher start_pose_pub_, goal_pose_pub_;
 
             std::vector<rrt_nodePtr> tree_;
     };
