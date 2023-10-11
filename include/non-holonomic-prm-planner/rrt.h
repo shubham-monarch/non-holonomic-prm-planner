@@ -15,7 +15,7 @@
 #include <tf/transform_datatypes.h>
 
 namespace bg = boost::geometry;
-
+namespace bgi = boost::geometry::index;
 typedef bg::model::d2::point_xy<double> point_t;
 typedef bg::model::polygon<point_t> Polygon;
 typedef bg::model::box<point_t> Box;
@@ -53,54 +53,48 @@ namespace PRM
 
     class rrt
     {
-
         public: 
 
             rrt(); 
 
             void addNodeToTree();
 
+            //ros callbacks
             void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
             void goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_);
             void polygonCb(geometry_msgs::PolygonStampedConstPtr polygon_);
+            
+            //utility functions
+            float euclidDis(const Pose_ &a_, const Pose_ &b_);
+            void printNode(const rrt_nodePtr &node_);
 
-
+            //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
-            bool getNextPoint(const Polygon &polygon_, Pose_ &nxt_pose_);
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
-            bool getCost(const Pose_ &a_, const Pose_ &b_, float &cost);
-            bool canConnect(const Pose_ &a_, const Pose_ &b_);
-            bool connectToTree(const Pose_ &pose, rrt_nodePtr &new_node_);
-            bool isGoalInVicinity(const Pose_ &pose);
-            void publishTree();
-            float euclidDis(const Pose_ &a_, const Pose_ &b_);
-            bool correctTree(rrt_nodePtr &node_, const float sr);
-            void printNode(const rrt_nodePtr &node_);
-
+            void publishTree(const std::vector<rrt_nodePtr> &tree_);
+            
 
         private: 
 
             Polygon rrt_polygon_;
-            ros::Subscriber start_pose_sub_, goal_pose_sub_;
-            ros::Subscriber rrt_polygon_sub_;
-            ros::NodeHandle nh_;
-
+            
             bool start_pose_set_, goal_pose_set_; 
             bool polygon_set_;
 
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
+            
             ros::Publisher rrt_tree_pub_;
             ros::Publisher start_pose_pub_, goal_pose_pub_;
+            ros::Subscriber start_pose_sub_, goal_pose_sub_;
+            ros::Subscriber rrt_polygon_sub_;
+            ros::NodeHandle nh_;
 
-            std::vector<rrt_nodePtr> tree_;
+            std::vector<rrt_nodePtr> start_rrt_, goal_rrt_;
+            bgi::rtree<point_t, bgi::linear<16>> start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
+            std::map<point_t, rrt_nodePtr> start_rrt_map_, goal_rrt_map_; //map for start_rrt and goal_rrt
     };
-
-
-
 };
-
-
 
 #endif
