@@ -180,9 +180,6 @@ void PRM::rrt::printNode(const rrt_nodePtr &node)
     ROS_INFO("============================================");
 }
 
-bool PRM::rrt::extendTree(const std::vector<PRM::rrt_nodePtr> &tree, const PRM::Pose_ &pose_)
-{    
-}
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
 {   
@@ -192,6 +189,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
         return false;
     }
 
+    Polygon polygon_ = rrt_polygon_;
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
     bool index_found = p.selectCurrentIndex(Point_t(start_pose_.pose.position.x, start_pose_.pose.position.y), \
                                             Point_t(goal_pose_.pose.position.x, goal_pose_.pose.position.y));
@@ -208,28 +206,17 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     point_t start_pt{start_.x, start_.y};
     point_t goal_pt{goal_.x, goal_.y};
 
+
     rrt_nodePtr start_root_= std::make_shared<rrt_node>();  //first node of start rrt
     start_root_->parent_ = nullptr; 
     start_root_->pose_ = Pose_{start_pose_};
     start_root_->cost_ = 0 ;
+    
     start_rrt_.push_back(start_root_);  //updating start rrt
     start_rtree_.insert(point_t{start_.x, start_.y}); //updating start rtree
-    //start_rrt_map_[start_pt] = start_root_; //updating start rrt map 
+    start_rrt_map_[start_] = start_root_; //updating start rrt map 
     
-    rrt_nodePtr goal_root_ = std::make_shared<rrt_node>();  //first node of goal rrt
-    goal_root_->parent_ = nullptr; 
-    goal_root_->pose_ = Pose_{start_pose_};
-    goal_root_->cost_ = 0 ;
-    goal_rrt_.push_back(goal_root_);  //updating start rrt
-    goal_rtree_.insert(point_t{goal_.x, goal_.y}); //updating start rtree
-    //goal_rrt_map_[goal_pt] = goal_root_; //updating start rrt map 
-    
-    ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
-
-    int num_points = 0 ;
     auto start_time = std::chrono::high_resolution_clock::now();
-    Polygon polygon_ = rrt_polygon_;
-    int tree_idx = 0 ;
 
     while(ros::ok())
     {
@@ -242,18 +229,8 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
             return false;
         }
 
-        //update start tree
-        if(tree_idx % 2)
-        {
-            extendTree(start_rrt_, nxt_pose_);   
-        }
-        else //update goal tree
-        {
+        //rrt_nodePtr closest_node_ = getClosestNode(start_rrt_, nxt_pose_);
 
-        }
-
-        tree_idx +=1;
-        tree_idx %=2; 
     }
 
     auto end_time = std::chrono::system_clock::now();

@@ -23,7 +23,6 @@ typedef bg::model::polygon<point_t> Polygon;
 typedef bg::model::box<point_t> Box;
 typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 
-
 //sampling goal with bias
 // two rrts
 //vornoi bias
@@ -47,11 +46,11 @@ namespace PRM
         float cost_;
         std::shared_ptr<rrt_node> parent_;
         Pose_ pose_;
-        //std::vector<std::shared_ptr<rrt_node>> children_;
+        std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
     };
 
-    struct PoseKeyhHash
+    struct PoseKeyHash
     {
         std::size_t operator()(const Pose_& key) const {
             std::size_t xHash = std::hash<float>{}(key.x);
@@ -69,16 +68,15 @@ namespace PRM
         }
     };
 
-
-    typedef std::shared_ptr<rrt_node> rrt_nodePtr;
-
+    using rrt_nodePtr = std::shared_ptr<rrt_node>;        
+    using PoseToNodeMap = std::unordered_map<Pose_, rrt_nodePtr, PoseKeyHash, PoseKeyEqual>;
+    using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
+    
     class rrt
     {
         public: 
 
             rrt(); 
-
-            void addNodeToTree();
 
             //ros callbacks
             void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
@@ -88,34 +86,31 @@ namespace PRM
             //utility functions
             float euclidDis(const Pose_ &a_, const Pose_ &b_);
             void printNode(const rrt_nodePtr &node_);
-
+            Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
+            void publishTree(const std::vector<rrt_nodePtr> &tree_);
+            
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
-            Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
-            void publishTree(const std::vector<rrt_nodePtr> &tree_);
-            bool extendTree(const std::vector<rrt_nodePtr> &tree, const Pose_ &pose);
-
+            bool getClosestNode(const RTree &rtree, \
+                                const PoseToNodeMap &rrt_map, \
+                                const Pose_ &pose, rrt_nodePtr &closest_node);
+                                
         private: 
 
             Polygon rrt_polygon_;
-            
-            bool start_pose_set_, goal_pose_set_; 
-            bool polygon_set_;
-
+            bool start_pose_set_, goal_pose_set_, polygon_set_; 
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
-            
             ros::Publisher rrt_tree_pub_;
             ros::Publisher start_pose_pub_, goal_pose_pub_;
             ros::Subscriber start_pose_sub_, goal_pose_sub_;
             ros::Subscriber rrt_polygon_sub_;
             ros::NodeHandle nh_;
 
-            std::vector<rrt_nodePtr> start_rrt_, goal_rrt_;
-            bgi::rtree<point_t, bgi::linear<16>> start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
-            std::unordered_map<point_t, rrt_nodePtr, PoseKeyhHash, PoseKeyEqual> start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
-    
+            std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
+            RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
+            PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
     };
 };
 
