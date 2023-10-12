@@ -106,8 +106,8 @@ void PRM::rrt::reset()
     start_rtree_.clear(); 
     goal_rtree_.clear(); 
 
-    start_rrt_map_.clear(); 
-    goal_rrt_map_.clear();
+    //start_rrt_map_.clear(); 
+    //goal_rrt_map_.clear();
 }
 
 
@@ -171,8 +171,6 @@ float PRM::rrt::euclidDis(const PRM::Pose_ &a, const PRM::Pose_ &b)
     return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
 }
 
-
-
 void PRM::rrt::printNode(const rrt_nodePtr &node)
 {
     ROS_INFO("============================================");
@@ -180,6 +178,10 @@ void PRM::rrt::printNode(const rrt_nodePtr &node)
     ROS_INFO("cost: %f", node->cost_);
     ROS_INFO("parent: (%f,%f,%f)", node->parent_->pose_.x, node->parent_->pose_.y, node->parent_->pose_.theta);
     ROS_INFO("============================================");
+}
+
+bool PRM::rrt::extendTree(const std::vector<PRM::rrt_nodePtr> &tree, const PRM::Pose_ &pose_)
+{    
 }
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
@@ -203,19 +205,24 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     Pose_ goal_{goal_pose_};
     Pose_ start_{start_pose_};
 
-    //initialize start_tree
-    rrt_nodePtr start_root_= std::make_shared<rrt_node>();
+    point_t start_pt{start_.x, start_.y};
+    point_t goal_pt{goal_.x, goal_.y};
+
+    rrt_nodePtr start_root_= std::make_shared<rrt_node>();  //first node of start rrt
     start_root_->parent_ = nullptr; 
     start_root_->pose_ = Pose_{start_pose_};
     start_root_->cost_ = 0 ;
-    start_rrt_.push_back(start_root_);
+    start_rrt_.push_back(start_root_);  //updating start rrt
+    start_rtree_.insert(point_t{start_.x, start_.y}); //updating start rtree
+    //start_rrt_map_[start_pt] = start_root_; //updating start rrt map 
     
-    //initialize goal tree
-    rrt_nodePtr goal_root_ = std::make_shared<rrt_node>();
+    rrt_nodePtr goal_root_ = std::make_shared<rrt_node>();  //first node of goal rrt
     goal_root_->parent_ = nullptr; 
     goal_root_->pose_ = Pose_{start_pose_};
     goal_root_->cost_ = 0 ;
-    goal_rrt_.push_back(goal_root_);
+    goal_rrt_.push_back(goal_root_);  //updating start rrt
+    goal_rtree_.insert(point_t{goal_.x, goal_.y}); //updating start rtree
+    //goal_rrt_map_[goal_pt] = goal_root_; //updating start rrt map 
     
     ROS_INFO("max_res_: %f", Constants::Planner::max_res_);
 
@@ -238,7 +245,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
         //update start tree
         if(tree_idx % 2)
         {
-            //extendTree(start_tree_, nxt_pose_);   
+            extendTree(start_rrt_, nxt_pose_);   
         }
         else //update goal tree
         {

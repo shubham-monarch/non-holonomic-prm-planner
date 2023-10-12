@@ -14,6 +14,8 @@
 
 #include <tf/transform_datatypes.h>
 
+#include <unordered_map>
+
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 typedef bg::model::d2::point_xy<double> point_t;
@@ -27,16 +29,17 @@ typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 //vornoi bias
 //goal biasing
 //hrrt vs ikrrt vs 
-
 namespace PRM
-{
-
+{    
     struct Pose_
     {
         float x, y, theta; 
         Pose_(float x_, float y_, float theta_): x(x_), y(y_), theta(theta_){}
         Pose_(const geometry_msgs::PoseStamped &pose): x(pose.pose.position.x), y(pose.pose.position.y), theta(tf::getYaw(pose.pose.orientation)){}
         Pose_() = default;
+        bool operator==(const Pose_& other) const {
+            return ((x == other.x) && (y == other.y) && (theta == other.theta));
+        }   
     };
 
     struct rrt_node
@@ -46,8 +49,26 @@ namespace PRM
         Pose_ pose_;
         //std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
-        
     };
+
+    struct PoseKeyhHash
+    {
+        std::size_t operator()(const Pose_& key) const {
+            std::size_t xHash = std::hash<float>{}(key.x);
+            std::size_t yHash = std::hash<float>{}(key.y);
+            std::size_t thetaHash = std::hash<float>{}(key.theta);
+            return xHash ^ (yHash << 1) ^ (thetaHash << 2);
+        }
+    };
+
+    struct PoseKeyEqual 
+    {
+        bool operator()(const Pose_& key1, const Pose_& key2) const {
+            // Define the equality criteria for your custom key.
+            return (key1.x == key2.x) && (key1.y == key2.y) && (key1.theta == key2.theta);
+        }
+    };
+
 
     typedef std::shared_ptr<rrt_node> rrt_nodePtr;
 
@@ -74,7 +95,7 @@ namespace PRM
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
-            
+            bool extendTree(const std::vector<rrt_nodePtr> &tree, const Pose_ &pose);
 
         private: 
 
@@ -93,7 +114,8 @@ namespace PRM
 
             std::vector<rrt_nodePtr> start_rrt_, goal_rrt_;
             bgi::rtree<point_t, bgi::linear<16>> start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
-            std::map<point_t, rrt_nodePtr> start_rrt_map_, goal_rrt_map_; //map for start_rrt and goal_rrt
+            std::unordered_map<point_t, rrt_nodePtr, PoseKeyhHash, PoseKeyEqual> start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
+    
     };
 };
 
