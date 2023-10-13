@@ -166,7 +166,7 @@ void PRM::rrt::publishTree(const std::vector<PRM::rrt_nodePtr> &tree_)
     rrt_tree_pub_.publish(tree_msg_);
 }
 
-float PRM::rrt::euclidDis(const PRM::Pose_ &a, const PRM::Pose_ &b)
+float PRM::rrt::euclidDis(const Pose_ &a, const Pose_ &b)
 {
     return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
 }
@@ -179,6 +179,11 @@ void PRM::rrt::printNode(const rrt_nodePtr &node)
     ROS_INFO("parent: (%f,%f,%f)", node->parent_->pose_.x, node->parent_->pose_.y, node->parent_->pose_.theta);
     ROS_INFO("============================================");
 }
+
+
+
+
+
 
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_)
@@ -214,7 +219,6 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     
     start_rrt_.push_back(start_root_);  //updating start rrt
     start_rtree_.insert(point_t{start_.x, start_.y}); //updating start rtree
-    start_rrt_map_[start_] = start_root_; //updating start rrt map 
     
     auto start_time = std::chrono::high_resolution_clock::now();
 

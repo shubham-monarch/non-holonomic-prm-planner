@@ -48,28 +48,28 @@ namespace PRM
         Pose_ pose_;
         std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
+    
     };
 
-    struct PoseKeyHash
+    struct pointKeyHash
     {
-        std::size_t operator()(const Pose_& key) const {
-            std::size_t xHash = std::hash<float>{}(key.x);
-            std::size_t yHash = std::hash<float>{}(key.y);
-            std::size_t thetaHash = std::hash<float>{}(key.theta);
-            return xHash ^ (yHash << 1) ^ (thetaHash << 2);
+        std::size_t operator()(const point_t& key) const {
+            std::size_t xHash = std::hash<float>{}(key.x());
+            std::size_t yHash = std::hash<float>{}(key.y());
+            return xHash ^ (yHash << 1);
         }
     };
 
-    struct PoseKeyEqual 
+    struct pointKeyEqual 
     {
-        bool operator()(const Pose_& key1, const Pose_& key2) const {
+        bool operator()(const point_t & key1, const point_t& key2) const {
             // Define the equality criteria for your custom key.
-            return (key1.x == key2.x) && (key1.y == key2.y) && (key1.theta == key2.theta);
+            return (key1.x() == key2.x()) && (key1.y() == key2.y());
         }
     };
 
     using rrt_nodePtr = std::shared_ptr<rrt_node>;        
-    using PoseToNodeMap = std::unordered_map<Pose_, rrt_nodePtr, PoseKeyHash, PoseKeyEqual>;
+    using PoseToNodeMap = std::unordered_map<point_t, rrt_nodePtr, pointKeyHash, pointKeyEqual>;
     using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
     
     class rrt
@@ -111,6 +111,7 @@ namespace PRM
             std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
             RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
+            //std::unordered_map<point_t, rrt_nodePtr> map_;
     };
 };
 
