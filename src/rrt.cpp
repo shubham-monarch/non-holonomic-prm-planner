@@ -180,9 +180,31 @@ void PRM::rrt::printNode(const rrt_nodePtr &node)
     ROS_INFO("============================================");
 }
 
+// returns the closest node in the tree to the given pose
+bool PRM::rrt::getClosestNode(  const RTree &rtree, \
+                                const PoseToNodeMap &pose_to_node_map, \
+                                const Pose_ &pose, rrt_nodePtr &closest_node)
+{
+    std::vector<point_t> closest_points_;
+    rtree.query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
+    if(closest_points_.size() == 0) { 
+        
+        ROS_ERROR("No closest point found in rtree!");
+        return false; 
+    }
 
+    point_t closest_point_ = closest_points_[0];
+    auto closest_node_ = pose_to_node_map.find(closest_point_);
+    if(closest_node_ == pose_to_node_map.end()) { 
+        
+        ROS_ERROR("No closest node found in pose_to_node_map! ==> Something is wrong!");
+        return false; 
+    }
 
-
+    closest_node = closest_node_->second;
+    return true; 
+}
+            
 
 
 
