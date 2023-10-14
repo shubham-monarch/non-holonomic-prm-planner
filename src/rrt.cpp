@@ -8,7 +8,6 @@
 
 extern std::shared_ptr<PRM::RobotModel> robot_;
 
-
 PRM::rrt::rrt()
 {
     //polygon_ = Polygon();
@@ -26,6 +25,8 @@ PRM::rrt::rrt()
     start_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_start_pose", 1, true);
     goal_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_goal_pose", 1, true);
     circle_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("circle_pose", 1, true);
+    arc_end_points_pub_ = nh_.advertise<geometry_msgs::PoseArray>("arc_end_points", 1, true);
+    circle_centers_pub_ = nh_.advertise<geometry_msgs::PoseArray>("circle_centers", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -40,16 +41,16 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     start_pose_pub_.publish(test_start_pose_);
     //return; 
 
-    point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
+    //point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
 
-    geometry_msgs::PoseStamped circle_pose_;
+    /*geometry_msgs::PoseStamped circle_pose_;
     circle_pose_.header.frame_id = "map";
     circle_pose_.header.stamp = ros::Time::now();
     circle_pose_.pose.position.x = bg::get<0>(center);
     circle_pose_.pose.position.y = bg::get<1>(center);
     circle_pose_.pose.orientation = test_start_pose_.pose.orientation;
     circle_pose_pub_.publish(circle_pose_);
-
+    */
 }
 
 void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
@@ -63,9 +64,13 @@ void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
         ROS_ERROR("start_pose is not set!");
         return;
     }
-    bool flag_ = plan(test_start_pose_, test_goal_pose_);
-    if(flag_) { ROS_WARN("======= PLAN WAS FOUND ======"); }        
-    return;
+    //bool flag_ = plan(test_start_pose_, test_goal_pose_);
+    //if(flag_) { ROS_WARN("======= PLAN WAS FOUND ======"); }        
+    //return;
+    rrt_nodePtr root_ = std::make_shared<rrt_node>();  //first node of start rrt 
+    root_->pose_ = Pose_{test_start_pose_};
+    extendNode(root_, Pose_{test_goal_pose_}, Constants::Planner::max_res_, false);
+    //arc_end_points_pub_.publish(arc_end_points_);
 }   
 
 Polygon PRM::rrt::getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &msg)
@@ -122,7 +127,6 @@ void PRM::rrt::reset()
     //start_rrt_map_.clear(); 
     //goal_rrt_map_.clear();
 }
-
 
 bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
 {   
@@ -238,29 +242,46 @@ point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float delta)
     return center;
 } 
 
-
-bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const float fwd)
+geometry_msgs::Pose PRM::rrt::poseFromPose_(const Pose_ pose)
 {
-    float ddelta = 5 * M_PI / 180.0;  //change in steering angle
+    geometry_msgs::Pose pose_;
+    pose_.position.x = pose.x;
+    pose_.position.y = pose.y;
+    pose_.orientation = tf::createQuaternionMsgFromYaw(pose.theta);
+    return pose_;
+}
+
+bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const bool fwd)
+{   
+    ROS_WARN("========== ENTERING EXTENDNODE FUNCTION ==============");
+    float ddelta = 5 * M_PI / 180.0;  //step size for delta
     float mn_dis = std::numeric_limits<float>::max();
     float target_delta; //steering angle catering to the closest node after extension
     Pose_ target_pose;  //pose of the closest node after extension
     
+    // ============== TESTING ====================================
+    geometry_msgs::PoseArray arc_end_points; 
+    arc_end_points.header.frame_id = "map";
+    arc_end_points.header.stamp = ros::Time::now();
+
+    geometry_msgs::PoseArray circle_centers;
+    circle_centers.header.frame_id = "map";
+    circle_centers.header.stamp = ros::Time::now();
+    // ============================================================
+    
     //iterating over the entire range of delta
     for(float de = -Constants::Vehicle::delta_max_; de < Constants::Vehicle::delta_max_; de += ddelta)
     {   
+        //if(de > 0.f) {break;}
+        //ROS_INFO("de: %f", de);
         if(std::fabs(de) > 0.01)
         {    
             const point_t circle_center = getCircleCenter(nearest_node->pose_, de);
             const float r = getTurningRadius(de);
-            
-            //+ => de < 0 && fwd < 0 
-            //+ => de > 0 && fwd > 0
-            //- => de < 0 && fwd > 0
-            //- => de > 0 && fwd < 0
-            const float phi_sign = (de > 0 ? 1.f : -1.f) * (fwd > 0 ? 1.f : -1.f);
-            const float phi = phi_sign * (arc_len * 1.f/r);
-            
+            ROS_INFO("min_r: %f r: %f", Constants::Vehicle::R_MIN_, r);
+            const float delta_phi = (de > 0 ? 1.f : -1.f) * (fwd ? 1.f : -1.f) * arc_len * 1.f/r; //angular displacement w.r.t. circle center
+            const float phi = delta_phi + (de > 0 ? -1.f : 1.f) * M_PI/2.f; 
+            ROS_INFO("delta_phi: %f phi: %f", delta_phi, phi);
             //w.r.t. circle center
             float xc = r * cos(phi);
             float yc = r * sin(phi);
@@ -268,7 +289,7 @@ bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_p
             //world frame
             float xw = xc + bg::get<0>(circle_center);
             float yw = yc + bg::get<1>(circle_center);
-            float thetaw = nearest_node->pose_.theta + phi;
+            float thetaw = nearest_node->pose_.theta + delta_phi;
 
             const Pose_ new_pose{xw, yw, thetaw};   //pose of the new extended node
             const float dis = euclidDis(new_pose, random_pose); //distance between the new extended node and the random pose
@@ -278,12 +299,19 @@ bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_p
                 target_delta = de;
                 target_pose = new_pose;
             }
+            arc_end_points.poses.push_back(poseFromPose_(new_pose));
+            circle_centers.poses.push_back(poseFromPose_(Pose_{bg::get<0>(circle_center), bg::get<1>(circle_center), 0}));
         }
         else
         {
             //delta is almost zero 
         }
     }
+
+    arc_end_points_pub_.publish(arc_end_points);
+    circle_centers_pub_.publish(circle_centers);
+    ROS_WARN("========== EXITING EXTENDNODE FUNCTION ==============");
+    return true; 
 }
 
 

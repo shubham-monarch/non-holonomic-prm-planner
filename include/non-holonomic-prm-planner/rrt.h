@@ -48,7 +48,6 @@ namespace PRM
         Pose_ pose_;
         std::vector<std::shared_ptr<rrt_node>> children_;
         rrt_node() = default;
-    
     };
 
     struct pointKeyHash
@@ -88,7 +87,8 @@ namespace PRM
             void printNode(const rrt_nodePtr &node_);
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
-            
+            geometry_msgs::Pose poseFromPose_(const Pose_ pose);
+
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
@@ -96,7 +96,7 @@ namespace PRM
             bool getClosestNode(const RTree &rtree, \
                                 const PoseToNodeMap &rrt_map, \
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
-            bool extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const float fwd);
+            bool extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const bool fwd);
             point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
             point_t getCircleCenter(const Pose_ &pose, const float delta);
             float getTurningRadius(const float delta);
@@ -117,6 +117,7 @@ namespace PRM
             PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
             //std::unordered_map<point_t, rrt_nodePtr> map_;
             ros::Publisher circle_pose_pub_;
+            ros::Publisher arc_end_points_pub_, circle_centers_pub_;
     };
 };
 
