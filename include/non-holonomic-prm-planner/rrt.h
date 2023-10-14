@@ -98,6 +98,7 @@ namespace PRM
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
             bool extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis);
             point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
+            point_t getCircleCenter(const Pose_ &pose, const float delta);
 
         private: 
 

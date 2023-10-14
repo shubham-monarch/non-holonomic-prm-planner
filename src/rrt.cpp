@@ -223,6 +223,14 @@ point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float r, const bool c
     return center;
 } 
 
+point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float delta)
+{
+    const float r = Constants::Vehicle::l_ / std::tan(delta);
+    const point_t center = getCircleCenter(pose, r, (delta < 0));
+    return center;
+} 
+
+
 bool PRM::rrt::extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis)
 {
     float sx = node->pose_.x;
@@ -243,7 +251,7 @@ bool PRM::rrt::extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, con
 
             if(delta > 0.f)
             {
-
+                
             }
             else
             {
