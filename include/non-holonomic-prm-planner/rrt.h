@@ -96,9 +96,10 @@ namespace PRM
             bool getClosestNode(const RTree &rtree, \
                                 const PoseToNodeMap &rrt_map, \
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
-            bool extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis);
+            bool extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const float fwd);
             point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
             point_t getCircleCenter(const Pose_ &pose, const float delta);
+            float getTurningRadius(const float delta);
 
         private: 
 

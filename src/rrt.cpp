@@ -2,6 +2,7 @@
 #include <non-holonomic-prm-planner/path_generator.h>
 
 #include <random>
+#include <cmath>
 
 #include <geometry_msgs/PoseArray.h>
 
@@ -217,56 +218,72 @@ bool PRM::rrt::getClosestNode(  const RTree &rtree, \
 
 point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float r, const bool clockwise)
 {
-
     const float theta_ = (clockwise ? pose.theta - M_PI/2.f : pose.theta + M_PI/2.f);   
     point_t center = point_t{pose.x + r * cos(theta_), pose.y + r * sin(theta_)};
     return center;
 } 
 
+float PRM::rrt::getTurningRadius(const float delta)
+{
+    const float a2 = Constants::Vehicle::a2_; 
+    const float l = Constants::Vehicle::l_;
+    const float r = sqrt(pow(a2,2) +  pow(l * (1.f / std::tan(delta)),2)); //turning radius     
+    return r; 
+}
+
 point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float delta)
 {
-    const float r = Constants::Vehicle::l_ / std::tan(delta);
+    const float r = getTurningRadius(delta);
     const point_t center = getCircleCenter(pose, r, (delta < 0));
     return center;
 } 
 
 
-bool PRM::rrt::extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis)
+bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const float fwd)
 {
-    float sx = node->pose_.x;
-    float sy = node->pose_.y;
-    float stheta = node->pose_.theta;
-
     float ddelta = 5 * M_PI / 180.0;  //change in steering angle
-    float dx = 0.2;
-
-    for(float delta = -Constants::Vehicle::delta_max_; delta < Constants::Vehicle::delta_max_; delta += ddelta)
+    float mn_dis = std::numeric_limits<float>::max();
+    float target_delta; //steering angle catering to the closest node after extension
+    Pose_ target_pose;  //pose of the closest node after extension
+    
+    //iterating over the entire range of delta
+    for(float de = -Constants::Vehicle::delta_max_; de < Constants::Vehicle::delta_max_; de += ddelta)
     {   
-        if(std::fabs(delta) > 0.01)
+        if(std::fabs(de) > 0.01)
         {    
-            float a2 = Constants::Vehicle::a2_; 
-            float l = Constants::Vehicle::l_;
-            float r = sqrt(pow(a2,2) +  pow(l * (1.f / std::tan(delta)),2)); //turning radius     
-            float theta_max_ = 1.f * dis / r;
+            const point_t circle_center = getCircleCenter(nearest_node->pose_, de);
+            const float r = getTurningRadius(de);
+            
+            //+ => de < 0 && fwd < 0 
+            //+ => de > 0 && fwd > 0
+            //- => de < 0 && fwd > 0
+            //- => de > 0 && fwd < 0
+            const float phi_sign = (de > 0 ? 1.f : -1.f) * (fwd > 0 ? 1.f : -1.f);
+            const float phi = phi_sign * (arc_len * 1.f/r);
+            
+            //w.r.t. circle center
+            float xc = r * cos(phi);
+            float yc = r * sin(phi);
 
-            if(delta > 0.f)
-            {
-                
-            }
-            else
-            {
+            //world frame
+            float xw = xc + bg::get<0>(circle_center);
+            float yw = yc + bg::get<1>(circle_center);
+            float thetaw = nearest_node->pose_.theta + phi;
 
+            const Pose_ new_pose{xw, yw, thetaw};   //pose of the new extended node
+            const float dis = euclidDis(new_pose, random_pose); //distance between the new extended node and the random pose
+            if(dis < mn_dis)
+            {
+                mn_dis = dis;
+                target_delta = de;
+                target_pose = new_pose;
             }
         }
         else
         {
             //delta is almost zero 
         }
-
-
     }
-
-    
 }
 
 
