@@ -96,7 +96,9 @@ namespace PRM
             bool getClosestNode(const RTree &rtree, \
                                 const PoseToNodeMap &rrt_map, \
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
-                                
+            bool extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis);
+            point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
+
         private: 
 
             Polygon rrt_polygon_;
@@ -112,6 +114,7 @@ namespace PRM
             RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
             //std::unordered_map<point_t, rrt_nodePtr> map_;
+            ros::Publisher circle_pose_pub_;
     };
 };
 

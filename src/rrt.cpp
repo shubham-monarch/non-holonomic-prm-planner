@@ -24,6 +24,7 @@ PRM::rrt::rrt()
     rrt_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_tstart_rtree_ree", 1, true);
     start_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_start_pose", 1, true);
     goal_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_goal_pose", 1, true);
+    circle_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("circle_pose", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -36,7 +37,18 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     test_start_pose_.pose.orientation = pose_->pose.pose.orientation;   
     start_pose_set_ = true; 
     start_pose_pub_.publish(test_start_pose_);
-    return; 
+    //return; 
+
+    point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
+
+    geometry_msgs::PoseStamped circle_pose_;
+    circle_pose_.header.frame_id = "map";
+    circle_pose_.header.stamp = ros::Time::now();
+    circle_pose_.pose.position.x = bg::get<0>(center);
+    circle_pose_.pose.position.y = bg::get<1>(center);
+    circle_pose_.pose.orientation = test_start_pose_.pose.orientation;
+    circle_pose_pub_.publish(circle_pose_);
+
 }
 
 void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
@@ -192,7 +204,6 @@ bool PRM::rrt::getClosestNode(  const RTree &rtree, \
         ROS_ERROR("No closest point found in rtree!");
         return false; 
     }
-
     point_t closest_point_ = closest_points_[0];
     auto closest_node_ = pose_to_node_map.find(closest_point_);
     if(closest_node_ == pose_to_node_map.end()) { 
@@ -200,11 +211,55 @@ bool PRM::rrt::getClosestNode(  const RTree &rtree, \
         ROS_ERROR("No closest node found in pose_to_node_map! ==> Something is wrong!");
         return false; 
     }
-
     closest_node = closest_node_->second;
     return true; 
 }
-            
+
+point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float r, const bool clockwise)
+{
+
+    const float theta_ = (clockwise ? pose.theta - M_PI/2.f : pose.theta + M_PI/2.f);   
+    point_t center = point_t{pose.x + r * cos(theta_), pose.y + r * sin(theta_)};
+    return center;
+} 
+
+bool PRM::rrt::extendNode(const rrt_nodePtr &node, const Pose_ &random_pose, const float dis)
+{
+    float sx = node->pose_.x;
+    float sy = node->pose_.y;
+    float stheta = node->pose_.theta;
+
+    float ddelta = 5 * M_PI / 180.0;  //change in steering angle
+    float dx = 0.2;
+
+    for(float delta = -Constants::Vehicle::delta_max_; delta < Constants::Vehicle::delta_max_; delta += ddelta)
+    {   
+        if(std::fabs(delta) > 0.01)
+        {    
+            float a2 = Constants::Vehicle::a2_; 
+            float l = Constants::Vehicle::l_;
+            float r = sqrt(pow(a2,2) +  pow(l * (1.f / std::tan(delta)),2)); //turning radius     
+            float theta_max_ = 1.f * dis / r;
+
+            if(delta > 0.f)
+            {
+
+            }
+            else
+            {
+
+            }
+        }
+        else
+        {
+            //delta is almost zero 
+        }
+
+
+    }
+
+    
+}
 
 
 
@@ -233,30 +288,42 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start_pose_, const geometr
     point_t start_pt{start_.x, start_.y};
     point_t goal_pt{goal_.x, goal_.y};
 
-
+    // =======================================================================================
+    // ============================ RRT FROM START POSE ======================================
+    // =======================================================================================
     rrt_nodePtr start_root_= std::make_shared<rrt_node>();  //first node of start rrt
     start_root_->parent_ = nullptr; 
     start_root_->pose_ = Pose_{start_pose_};
-    start_root_->cost_ = 0 ;
-    
+    start_root_->cost_ = 0 ;    
     start_rrt_.push_back(start_root_);  //updating start rrt
     start_rtree_.insert(point_t{start_.x, start_.y}); //updating start rtree
-    
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     while(ros::ok())
     {
-        Pose_ nxt_pose_; 
-        bool nxt_pose_found_ = sampleRandomPoint(polygon_, nxt_pose_);
-        
-        if(!nxt_pose_found_)
+        Pose_ nxt_pose; 
+        bool found; 
+        found = sampleRandomPoint(polygon_, nxt_pose);   
+        if(!found)
         {
             ROS_ERROR(" === Could not sample a random point ==> Trying again === "); 
             return false;
         }
-
-        //rrt_nodePtr closest_node_ = getClosestNode(start_rrt_, nxt_pose_);
-
+        
+        rrt_nodePtr closest_node_; 
+        found = getClosestNode(start_rtree_, start_rrt_map_, nxt_pose, closest_node_);
+        if(!found) {
+            ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
+            break;
+        }
+        
+        /*found = extendNode(closest_node_, nxt_pose);
+        if(!found)
+        {
+            ROS_ERROR("Can't extend the closest node ==> needs to be deleted");
+            //deleteNode(closest_node_);
+        }*/
     }
 
     auto end_time = std::chrono::system_clock::now();
