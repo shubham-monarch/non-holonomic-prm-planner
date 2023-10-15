@@ -31,7 +31,16 @@ PRM::rrt::rrt()
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
 {
-    ROS_WARN("========== START POSE RECEIVED =============="); 
+    ROS_WARN("========== START POSE RECEIVED ==============");     
+    //setting start index in collision detection polygon for testing
+    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+    bool flag = p.selectCurrentIndex(Point_t{test_start_pose_.pose.position.x, test_start_pose_.pose.position.y}, \
+                         Point_t{test_goal_pose_.pose.position.x, test_goal_pose_.pose.position.y});
+    if(!flag)
+    {
+        ROS_ERROR("unable to select current index!");
+        return;
+    }
     test_start_pose_.header.frame_id= "map" ; 
     test_start_pose_.header.stamp = ros::Time::now(); 
     test_start_pose_.pose.position.x = pose_->pose.pose.position.x; 
@@ -39,6 +48,7 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     test_start_pose_.pose.orientation = pose_->pose.pose.orientation;   
     start_pose_set_ = true; 
     start_pose_pub_.publish(test_start_pose_);
+
     //return; 
 
     //point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
@@ -69,7 +79,7 @@ void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     //return;
     rrt_nodePtr root_ = std::make_shared<rrt_node>();  //first node of start rrt 
     root_->pose_ = Pose_{test_start_pose_};
-    extendNode(root_, Pose_{test_goal_pose_}, Constants::Planner::max_res_, false);
+    extendNode(root_, Pose_{test_goal_pose_}, Constants::Planner::max_res_, true);
     //arc_end_points_pub_.publish(arc_end_points_);
 }   
 
@@ -278,19 +288,31 @@ bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_p
         {    
             const point_t circle_center = getCircleCenter(nearest_node->pose_, de);
             const float r = getTurningRadius(de);
-            ROS_INFO("min_r: %f r: %f", Constants::Vehicle::R_MIN_, r);
-            const float delta_phi = (de > 0 ? 1.f : -1.f) * (fwd ? 1.f : -1.f) * arc_len * 1.f/r; //angular displacement w.r.t. circle center
-            const float phi = delta_phi + (de > 0 ? -1.f : 1.f) * M_PI/2.f; 
-            ROS_INFO("delta_phi: %f phi: %f", delta_phi, phi);
-            //w.r.t. circle center
-            float xc = r * cos(phi);
-            float yc = r * sin(phi);
-
-            //world frame
-            float xw = xc + bg::get<0>(circle_center);
-            float yw = yc + bg::get<1>(circle_center);
-            float thetaw = nearest_node->pose_.theta + delta_phi;
-
+            bool arc_collides = false; 
+            float xc, yc; //circle frame co-ordinates 
+            float xw, yw, thetaw; //world frame co-ordinates
+            
+            // simulate an arc of length arc_len with radius r
+            for(float darc =0.f ; darc < arc_len; darc+= (arc_len * 1.f/10.0))
+            {   
+                const float delta_phi = (de > 0 ? 1.f : -1.f) * (fwd ? 1.f : -1.f) * darc * 1.f/r; //angular displacement w.r.t. circle center
+                const float phi = delta_phi + (de > 0 ? -1.f : 1.f) * M_PI/2.f; 
+                
+                xc = r * cos(phi);
+                yc = r * sin(phi);
+                
+                xw = xc + bg::get<0>(circle_center);
+                yw = yc + bg::get<1>(circle_center);
+                thetaw = nearest_node->pose_.theta + delta_phi;
+                
+                //collision check
+                const std::vector<float> &obb_ = robot_->getOBB({xw,yw}, thetaw);
+                arc_collides = !robot_->isConfigurationFree(obb_);
+                if(arc_collides){ break; }
+            }    
+            ROS_INFO("de: %f arc_collides: %d", de, arc_collides);
+            if(arc_collides) { continue; } //if arc collides, try next delta
+            
             const Pose_ new_pose{xw, yw, thetaw};   //pose of the new extended node
             const float dis = euclidDis(new_pose, random_pose); //distance between the new extended node and the random pose
             if(dis < mn_dis)

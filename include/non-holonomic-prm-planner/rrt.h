@@ -23,11 +23,15 @@ typedef bg::model::polygon<point_t> Polygon;
 typedef bg::model::box<point_t> Box;
 typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 
-//sampling goal with bias
+//sampling goal with bias**
 // two rrts
 //vornoi bias
 //goal biasing
+//https://shuoli.github.io/robotics.pdf
 //hrrt vs ikrrt vs 
+//use dubin's curve to connect in goal refgion
+//control tree depth => distance = a* dis + b * del(angle) + c * rand(0,1) * depth
+
 namespace PRM
 {    
     struct Pose_
@@ -71,6 +75,7 @@ namespace PRM
     using PoseToNodeMap = std::unordered_map<point_t, rrt_nodePtr, pointKeyHash, pointKeyEqual>;
     using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
     
+    
     class rrt
     {
         public: 
@@ -100,6 +105,7 @@ namespace PRM
             point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
             point_t getCircleCenter(const Pose_ &pose, const float delta);
             float getTurningRadius(const float delta);
+
 
         private: 
 
