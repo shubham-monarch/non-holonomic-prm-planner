@@ -15,6 +15,7 @@
 #include <tf/transform_datatypes.h>
 
 #include <unordered_map>
+#include <Eigen/Dense>
 
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
@@ -88,11 +89,13 @@ namespace PRM
             void polygonCb(geometry_msgs::PolygonStampedConstPtr polygon_);
             
             //utility functions
-            float euclidDis(const Pose_ &a_, const Pose_ &b_);
+            float euclidDis(const Pose_ &a, const Pose_ &b){ return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));}
             void printNode(const rrt_nodePtr &node_);
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
             geometry_msgs::Pose poseFromPose_(const Pose_ pose);
+            float norm(float x, float y){ return sqrt(x * x + y * y);}
+            Eigen::Matrix3f getHomogeneousMatrixFromPose(const Pose_ &pose_);
 
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
@@ -105,7 +108,9 @@ namespace PRM
             point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
             point_t getCircleCenter(const Pose_ &pose, const float delta);
             float getTurningRadius(const float delta);
-
+            bool getTurningRadius(const float xr, const float yr, float &r);
+            float getHeadingInRobotFrame(const float xr, const float yr);
+            Pose_ robotToWorldFrame(const Pose_ &robot_pose_, const Pose_ &pose);
 
         private: 
 

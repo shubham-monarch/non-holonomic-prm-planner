@@ -49,6 +49,7 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     start_pose_set_ = true; 
     start_pose_pub_.publish(test_start_pose_);
 
+    ROS_INFO("max_res: %f", Constants::Planner::max_res_);
     //return; 
 
     //point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
@@ -107,8 +108,7 @@ Polygon PRM::rrt::getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &
 
 void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
 {
-    ROS_WARN("========== POLYGON RECEIVED =============="); 
-    
+    ROS_WARN("========== POLYGON RECEIVED ==============");  
     Polygon polygon_ = getPolygonFromPolygonMsg(*msg);
     if(polygon_.outer().size() > 0)
     {
@@ -193,10 +193,6 @@ void PRM::rrt::publishTree(const std::vector<PRM::rrt_nodePtr> &tree_)
     rrt_tree_pub_.publish(tree_msg_);
 }
 
-float PRM::rrt::euclidDis(const Pose_ &a, const Pose_ &b)
-{
-    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
-}
 
 void PRM::rrt::printNode(const rrt_nodePtr &node)
 {
@@ -237,6 +233,15 @@ point_t PRM::rrt::getCircleCenter(const Pose_ &pose, const float r, const bool c
     return center;
 } 
 
+//(xw, yw) => pose in robot frame
+bool PRM::rrt::getTurningRadius(const float xw, const float yw, float &r)
+{
+    if(std::fabs(yw) < 0.001f) { return false; } 
+    const float a2 = Constants::Vehicle::a2_;        
+    r = sqrt(pow((xw * xw + 2 * a2 * xw + yw * yw)/ (2.f * yw), 2) + pow(a2, 2));            
+    return true; 
+}
+
 float PRM::rrt::getTurningRadius(const float delta)
 {
     const float a2 = Constants::Vehicle::a2_; 
@@ -261,6 +266,48 @@ geometry_msgs::Pose PRM::rrt::poseFromPose_(const Pose_ pose)
     return pose_;
 }
 
+Eigen::Matrix3f PRM::rrt::getHomogeneousMatrixFromPose(const Pose_ &pose)
+{
+    const float x = pose.x;
+    const float y = pose.y;
+    const float theta = pose.theta;
+    const Eigen::Matrix3f &transformation = (Eigen::Matrix3f(3,3) <<    std::cos(theta),-std::sin(theta), x, \
+                                                                        std::sin(theta), std::cos(theta), y,\
+                                                                        0, 0, 1).finished();
+    return transformation;
+}
+
+//robot_pose_ ==> pose of the robot in world frame
+//pose => pose of the point in robot frame
+//returns pose of the point in world frame
+PRM::Pose_ PRM::rrt::robotToWorldFrame(const Pose_ &robot_pose, const Pose_ &pose)
+{
+    const Eigen::Matrix3f &M_wr = getHomogeneousMatrixFromPose(robot_pose); //robot pose in world frame
+    const Eigen::Matrix3f &M_rp = getHomogeneousMatrixFromPose(pose); //point pose in robot frame
+    const Eigen::Matrix3f &M_wp = M_wr * M_rp ; //point pose in world frame
+    Pose_ pose_wp; //point pose in world frame
+    pose_wp.x = M_wp(0,2);
+    pose_wp.y = M_wp(1,2);
+    pose_wp.theta = std::atan2(M_wp(1,0), M_wp(0,0));    
+    return pose_wp;
+}
+
+/**
+ * (xr, yr) ==> pose in robot frame
+ * returns theta_r => heading in robot frame
+*/
+float PRM::rrt::getHeadingInRobotFrame(const float xr, const float yr)
+{
+    if(std::fabs(yr) < 0.001) {return 0.f ;}    
+    float r; 
+    bool flag_ = getTurningRadius(xr, yr, r);
+    if(!flag_) {return false; }
+    float a2 = Constants::Vehicle::a2_;
+    float heading = std::atan2((xr + a2) , (sqrt(r * r  - pow(xr + a2, 2))));
+    heading = (heading < 0 ? 2 * M_PI -heading : heading);
+    return true; 
+}
+
 bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const bool fwd)
 {   
     ROS_WARN("========== ENTERING EXTENDNODE FUNCTION ==============");
@@ -282,54 +329,39 @@ bool PRM::rrt::extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_p
     //iterating over the entire range of delta
     for(float de = -Constants::Vehicle::delta_max_; de < Constants::Vehicle::delta_max_; de += ddelta)
     {   
-        //if(de > 0.f) {break;}
-        //ROS_INFO("de: %f", de);
+        const float dx = 0.15;
         if(std::fabs(de) > 0.01)
-        {    
-            const point_t circle_center = getCircleCenter(nearest_node->pose_, de);
-            const float r = getTurningRadius(de);
-            bool arc_collides = false; 
-            float xc, yc; //circle frame co-ordinates 
-            float xw, yw, thetaw; //world frame co-ordinates
-            
-            // simulate an arc of length arc_len with radius r
-            for(float darc =0.f ; darc < arc_len; darc+= (arc_len * 1.f/10.0))
+        {   
+            ROS_WARN("de: %f", de);
+            float xr, yr, thetar; // pose in robot frame
+            //simulating x in robot frame 
+            int num_iter =0 ; 
+            for(float xr = 0; ;  xr += dx)
             {   
-                const float delta_phi = (de > 0 ? 1.f : -1.f) * (fwd ? 1.f : -1.f) * darc * 1.f/r; //angular displacement w.r.t. circle center
-                const float phi = delta_phi + (de > 0 ? -1.f : 1.f) * M_PI/2.f; 
                 
-                xc = r * cos(phi);
-                yc = r * sin(phi);
-                
-                xw = xc + bg::get<0>(circle_center);
-                yw = yc + bg::get<1>(circle_center);
-                thetaw = nearest_node->pose_.theta + delta_phi;
-                
-                //collision check
-                const std::vector<float> &obb_ = robot_->getOBB({xw,yw}, thetaw);
-                arc_collides = !robot_->isConfigurationFree(obb_);
-                if(arc_collides){ break; }
-            }    
-            ROS_INFO("de: %f arc_collides: %d", de, arc_collides);
-            if(arc_collides) { continue; } //if arc collides, try next delta
-            
-            const Pose_ new_pose{xw, yw, thetaw};   //pose of the new extended node
-            const float dis = euclidDis(new_pose, random_pose); //distance between the new extended node and the random pose
-            if(dis < mn_dis)
-            {
-                mn_dis = dis;
-                target_delta = de;
-                target_pose = new_pose;
+                ROS_INFO("num_iter xr: %d %f", num_iter++, xr);
+                //break;
+                float r = getTurningRadius(de);
+                float yr = -sqrt(pow(r, 2) - pow(xr + Constants::Vehicle::a2_,2)) + sqrt(pow(r,2 ) - pow(Constants::Vehicle::a2_, 2));
+                if(yr < 0) {yr *= -1;}
+                ROS_WARN("[r a2 xr yr] => [%f %f %f %f]", r, Constants::Vehicle::a2_, xr, yr);
+                /*float thetar = getHeadingInRobotFrame(xr, yr);
+
+                const Pose_ &wp = robotToWorldFrame(nearest_node->pose_, Pose_{xr, yr, thetar}); //pose in world frame
+                arc_end_points.poses.push_back(poseFromPose_(wp));
+                //ROS_INFO("(x,y,thetar) => (%f,%f,%f)", xr, yr, thetar);
+                if(norm(xr, yr) > Constants::Planner::max_res_) { break; }  //res should be less than max_res
+                ROS_WARN("arc_end_points.poses.size(): %d", arc_end_points.poses.size());
+                */
+               if(!ros::ok()) {break;}
+               ros::Duration(1.0).sleep();
             }
-            arc_end_points.poses.push_back(poseFromPose_(new_pose));
-            circle_centers.poses.push_back(poseFromPose_(Pose_{bg::get<0>(circle_center), bg::get<1>(circle_center), 0}));
         }
         else
         {
             //delta is almost zero 
         }
     }
-
     arc_end_points_pub_.publish(arc_end_points);
     circle_centers_pub_.publish(circle_centers);
     ROS_WARN("========== EXITING EXTENDNODE FUNCTION ==============");
