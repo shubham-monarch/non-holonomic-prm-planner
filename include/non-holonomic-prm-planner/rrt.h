@@ -104,13 +104,7 @@ namespace PRM
             bool getClosestNode(const RTree &rtree, \
                                 const PoseToNodeMap &rrt_map, \
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
-            bool extendNode(const rrt_nodePtr &nearest_node, const Pose_ &random_pose, const float arc_len, const bool fwd);
-            point_t getCircleCenter(const Pose_ &pose, const float r, const bool clockwise);
-            point_t getCircleCenter(const Pose_ &pose, const float delta);
-            float getTurningRadius(const float delta);
-            bool getTurningRadius(const float xr, const float yr, float &r);
-            float getHeadingInRobotFrame(const float xr, const float yr);
-            Pose_ robotToWorldFrame(const Pose_ &robot_pose_, const Pose_ &pose);
+            std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len);
 
         private: 
 
