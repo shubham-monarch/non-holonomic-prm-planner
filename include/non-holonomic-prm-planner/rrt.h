@@ -32,6 +32,7 @@ typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 //hrrt vs ikrrt vs 
 //use dubin's curve to connect in goal refgion
 //control tree depth => distance = a* dis + b * del(angle) + c * rand(0,1) * depth
+//node deletion provision
 
 namespace PRM
 {    
@@ -105,6 +106,9 @@ namespace PRM
                                 const PoseToNodeMap &rrt_map, \
                                 const Pose_ &pose, rrt_nodePtr &closest_node);
             std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len);
+            Pose_ getClosestPoseToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
+            bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map);
+            void publishRRTPath(const rrt_nodePtr &node);
 
         private: 
 
@@ -117,12 +121,12 @@ namespace PRM
             ros::Subscriber rrt_polygon_sub_;
             ros::NodeHandle nh_;
 
-            std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
+            //std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
             RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
-            //std::unordered_map<point_t, rrt_nodePtr> map_;
             ros::Publisher circle_pose_pub_;
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;
+            ros::Publisher rrt_path_pub_;
     };
 };
 
