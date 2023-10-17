@@ -291,6 +291,11 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 const Eigen::Matrix3f &M_wp = M_wr * M_rp;
                 
                 const Pose_ &node_extension{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
+                
+                //bounding box for the extended node + collision check
+                const auto &obb = robot_->getOBB({node_extension.x, node_extension.y}, node_extension.theta);
+                if(!robot_->isConfigurationFree(obb)) {break; }
+                
                 node_extensions_.push_back(node_extension);
                 arc_end_points.poses.push_back(poseFromPose_(node_extension));
                 
