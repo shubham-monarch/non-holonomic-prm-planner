@@ -28,6 +28,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     arc_end_points_pub_ = nh_.advertise<geometry_msgs::PoseArray>("arc_end_points", 1, true);
     circle_centers_pub_ = nh_.advertise<geometry_msgs::PoseArray>("circle_centers", 1, true);
     rrt_path_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_path", 1, true);
+    rrt_service_ = nh_.advertiseService("rrt_service", &rrt::getPathService, this);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -355,6 +356,48 @@ bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseT
     start_rtree_.insert(point_t{pose.x, pose.y}); //updating rtree
     map.insert({point_t{pose.x, pose.y}, node}); //updating map
     return true;
+}
+
+bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res)
+{
+    Point_t start_t{req.start.pose.pose.position.x, req.start.pose.pose.position.y};
+    Point_t goal_t{req.end.pose.position.x, req.end.pose.position.y}; 
+
+    geometry_msgs::PoseStamped start, goal; 
+    
+    start.header.frame_id = "map";
+    start.header.stamp = ros::Time::now(); 
+    start.pose.position.x = req.start.pose.pose.position.x; 
+    start.pose.position.y = req.start.pose.pose.position.y; 
+    start.pose.orientation = req.start.pose.pose.orientation; 
+
+    goal.header.frame_id = "map"; 
+    goal.header.stamp = ros::Time::now(); 
+    goal.pose.position.x = req.end.pose.position.x;
+    goal.pose.position.y = req.end.pose.position.y;
+    goal.pose.orientation = req.end.pose.orientation;
+    
+    start_pose_pub_.publish(start); 
+    goal_pose_pub_.publish(goal);
+
+    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+    if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
+    {
+        if (!req.start_runway.empty())
+        {
+            p.carveRunway(req.start_runway[0],req.start_runway[1],true);
+        } 
+        if (!req.goal_runway.empty())
+        {
+            p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
+        }
+        bool planned = plan(start, goal);
+        ROS_INFO("planned: %d", planned);
+        ros::Duration(2.0).sleep();
+        p.repairPolygons();
+        return planned;
+    }
+    return false;
 }
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal)

@@ -17,6 +17,10 @@
 #include <unordered_map>
 #include <Eigen/Dense>
 
+#include <prm_planner/PRMService.h>
+#include <prm_planner/PRMServiceRequest.h>
+#include <prm_planner/PRMServiceResponse.h>
+
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 typedef bg::model::d2::point_xy<double> point_t;
@@ -109,7 +113,8 @@ namespace PRM
             Pose_ getClosestPoseToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
             bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map);
             void publishRRTPath(const rrt_nodePtr &node);
-
+            bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
+        
         private: 
 
             Polygon rrt_polygon_;
@@ -127,7 +132,9 @@ namespace PRM
             ros::Publisher circle_pose_pub_;
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;
             ros::Publisher rrt_path_pub_;
-    };
+            ros::ServiceServer rrt_service_;
+            
+    };  
 };
 
 #endif
