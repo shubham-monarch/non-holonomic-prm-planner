@@ -251,6 +251,7 @@ Eigen::Matrix3f PRM::rrt::getHomogeneousMatrixFromPose(const Pose_ &pose)
     return transformation;
 }
 
+//returns the end points for the nearest node after extendinf it by arc_len 
 std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len)
 {   
     // ============== TESTING ====================================
@@ -281,13 +282,18 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 if(std::isnan(yr)) {break;}
                 if(de <0) {yr *= -1.f ;}
                 float thetar = Utils::getThetaC(xr, yr, yr);
-                auto P_oa_ = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f( nearest_node->pose_.x , nearest_node->pose_.y), \
+                //robot pose in world frame
+                const Eigen::Matrix3f  &M_wr = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f( nearest_node->pose_.x , nearest_node->pose_.y), \
                                                                                         nearest_node->pose_.theta);
-                auto P_ab_ = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f(xr, yr), thetar);
-                auto P_ob_ = P_oa_ * P_ab_;
-                Pose_ node_extension{P_ob_(0,2), P_ob_(1,2), std::atan2(P_ob_(1,0), P_ob_(0,0))};                
+                //pose in robot frame
+                const Eigen::Matrix3f &M_rp = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f(xr, yr), thetar);
+                //pose in world frame
+                const Eigen::Matrix3f &M_wp = M_wr * M_rp;
+                
+                const Pose_ &node_extension{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
                 node_extensions_.push_back(node_extension);
                 arc_end_points.poses.push_back(poseFromPose_(node_extension));
+                
                 if(norm(xr,yr) > Constants::Planner::max_res_) {break;}
                 if(!ros::ok()) {break;}
             }
