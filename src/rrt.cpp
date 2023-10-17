@@ -279,7 +279,8 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
     // ============================================================
     
     const float dx = 0.15;
-    std::vector<Pose_> node_extensions_; //contains end points for the node extensions
+    std::vector<Pose_> node_extensions_;  //contains end points for the node extensions
+    node_extensions_.reserve(1000);
     float ddelta = 5 * M_PI / 180.0;  //step size for delta
     float a2 = Constants::Vehicle::a2_;
     
@@ -287,8 +288,9 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
     {   
         if(std::fabs(de) > 0.01)
         {   
+            bool collision = false; //check whether end points is collision free 
             float xr, yr, thetar; // pose in robot frame
-            int num_iter =0 ; 
+            Pose_ node_extension; //pose of the extended node
             for(float xr = 0; ;  xr += dx) //simulating x in robot frame
             {   
                 float r = Utils::getR(de);
@@ -304,18 +306,20 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 //pose in world frame
                 const Eigen::Matrix3f &M_wp = M_wr * M_rp;
                 
-                const Pose_ &node_extension{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
+                node_extension = Pose_{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
                 
                 //bounding box for the extended node + collision check
                 const auto &obb = robot_->getOBB({node_extension.x, node_extension.y}, node_extension.theta);
-                if(!robot_->isConfigurationFree(obb)) {break; }
-                
-                node_extensions_.push_back(node_extension);
+                if(!robot_->isConfigurationFree(obb)) 
+                {
+                    collision = true;
+                    break;
+                }
                 arc_end_points.poses.push_back(poseFromPose_(node_extension));
-                
                 if(norm(xr,yr) > Constants::Planner::max_res_) {break;}
                 if(!ros::ok()) {break;}
             }
+            if(!collision) {node_extensions_.push_back(node_extension);}
         }
         else
         {
@@ -408,23 +412,24 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         found = getClosestNode(start_rtree_, start_rrt_map_, nxt_pose, closest_node_);
         if(!found) {
             ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
-            break;
+            return false;
         }
         
         if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
         {
             ROS_WARN("Goal is within max_res_ ==> RRT converged!");
             publishRRTPath(closest_node_);
-            break;
+            return true; 
         }
 
         std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_);   
+        //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
         {
             ROS_ERROR("No node extensions found! ==> CLOSEST NODE IS A DEAD-END ==> need to delete!"); 
+            return false;
             break;
         }
-
         Pose_ closest_pose_ = getClosestPoseToGoal(node_extensions_, goal_pose);
         addPoseToTree(closest_pose_, closest_node_, start_rrt_map_);
     }
