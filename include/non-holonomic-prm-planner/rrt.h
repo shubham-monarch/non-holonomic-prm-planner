@@ -82,11 +82,11 @@ namespace PRM
     using rrt_nodePtr = std::shared_ptr<rrt_node>;        
     using PoseToNodeMap = std::unordered_map<point_t, rrt_nodePtr, pointKeyHash, pointKeyEqual>;
     using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
-
+    using DMap = std::set<std::pair<float, float> >; 
     //shared ptr alias
     using PoseToNodeMapPtr = std::shared_ptr<PoseToNodeMap>;
     using RTreePtr = std::shared_ptr<RTree>;
-    using SetPtr = std::shared_ptr<std::set<std::pair<float, float> > >;
+    using DMapPtr = std::shared_ptr<std::set<std::pair<float, float> > >;
     
     class rrt
     {
@@ -122,6 +122,12 @@ namespace PRM
             bool canConnect(const Pose_ &a, const Pose_ &b); 
             bool deleteNode(const Pose_ &pose);
 
+            //setters
+            void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
+            void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
+            void setDMap(const DMapPtr &dmap) {curr_dmap_ = dmap; }
+            
+
         private: 
 
             Polygon rrt_polygon_;
@@ -138,6 +144,8 @@ namespace PRM
             //rrt vars
             RTreePtr start_rtree_, goal_rtree_, curr_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMapPtr st_pose_to_node_map_, go_pose_to_node_map_, curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
+            DMapPtr st_dmap_, go_dmap_, curr_dmap_; //mapping for deleted points
+
 
             //publishers and subsribers
             ros::Publisher circle_pose_pub_;
@@ -146,7 +154,7 @@ namespace PRM
             ros::ServiceServer rrt_service_;
             ros::Publisher closest_points_pub_;
             geometry_msgs::PoseArray rrt_tree_;
-            std::set<std::pair<float, float> > srrt_dmap_; ///records co-ordinates of points deleted from start tree
+            
     };  
 };
 

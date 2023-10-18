@@ -56,28 +56,7 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     start_pose_set_ = true; 
     start_pose_pub_.publish(test_start_pose_);
 
-    ROS_INFO("max_res: %f", Constants::Planner::max_res_);
-    
-    rrt_nodePtr root_ = std::make_shared<rrt_node>();  //first node of start rrt 
-    root_->pose_ = Pose_{test_start_pose_};
-    
-    float x = test_start_pose_.pose.position.x; 
-    float y = test_start_pose_.pose.position.y; 
-    float yaw = tf::getYaw(test_start_pose_.pose.orientation);
-    ROS_INFO("start_pose: {%f,%f,%f}", x, y, yaw); 
-
-    auto obb_ = robot_->getOBB({x, y}, yaw);
-
-    bool is_free_ = robot_->isConfigurationFree(obb_, true);
-
-    ROS_INFO("is_free_: %d", is_free_);
-
-    //extendNode(root_, Pose_{test_goal_pose_}, Constants::Planner::max_res_);
-    getNodeExtensions(root_, Constants::Planner::max_res_);
-    //return; 
-
     //point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
-
     /*geometry_msgs::PoseStamped circle_pose_;
     circle_pose_.header.frame_id = "map";
     circle_pose_.header.stamp = ros::Time::now();
@@ -150,19 +129,24 @@ void PRM::rrt::reset()
     start_pose_set_ = false;
     //polygon_set_ = false;
 
-    //start_rrt_.clear(); 
-    //goal_rrt_.clear(); 
-
     start_rtree_ = std::make_shared<RTree>();
+    goal_rtree_ = std::make_shared<RTree>();
+    curr_rtree_ = std::make_shared<RTree>();
+    
     st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    curr_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    
+    st_dmap_ = std::make_shared<DMap>();
+    go_dmap_ = std::make_shared<DMap>();
+    curr_dmap_ = std::make_shared<DMap>();
+
     //start_rtree_.clear(); 
     //goal_rtree_.clear(); 
-
     //start_rrt_map_.clear(); 
     //goal_rrt_map_.clear();
-
-    srrt_dmap_.clear();
-    rrt_tree_.poses.clear();
+    //srrt_dmap_.clear();
+    //rrt_tree_.poses.clear();
 }
 
 bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
@@ -323,7 +307,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 if(!ros::ok()) {break;}
             }
             if(collision) {continue;}
-            if(srrt_dmap_.count({node_extension.x, node_extension.y})) {
+            if(st_dmap_->count({node_extension.x, node_extension.y})) {
                 ROS_WARN("Already deleted node was generated again!");
                 deleted_cnt++; 
                 continue;
@@ -507,7 +491,7 @@ bool PRM::rrt::deleteNode(const Pose_ &pose)
         return false;
     }
 
-    found = srrt_dmap_.count({pose.x, pose.y}); 
+    found = st_dmap_->count({pose.x, pose.y}); 
     if(found)
     {
         ROS_ERROR("Node found in srrt_dmap_ ==> Something is wrong!");
@@ -516,7 +500,7 @@ bool PRM::rrt::deleteNode(const Pose_ &pose)
 
     st_pose_to_node_map_->erase(point_t{pose.x, pose.y});
     start_rtree_->remove(point_t{pose.x,pose.y});
-    srrt_dmap_.insert({pose.x, pose.y});
+    st_dmap_->insert({pose.x, pose.y});
     return true;
 }
 
