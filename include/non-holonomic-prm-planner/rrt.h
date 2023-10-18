@@ -102,6 +102,7 @@ namespace PRM
             float norm(float x, float y){ return sqrt(x * x + y * y);}
             Eigen::Matrix3f getHomogeneousMatrixFromPose(const Pose_ &pose_);
 
+            
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
@@ -114,7 +115,9 @@ namespace PRM
             bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map);
             void publishRRTPath(const rrt_nodePtr &node);
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
-        
+
+
+
         private: 
 
             Polygon rrt_polygon_;
@@ -133,6 +136,7 @@ namespace PRM
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;
             ros::Publisher rrt_path_pub_;
             ros::ServiceServer rrt_service_;
+            ros::Publisher closest_points_pub_;
             
     };  
 };

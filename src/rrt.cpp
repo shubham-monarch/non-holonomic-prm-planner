@@ -6,6 +6,10 @@
 
 #include <geometry_msgs/PoseArray.h>
 
+#include <boost/geometry/geometries/ring.hpp>
+#include <boost/geometry/algorithms/append.hpp>
+#include <boost/geometry/algorithms/for_each.hpp>
+
 extern std::shared_ptr<PRM::RobotModel> robot_;
 
 PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{false}
@@ -29,6 +33,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     circle_centers_pub_ = nh_.advertise<geometry_msgs::PoseArray>("circle_centers", 1, true);
     rrt_path_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_path", 1, true);
     rrt_service_ = nh_.advertiseService("rrt_service", &rrt::getPathService, this);
+    closest_points_pub_ = nh_.advertise<geometry_msgs::PoseArray>("closest_points", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -55,6 +60,18 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     
     rrt_nodePtr root_ = std::make_shared<rrt_node>();  //first node of start rrt 
     root_->pose_ = Pose_{test_start_pose_};
+    
+    float x = test_start_pose_.pose.position.x; 
+    float y = test_start_pose_.pose.position.y; 
+    float yaw = tf::getYaw(test_start_pose_.pose.orientation);
+    ROS_INFO("start_pose: {%f,%f,%f}", x, y, yaw); 
+
+    auto obb_ = robot_->getOBB({x, y}, yaw);
+
+    bool is_free_ = robot_->isConfigurationFree(obb_, true);
+
+    ROS_INFO("is_free_: %d", is_free_);
+
     //extendNode(root_, Pose_{test_goal_pose_}, Constants::Planner::max_res_);
     getNodeExtensions(root_, Constants::Planner::max_res_);
     //return; 
@@ -139,6 +156,8 @@ void PRM::rrt::reset()
 
     start_rrt_map_.clear(); 
     goal_rrt_map_.clear();
+
+
 }
 
 bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
@@ -195,7 +214,6 @@ void PRM::rrt::publishTree(const std::vector<PRM::rrt_nodePtr> &tree_)
     }
     rrt_tree_pub_.publish(tree_msg_);
 }
-
 
 void PRM::rrt::printNode(const rrt_nodePtr &node)
 {
@@ -310,17 +328,21 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 node_extension = Pose_{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
                 
                 //bounding box for the extended node + collision check
+                const std::array<float, 2> translation_{node_extension.x, node_extension.y};
+                const float heading_ = node_extension.theta;
+                const std::vector<float> &obb_ = robot_->getOBB(translation_, heading_);
                 const auto &obb = robot_->getOBB({node_extension.x, node_extension.y}, node_extension.theta);
                 if(!robot_->isConfigurationFree(obb)) 
                 {
                     collision = true;
                     break;
                 }
-                arc_end_points.poses.push_back(poseFromPose_(node_extension));
                 if(norm(xr,yr) > Constants::Planner::max_res_) {break;}
                 if(!ros::ok()) {break;}
             }
-            if(!collision) {node_extensions_.push_back(node_extension);}
+            if(collision) {continue;}
+            arc_end_points.poses.push_back(poseFromPose_(node_extension));
+            node_extensions_.push_back(node_extension);
         }
         else
         {
@@ -391,9 +413,22 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         {
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
         }
+
+        auto start_obb_ = robot_->getOBB({start.pose.position.x, start.pose.position.y}, tf::getYaw(start.pose.orientation));
+        auto goal_obb_ = robot_->getOBB({goal.pose.position.x, goal.pose.position.y}, tf::getYaw(goal.pose.orientation));
+        ROS_INFO("start_collision: %d", robot_->isConfigurationFree(start_obb_));
+        ROS_INFO("goal_collision: %d", robot_->isConfigurationFree(goal_obb_));
+
+        while(ros::ok() && !polygon_set_) 
+        {
+            ROS_ERROR("polygon_set is false!");
+            ros::Duration(0.1).sleep(); 
+            ros::spinOnce();
+        }
+
         bool planned = plan(start, goal);
         ROS_INFO("planned: %d", planned);
-        ros::Duration(2.0).sleep();
+        ros::Duration(20.0).sleep();
         p.repairPolygons();
         return planned;
     }
@@ -402,11 +437,11 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal)
 {   
-    if(!goal_pose_set_ || !start_pose_set_ || !polygon_set_)
+    /*if(!goal_pose_set_ || !start_pose_set_ || !polygon_set_)
     {
         ROS_ERROR("start or goal pose or rrt_polygon is not set!");
         return false;
-    }
+    }*/
 
     Polygon polygon_ = rrt_polygon_;
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
@@ -440,8 +475,13 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     int max_iter = 10000;
     int iter_cnt = 0;
 
+    geometry_msgs::PoseArray closest_points_; 
+    closest_points_.header.frame_id = "map";
+    closest_points_.header.stamp = ros::Time::now();
+
     while(ros::ok() && iter_cnt++ < max_iter)
     {
+        ROS_INFO("iter_cnt: %d", iter_cnt);
         Pose_ nxt_pose; 
         bool found; 
         found = sampleRandomPoint(polygon_, nxt_pose);   
@@ -458,6 +498,9 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             return false;
         }
         
+        closest_points_.poses.push_back(poseFromPose_(closest_node_->pose_));
+        closest_points_pub_.publish(closest_points_);
+        
         if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
         {
             ROS_WARN("Goal is within max_res_ ==> RRT converged!");
@@ -468,7 +511,8 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_);   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
-        {
+        {   
+            publishRRTPath(closest_node_);
             ROS_ERROR("No node extensions found! ==> CLOSEST NODE IS A DEAD-END ==> need to delete!"); 
             return false;
             break;

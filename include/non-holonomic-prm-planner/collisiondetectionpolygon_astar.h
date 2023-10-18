@@ -57,7 +57,7 @@ class CollisionDetectionPolygon {
     CollisionDetectionPolygon();
     CollisionDetectionPolygon(CollisionDetectionPolygon const&) = default;
     void initialize();
-    bool isConfigurationFree(const std::vector<float>& obb) const;
+    bool isConfigurationFree(const std::vector<float>& obb, bool publish = false) const;
     bool isConfigurationFree(float x, float y) const;
     //#ifdef DEBUG
     void publishAllPolygons(bool);
@@ -102,6 +102,7 @@ class CollisionDetectionPolygon {
 
     //=== helper functions for vine row testing
     ros::Publisher nearest_poly_pub = n.advertise<geometry_msgs::PolygonStamped>("nearest_polygon", 1, true);
+    ros::Publisher obb_polygon_pub = n.advertise<geometry_msgs::PolygonStamped>("obb_polygon", 1, true);
 
     //ros::Publisher nearest_polygon_o
 }; //! class CollisionDetectionPolygon

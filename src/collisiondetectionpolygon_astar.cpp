@@ -189,7 +189,7 @@ namespace PRM{
         
     }
 
-    bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb) const {
+    bool CollisionDetectionPolygon::isConfigurationFree(const std::vector<float>& obb, bool publish) const {
         
         RTree rtree = *current_index;
         //ROS_ERROR("num_obstacles in current index: %d", rtree.size()); 
@@ -204,6 +204,20 @@ namespace PRM{
 
         polygon.outer().assign(pts.begin(),pts.end());
         
+        geometry_msgs::PolygonStamped obb_polygon_; 
+        obb_polygon_.header.frame_id = "map";
+        obb_polygon_.header.stamp = ros::Time::now();
+        obb_polygon_.polygon.points.reserve(polygon.outer().size());
+        for (auto pt : polygon.outer()) {
+            geometry_msgs::Point32 new_point;
+            new_point.x = pt.get<0>();
+            new_point.y = pt.get<1>();
+            new_point.z = 0.f;
+            obb_polygon_.polygon.points.push_back(new_point);
+        }
+
+        if(publish) { obb_polygon_pub.publish(obb_polygon_); }
+
         if (!bg::within(polygon,*(current_geofence.get()))) {
             return false;
         }

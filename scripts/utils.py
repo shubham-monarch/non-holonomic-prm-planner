@@ -59,9 +59,7 @@ def sample_points(num_points: int, polygon_ros: PolygonStamped):
 
 class RvizPolygon:
 
-    def __init__(self, num_vertices_=3):
-
-        
+    def __init__(self, num_vertices_=4):
         self.clicked_point_sub = rospy.Subscriber("/clicked_point", PointStamped, self.clicked_point_cb)
         
         self.rviz_polygon_pub = rospy.Publisher("/rviz_polygon", PolygonStamped, queue_size=1, latch=True)
