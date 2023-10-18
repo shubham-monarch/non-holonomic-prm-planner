@@ -153,11 +153,13 @@ void PRM::rrt::reset()
     //start_rrt_.clear(); 
     //goal_rrt_.clear(); 
 
-    start_rtree_.clear(); 
-    goal_rtree_.clear(); 
+    start_rtree_ = std::make_shared<RTree>();
+    st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    //start_rtree_.clear(); 
+    //goal_rtree_.clear(); 
 
-    start_rrt_map_.clear(); 
-    goal_rrt_map_.clear();
+    //start_rrt_map_.clear(); 
+    //goal_rrt_map_.clear();
 
     srrt_dmap_.clear();
     rrt_tree_.poses.clear();
@@ -231,19 +233,17 @@ void PRM::rrt::publishRRTPath(const rrt_nodePtr &node)
 }
 
 // returns the closest node in the rtree to the given pose
-bool PRM::rrt::getClosestNode(  const RTree &rtree, \
-                                const PoseToNodeMap &pose_to_node_map, \
-                                const Pose_ &pose, rrt_nodePtr &closest_node)
+bool PRM::rrt::getClosestNode(const Pose_ &pose, rrt_nodePtr &closest_node)
 {
     std::vector<point_t> closest_points_;
-    rtree.query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
+    start_rtree_->query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
     if(closest_points_.size() == 0) { 
         ROS_ERROR("No closest point found in rtree!");
         return false; 
     }
     point_t closest_point_ = closest_points_[0];
-    auto closest_node_ = pose_to_node_map.find(closest_point_);
-    if(closest_node_ == pose_to_node_map.end()) { 
+    auto closest_node_ = st_pose_to_node_map_->find(closest_point_);
+    if(closest_node_ == st_pose_to_node_map_->end()) { 
         ROS_ERROR("No closest node found in pose_to_node_map! ==> Something is wrong!");
         return false; 
     }
@@ -357,11 +357,11 @@ PRM::Pose_ PRM::rrt::getClosestPoseToGoal(const std::vector<Pose_> &poses, const
 }
 
 //TODO => add rtree to function var
-bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map)
+bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent)
 {   
     ROS_INFO("Adding (%f,%f) to the tree", pose.x, pose.y);
     point_t pt{pose.x, pose.y};
-    if(map.count(pt) > 0) {
+    if(st_pose_to_node_map_->count(pt) > 0) {
         ROS_WARN("Point already present in tree!");
         return false; 
     }
@@ -369,8 +369,8 @@ bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseT
     node->pose_ = pose;
     node->parent_ = parent;
     parent->children_.push_back(node);
-    start_rtree_.insert(pt);
-    map.insert({point_t{pose.x, pose.y}, node}); //updating map
+    start_rtree_->insert(pt);
+    st_pose_to_node_map_->insert({point_t{pose.x, pose.y}, node}); //updating map
     
     rrt_tree_.header.frame_id ="map";
     rrt_tree_.header.stamp = ros::Time::now();
@@ -493,14 +493,14 @@ bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)
 bool PRM::rrt::deleteNode(const Pose_ &pose)
 {
     bool found;
-    found = start_rrt_map_.count(point_t{pose.x, pose.y}); 
+    found = st_pose_to_node_map_->count(point_t{pose.x, pose.y}); 
     if(!found)
     {
         ROS_ERROR("Node not found in start_rrt_map ==> Something is wrong!");
         return false;
     }
     
-    found = start_rtree_.count(point_t{pose.x, pose.y});
+    found = start_rtree_->count(point_t{pose.x, pose.y});
     if(!found)
     {
         ROS_ERROR("Node not found in start_rtree_ ==> Something is wrong!");
@@ -514,8 +514,8 @@ bool PRM::rrt::deleteNode(const Pose_ &pose)
         return false;
     }
 
-    start_rrt_map_.erase(point_t{pose.x, pose.y});
-    start_rtree_.remove(point_t{pose.x,pose.y});
+    st_pose_to_node_map_->erase(point_t{pose.x, pose.y});
+    start_rtree_->remove(point_t{pose.x,pose.y});
     srrt_dmap_.insert({pose.x, pose.y});
     return true;
 }
@@ -554,8 +554,8 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     start_node->parent_ = nullptr; 
     start_node->pose_ = start_pose;
     start_node->cost_ = 0 ;    
-    start_rtree_.insert(start_pt); //rtree
-    start_rrt_map_.insert({start_pt, start_node}); //map
+    start_rtree_->insert(start_pt); //rtree
+    st_pose_to_node_map_->insert({start_pt, start_node}); //map
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -572,7 +572,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     {   
         ROS_WARN("=========================================================================");
         ROS_WARN("iter_cnt: %d", iter_cnt);
-        ROS_WARN("start_rrt_map.size(): %d start_rtree.size(): %d", (int)start_rrt_map_.size(), (int)start_rtree_.size());
+        ROS_WARN("start_rrt_map.size(): %d start_rtree.size(): %d", (int)st_pose_to_node_map_->size(), (int)start_rtree_->size());
         ROS_WARN("=========================================================================");
 
         iter_cnt++; 
@@ -582,7 +582,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             break; 
         }
 
-        if((int)start_rrt_map_.size() != (int)start_rtree_.size())
+        if((int)st_pose_to_node_map_->size() != (int)start_rtree_->size())
         {   
             //ROS_INFO("start_rrt_map_.size(): %d", (int)start_rrt_map_.size());
             //ROS_INFO("start_rtree_.size(): %d", (int)start_rtree_.size());
@@ -591,7 +591,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             return false;
         }
 
-        if(start_rrt_map_.empty())
+        if(st_pose_to_node_map_->empty())
         {
             ROS_ERROR("start_rrt_map_ is empty==> No node left to exapand!");
             return false;
@@ -607,7 +607,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         }
 
         rrt_nodePtr closest_node_; 
-        found = getClosestNode(start_rtree_, start_rrt_map_, nxt_pose, closest_node_);
+        found = getClosestNode(nxt_pose, closest_node_);
         if(!found) {
             ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
             return false;
@@ -631,7 +631,6 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
                 ROS_ERROR("Unable to connect to the goal pose! ==> deleting closest node");
                 deleteNode(closest_node_->pose_);
             }
-
         }
         
         std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_);   
@@ -644,7 +643,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             continue;
         }
         Pose_ closest_pose_ = getClosestPoseToGoal(node_extensions_, goal_pose);
-        addPoseToTree(closest_pose_, closest_node_, start_rrt_map_);
+        addPoseToTree(closest_pose_, closest_node_);
     }
 
     auto end_time = std::chrono::system_clock::now();

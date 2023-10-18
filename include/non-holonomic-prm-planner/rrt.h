@@ -82,6 +82,11 @@ namespace PRM
     using rrt_nodePtr = std::shared_ptr<rrt_node>;        
     using PoseToNodeMap = std::unordered_map<point_t, rrt_nodePtr, pointKeyHash, pointKeyEqual>;
     using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
+
+    //shared ptr alias
+    using PoseToNodeMapPtr = std::shared_ptr<PoseToNodeMap>;
+    using RTreePtr = std::shared_ptr<RTree>;
+    using SetPtr = std::shared_ptr<std::set<std::pair<float, float> > >;
     
     class rrt
     {
@@ -108,12 +113,10 @@ namespace PRM
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
-            bool getClosestNode(const RTree &rtree, \
-                                const PoseToNodeMap &rrt_map, \
-                                const Pose_ &pose, rrt_nodePtr &closest_node);
+            bool getClosestNode(const Pose_ &pose, rrt_nodePtr &closest_node);
             std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len);
             Pose_ getClosestPoseToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
-            bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map);
+            bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent);
             void publishRRTPath(const rrt_nodePtr &node);
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
             bool canConnect(const Pose_ &a, const Pose_ &b); 
@@ -131,9 +134,12 @@ namespace PRM
             ros::NodeHandle nh_;
 
             //std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
-            RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
-            PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
+            
+            //rrt vars
+            RTreePtr start_rtree_, goal_rtree_, curr_rtree_;  //rtree for start_rrt and goal_rrt
+            PoseToNodeMapPtr st_pose_to_node_map_, go_pose_to_node_map_, curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
 
+            //publishers and subsribers
             ros::Publisher circle_pose_pub_;
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;
             ros::Publisher rrt_path_pub_;
