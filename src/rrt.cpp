@@ -25,7 +25,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &rrt::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &rrt::goalPoseCb, this);
     rrt_polygon_sub_ = nh_.subscribe("/rviz_polygon", 1, &rrt::polygonCb, this);
-    rrt_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_tstart_rtree_ree", 1, true);
+    rrt_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_tree", 1, true);
     start_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_start_pose", 1, true);
     goal_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_goal_pose", 1, true);
     circle_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("circle_pose", 1, true);
@@ -94,6 +94,7 @@ void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     test_goal_pose_ = *pose_;
     goal_pose_set_ = true; 
     goal_pose_pub_.publish(test_goal_pose_);    
+    /*
     if(!start_pose_set_)
     {
         ROS_ERROR("start_pose is not set!");
@@ -102,6 +103,7 @@ void PRM::rrt::goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_)
     reset();
     bool found = plan(test_start_pose_, test_goal_pose_);    
     ROS_WARN("plan() returned %s", found ? "true" : "false");   
+    */
 }   
 
 Polygon PRM::rrt::getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &msg)
@@ -144,8 +146,8 @@ void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
 
 void PRM::rrt::reset()
 {
-    //goal_pose_set_ = false; 
-    //start_pose_set_ = false;
+    goal_pose_set_ = false; 
+    start_pose_set_ = false;
     //polygon_set_ = false;
 
     //start_rrt_.clear(); 
@@ -157,7 +159,8 @@ void PRM::rrt::reset()
     start_rrt_map_.clear(); 
     goal_rrt_map_.clear();
 
-
+    srrt_dmap_.clear();
+    rrt_tree_.poses.clear();
 }
 
 bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
@@ -197,22 +200,6 @@ bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
         }
     }
     return false; 
-}
-
-void PRM::rrt::publishTree(const std::vector<PRM::rrt_nodePtr> &tree_)
-{
-    geometry_msgs::PoseArray tree_msg_;
-    tree_msg_.header.frame_id = "map";
-    tree_msg_.header.stamp = ros::Time::now();
-    for(auto t: tree_)
-    {
-        geometry_msgs::Pose pose_;
-        pose_.position.x = t->pose_.x;
-        pose_.position.y = t->pose_.y;
-        pose_.orientation = tf::createQuaternionMsgFromYaw(t->pose_.theta);
-        tree_msg_.poses.push_back(pose_);   
-    }
-    rrt_tree_pub_.publish(tree_msg_);
 }
 
 void PRM::rrt::printNode(const rrt_nodePtr &node)
@@ -302,7 +289,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
     node_extensions_.reserve(1000);
     float ddelta = 5 * M_PI / 180.0;  //step size for delta
     float a2 = Constants::Vehicle::a2_;
-    
+    int deleted_cnt = 0 ;
     for(float de = -Constants::Vehicle::delta_max_; de < Constants::Vehicle::delta_max_; de += ddelta) //simulating delta 
     {   
         if(std::fabs(de) > 0.01)
@@ -324,13 +311,8 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 const Eigen::Matrix3f &M_rp = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f(xr, yr), thetar);
                 //pose in world frame
                 const Eigen::Matrix3f &M_wp = M_wr * M_rp;
-                
                 node_extension = Pose_{M_wp(0,2), M_wp(1,2), std::atan2(M_wp(1,0), M_wp(0,0))}; //pose of the extended node                
-                
                 //bounding box for the extended node + collision check
-                const std::array<float, 2> translation_{node_extension.x, node_extension.y};
-                const float heading_ = node_extension.theta;
-                const std::vector<float> &obb_ = robot_->getOBB(translation_, heading_);
                 const auto &obb = robot_->getOBB({node_extension.x, node_extension.y}, node_extension.theta);
                 if(!robot_->isConfigurationFree(obb)) 
                 {
@@ -341,6 +323,11 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 if(!ros::ok()) {break;}
             }
             if(collision) {continue;}
+            if(srrt_dmap_.count({node_extension.x, node_extension.y})) {
+                ROS_WARN("Already deleted node was generated again!");
+                deleted_cnt++; 
+                continue;
+            }
             arc_end_points.poses.push_back(poseFromPose_(node_extension));
             node_extensions_.push_back(node_extension);
         }
@@ -369,14 +356,26 @@ PRM::Pose_ PRM::rrt::getClosestPoseToGoal(const std::vector<Pose_> &poses, const
     return closest_pose_;
 }
 
+//TODO => add rtree to function var
 bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map)
 {   
+    ROS_INFO("Adding (%f,%f) to the tree", pose.x, pose.y);
+    point_t pt{pose.x, pose.y};
+    if(map.count(pt) > 0) {
+        ROS_WARN("Point already present in tree!");
+        return false; 
+    }
     rrt_nodePtr node = std::make_shared<rrt_node>();
     node->pose_ = pose;
     node->parent_ = parent;
     parent->children_.push_back(node);
-    start_rtree_.insert(point_t{pose.x, pose.y}); //updating rtree
+    start_rtree_.insert(pt);
     map.insert({point_t{pose.x, pose.y}, node}); //updating map
+    
+    rrt_tree_.header.frame_id ="map";
+    rrt_tree_.header.stamp = ros::Time::now();
+    rrt_tree_.poses.push_back(poseFromPose_(pose));    
+    rrt_tree_pub_.publish(rrt_tree_);
     return true;
 }
 
@@ -414,7 +413,27 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
             p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
         }
 
-        auto start_obb_ = robot_->getOBB({start.pose.position.x, start.pose.position.y}, tf::getYaw(start.pose.orientation));
+        while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
+        {   
+            
+            ROS_ERROR("polygon_set or start_pose_set or goal_pose_set is false!");
+            ROS_INFO("polygon_set: %d start_pose_set: %d goal_pose_set: %d", polygon_set_, start_pose_set_, goal_pose_set_);
+            ros::Duration(1.0).sleep(); 
+            ros::spinOnce();
+        }
+
+        bool planned = plan(test_start_pose_, test_goal_pose_);
+        
+        ROS_DEBUG("======================================================================") ;
+        ROS_DEBUG("planned: %d", planned);
+        ROS_DEBUG("======================================================================") ;
+        
+        ros::Duration(10.0).sleep();    
+        p.repairPolygons();
+
+        return planned;
+
+        /*auto start_obb_ = robot_->getOBB({start.pose.position.x, start.pose.position.y}, tf::getYaw(start.pose.orientation));
         auto goal_obb_ = robot_->getOBB({goal.pose.position.x, goal.pose.position.y}, tf::getYaw(goal.pose.orientation));
         ROS_INFO("start_collision: %d", robot_->isConfigurationFree(start_obb_));
         ROS_INFO("goal_collision: %d", robot_->isConfigurationFree(goal_obb_));
@@ -428,11 +447,77 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
 
         bool planned = plan(start, goal);
         ROS_INFO("planned: %d", planned);
-        ros::Duration(20.0).sleep();
+        ros::Duration(10.0).sleep();
         p.repairPolygons();
-        return planned;
+        return planned;*/
     }
     return false;
+}
+
+bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)  
+{
+    const float dis_ = euclidDis(a, b) ;
+    if(dis_ > Constants::Planner::max_res_) {return false; }
+    //TO-DO => check
+    if(dis_ < 0.001f) {return false; }
+    
+    const float xa_ = a.x, ya_ = a.y, yaw_a_ = a.theta;
+    const float xb_ = b.x, yb_ = b.y, yaw_b_ = b.theta;
+    
+    const Vec2f V_oa_{xa_, ya_};
+    const Vec2f V_ob_{xb_, yb_};
+    
+    const Mat3f &P_oa_ = (Utils::getHomogeneousTransformationMatrix(V_oa_, yaw_a_));
+    const Mat3f &P_ob_ = (Utils::getHomogeneousTransformationMatrix(V_ob_, yaw_b_));
+
+    const Mat3f &P_ao_ = P_oa_.inverse();
+    const Mat3f &P_ab_ = P_ao_ * P_ob_;  //b in the frame of a
+    
+    const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
+    const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
+
+    if(x_dash_ < 0) {return false; }
+    
+    float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
+    if(theta_dash_ < 0) { theta_dash_ += 2 *  M_PI; }
+
+    const float r_ = Utils::getR(x_dash_, y_dash_);
+    if(r_ > 0.f && r_ < Constants::Vehicle::R_MIN_) {return false; }
+
+    const float steering_dir_ = Utils::signDelta(x_dash_, y_dash_);
+    const float theta_c_  = Utils::getThetaC(x_dash_, y_dash_, steering_dir_);
+
+    return (std::fabs(theta_dash_ - theta_c_) < Constants::Planner::theta_tol_);
+}
+
+bool PRM::rrt::deleteNode(const Pose_ &pose)
+{
+    bool found;
+    found = start_rrt_map_.count(point_t{pose.x, pose.y}); 
+    if(!found)
+    {
+        ROS_ERROR("Node not found in start_rrt_map ==> Something is wrong!");
+        return false;
+    }
+    
+    found = start_rtree_.count(point_t{pose.x, pose.y});
+    if(!found)
+    {
+        ROS_ERROR("Node not found in start_rtree_ ==> Something is wrong!");
+        return false;
+    }
+
+    found = srrt_dmap_.count({pose.x, pose.y}); 
+    if(found)
+    {
+        ROS_ERROR("Node found in srrt_dmap_ ==> Something is wrong!");
+        return false;
+    }
+
+    start_rrt_map_.erase(point_t{pose.x, pose.y});
+    start_rtree_.remove(point_t{pose.x,pose.y});
+    srrt_dmap_.insert({pose.x, pose.y});
+    return true;
 }
 
 bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal)
@@ -443,6 +528,8 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         return false;
     }*/
 
+    ROS_INFO("start: (%f,%f) goal: (%f,%f)", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
+    reset();
     Polygon polygon_ = rrt_polygon_;
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
     bool index_found = p.selectCurrentIndex(Point_t(start.pose.position.x, start.pose.position.y), \
@@ -479,9 +566,37 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     closest_points_.header.frame_id = "map";
     closest_points_.header.stamp = ros::Time::now();
 
-    while(ros::ok() && iter_cnt++ < max_iter)
-    {
-        ROS_INFO("iter_cnt: %d", iter_cnt);
+    bool goal_reached = false; 
+
+    while(ros::ok() )
+    {   
+        ROS_WARN("=========================================================================");
+        ROS_WARN("iter_cnt: %d", iter_cnt);
+        ROS_WARN("start_rrt_map.size(): %d start_rtree.size(): %d", (int)start_rrt_map_.size(), (int)start_rtree_.size());
+        ROS_WARN("=========================================================================");
+
+        iter_cnt++; 
+        if(iter_cnt >= max_iter) 
+        {
+            ROS_ERROR("======== REACHED MAX_ITER ========="); 
+            break; 
+        }
+
+        if((int)start_rrt_map_.size() != (int)start_rtree_.size())
+        {   
+            //ROS_INFO("start_rrt_map_.size(): %d", (int)start_rrt_map_.size());
+            //ROS_INFO("start_rtree_.size(): %d", (int)start_rtree_.size());
+            //ROS_INFO("iter_cnt: %d", iter_cnt);
+            ROS_ERROR("Size mismatch found ==> Something is wrong!");
+            return false;
+        }
+
+        if(start_rrt_map_.empty())
+        {
+            ROS_ERROR("start_rrt_map_ is empty==> No node left to exapand!");
+            return false;
+        }
+
         Pose_ nxt_pose; 
         bool found; 
         found = sampleRandomPoint(polygon_, nxt_pose);   
@@ -503,19 +618,30 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         
         if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
         {
-            ROS_WARN("Goal is within max_res_ ==> RRT converged!");
-            publishRRTPath(closest_node_);
-            return true; 
-        }
+            ROS_WARN("Goal is within max_res_");
+            if(canConnect(closest_node_->pose_, goal_pose))
+            {
+                publishRRTPath(closest_node_);
+                goal_reached = true;
+                break;
+                //return true; 
+            }
+            else
+            {
+                ROS_ERROR("Unable to connect to the goal pose! ==> deleting closest node");
+                deleteNode(closest_node_->pose_);
+            }
 
+        }
+        
         std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_);   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
         {   
-            publishRRTPath(closest_node_);
-            ROS_ERROR("No node extensions found! ==> CLOSEST NODE IS A DEAD-END ==> need to delete!"); 
-            return false;
-            break;
+            //publishRRTPath(closest_node_);
+            ROS_ERROR("No node extensions found! ==> CLOSEST NODE IS A DEAD-END ==> deleting!"); 
+            deleteNode(closest_node_->pose_);
+            continue;
         }
         Pose_ closest_pose_ = getClosestPoseToGoal(node_extensions_, goal_pose);
         addPoseToTree(closest_pose_, closest_node_, start_rrt_map_);
@@ -524,11 +650,11 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     auto end_time = std::chrono::system_clock::now();
     auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
     
-    ROS_WARN("================================================================================") ;
-    ROS_WARN("RRT converged in %d seconds", elapsed.count());
-    ROS_WARN("================================================================================") ;
+    ROS_DEBUG("================================================================================") ;
+    ROS_DEBUG("RRT converged in %d seconds", elapsed.count());
+    ROS_DEBUG("================================================================================") ;
     
-    return false; 
+    return goal_reached; 
 }
 
 

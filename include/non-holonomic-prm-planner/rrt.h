@@ -11,11 +11,12 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
-
+#include <geometry_msgs/PoseArray.h>
 #include <tf/transform_datatypes.h>
 
 #include <unordered_map>
 #include <Eigen/Dense>
+#include <set>
 
 #include <prm_planner/PRMService.h>
 #include <prm_planner/PRMServiceRequest.h>
@@ -33,6 +34,7 @@ typedef bg::model::multi_polygon<Polygon> MultiPolygon;
 //vornoi bias
 //goal biasing
 //https://shuoli.github.io/robotics.pdf
+//https://people.csail.mit.edu/teller/pubs/KaramanEtAl_ICRA_2011.pdf
 //hrrt vs ikrrt vs 
 //use dubin's curve to connect in goal refgion
 //control tree depth => distance = a* dis + b * del(angle) + c * rand(0,1) * depth
@@ -81,7 +83,6 @@ namespace PRM
     using PoseToNodeMap = std::unordered_map<point_t, rrt_nodePtr, pointKeyHash, pointKeyEqual>;
     using RTree = bgi::rtree<point_t, bgi::linear<16>> ;  
     
-    
     class rrt
     {
         public: 
@@ -115,8 +116,8 @@ namespace PRM
             bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent, PoseToNodeMap &map);
             void publishRRTPath(const rrt_nodePtr &node);
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
-
-
+            bool canConnect(const Pose_ &a, const Pose_ &b); 
+            bool deleteNode(const Pose_ &pose);
 
         private: 
 
@@ -132,12 +133,14 @@ namespace PRM
             //std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
             RTree start_rtree_, goal_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMap start_rrt_map_, goal_rrt_map_; //unordered map for start_rrt and goal_rrt
+
             ros::Publisher circle_pose_pub_;
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;
             ros::Publisher rrt_path_pub_;
             ros::ServiceServer rrt_service_;
             ros::Publisher closest_points_pub_;
-            
+            geometry_msgs::PoseArray rrt_tree_;
+            std::set<std::pair<float, float> > srrt_dmap_; ///records co-ordinates of points deleted from start tree
     };  
 };
 
