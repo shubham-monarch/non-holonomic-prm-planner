@@ -125,7 +125,7 @@ void PRM::rrt::reset()
 {
     goal_pose_set_ = false; 
     start_pose_set_ = false;
-    //polygon_set_ = false;
+    polygon_set_ = false;
 
     //st_rtree_ = std::make_shared<RTree>();
     //go_rtree_ = std::make_shared<RTree>();
@@ -397,17 +397,25 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         if(!isFree(start)) { ROS_ERROR("start is not free!"); return false; }
         if(!isFree(goal)) { ROS_ERROR("goal is not free!"); return false; } 
 
-        while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
+        /*while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
         {   
             
             ROS_ERROR("polygon_set or start_pose_set or goal_pose_set is false!");
             ROS_INFO("polygon_set: %d start_pose_set: %d goal_pose_set: %d", polygon_set_, start_pose_set_, goal_pose_set_);
             ros::Duration(1.0).sleep(); 
             ros::spinOnce();
+        }*/
+
+        while(ros::ok() && !polygon_set_ ) 
+        {   
+            ROS_ERROR("polygon_set is false!");
+            ros::Duration(1.0).sleep(); 
+            ros::spinOnce();
         }
 
         //bool planned = plan(test_start_pose_, test_goal_pose_);
-        bool planned = biDirectionalPlan(test_start_pose_, test_goal_pose_);
+        //bool planned = biDirectionalPlan(test_start_pose_, test_goal_pose_);
+        bool planned = biDirectionalPlan(start, goal);
         
         ROS_DEBUG("======================================================================") ;
         ROS_DEBUG("planned: %d", planned);
