@@ -88,6 +88,19 @@ namespace PRM
     using RTreePtr = std::shared_ptr<RTree>;
     using DMapPtr = std::shared_ptr<std::set<std::pair<float, float> > >;
     
+    //contains all the information related to a branch rrt
+    struct rrt_container
+    {   
+        PoseToNodeMapPtr pose_to_node_map_;
+        RTreePtr rtree_;
+        DMapPtr dmap_;
+        rrt_container(): pose_to_node_map_(nullptr), rtree_(nullptr), dmap_(nullptr){}
+        rrt_container(PoseToNodeMapPtr &pose_to_node_map, RTreePtr &rtree, DMapPtr &dmap):  pose_to_node_map_(pose_to_node_map), \
+                                                                                            rtree_(rtree), dmap_(dmap){}
+    };
+
+    using rrt_containerPtr = std::shared_ptr<rrt_container>;
+
     class rrt
     {
         public: 
@@ -111,7 +124,8 @@ namespace PRM
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
             
             //rrt functions
-            bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
+            bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);       
+            bool biDirectionalPlan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_); 
             void reset();
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
             bool getNearestNodeToSampledPoint(const Pose_ &pose, rrt_nodePtr &closest_node);
@@ -121,7 +135,7 @@ namespace PRM
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
             bool canConnect(const Pose_ &a, const Pose_ &b, const bool fwd); 
             bool deleteNode(const Pose_ &pose);
-
+            
             //setters
             void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
@@ -142,8 +156,8 @@ namespace PRM
             //std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
             
             //rrt vars
-            RTreePtr st_rtree_, go_rtree_, curr_rtree_;  //rtree for start_rrt and goal_rrt
-            PoseToNodeMapPtr st_pose_to_node_map_, go_pose_to_node_map_, curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
+            RTreePtr curr_rtree_;  //rtree for start_rrt and goal_rrt
+            PoseToNodeMapPtr curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
             DMapPtr st_dmap_, go_dmap_, curr_dmap_; //mapping for deleted points
 
 

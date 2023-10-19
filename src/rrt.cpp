@@ -127,12 +127,12 @@ void PRM::rrt::reset()
     start_pose_set_ = false;
     //polygon_set_ = false;
 
-    st_rtree_ = std::make_shared<RTree>();
-    go_rtree_ = std::make_shared<RTree>();
+    //st_rtree_ = std::make_shared<RTree>();
+    //go_rtree_ = std::make_shared<RTree>();
     curr_rtree_ = std::make_shared<RTree>();
     
-    st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
-    go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    //st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    //go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
     curr_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
     
     st_dmap_ = std::make_shared<DMap>();
@@ -555,9 +555,15 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     rrt_nodePtr start_node = std::make_shared<rrt_node>();  //first node of start rrt
     start_node->parent_ = nullptr; 
     start_node->pose_ = start_pose;
-    start_node->cost_ = 0 ;    
+    start_node->cost_ = 0 ;  
+    
+    RTreePtr st_rtree_ = std::make_shared<RTree>();  
     st_rtree_->insert(start_pt); //rtree
+    
+    PoseToNodeMapPtr st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();  
     st_pose_to_node_map_->insert({start_pt, start_node}); //map
+    
+    rrt_containerPtr st_rrt_container_ = std::make_shared<rrt_container>(st_pose_to_node_map_, st_rtree_, st_dmap_);
 
     // =======================================================================================
     // ============================ RRT FROM GOAL POSE =======================================
@@ -566,8 +572,14 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     go_node->parent_ = nullptr; 
     go_node->pose_ = start_pose;
     go_node->cost_ = 0 ;    
+    
+    RTreePtr go_rtree_ = std::make_shared<RTree>();
     go_rtree_->insert(start_pt); //rtree
+    
+    PoseToNodeMapPtr go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
     go_pose_to_node_map_->insert({start_pt, go_node}); //map
+    
+    rrt_containerPtr go_rrt_container_ = std::make_shared<rrt_container>(go_pose_to_node_map_, go_rtree_, go_dmap_);
     //=========================================================================================
     
 
