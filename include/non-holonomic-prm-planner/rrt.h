@@ -140,10 +140,15 @@ namespace PRM
             bool deleteNode(const Pose_ &pose);
             
             //setters
-            void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
-            void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
-            void setDMap(const DMapPtr &dmap) {curr_dmap_ = dmap; }
-            void setRRTContainer(const rrt_containerPtr &container) {curr_container_ = container;}
+            //void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
+            //void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
+            //void setDMap(const DMapPtr &dmap) {curr_dmap_ = dmap; }
+            void setRRTContainer(const rrt_containerPtr &container)
+            {
+                curr_pose_to_node_map_ = container->pose_to_node_map_;
+                curr_rtree_ = container->rtree_; 
+                curr_dmap_ = container->dmap_;
+            }
             
 
         private: 
@@ -163,8 +168,7 @@ namespace PRM
             RTreePtr curr_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMapPtr curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
             DMapPtr st_dmap_, go_dmap_, curr_dmap_; //mapping for deleted points
-            rrt_containerPtr curr_container_;
-
+    
             //publishers and subsribers
             ros::Publisher circle_pose_pub_;
             ros::Publisher arc_end_points_pub_, circle_centers_pub_;

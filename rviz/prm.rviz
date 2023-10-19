@@ -11,6 +11,7 @@ Panels:
         - /Path1
         - /Start Runway1
         - /test_start_pose1
+        - /test_goal_pose1
         - /PoseArray2
         - /PoseArray3
       Splitter Ratio: 0.518126904964447
@@ -245,7 +246,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -141.29478454589844
+      Angle: -153.78515625
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -255,10 +256,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: -11.378697395324707
+      Scale: -6.92869234085083
       Target Frame: <Fixed Frame>
-      X: -728.8715209960938
-      Y: 269.8835754394531
+      X: -729.21728515625
+      Y: 273.2272033691406
     Saved: ~
 Window Geometry:
   Displays:

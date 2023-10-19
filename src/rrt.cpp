@@ -569,15 +569,15 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     go_container_->rtree_->insert(goal_pt); //rtree
     go_container_->pose_to_node_map_->insert({goal_pt, go_node}); //map
     //=========================================================================================
-    
-    
 
     // === setting curr vars ======
-    curr_container_ = go_container_; 
-    setRtree(curr_container_->rtree_);
-    setPoseToNodeMap(curr_container_->pose_to_node_map_);
-    setDMap(curr_container_->dmap_);
+    //curr_container_ = go_container_; 
+    //setRtree(curr_container_->rtree_);
+    //setPoseToNodeMap(curr_container_->pose_to_node_map_);
+    //setDMap(curr_container_->dmap_);
     // ============================
+    setRRTContainer(go_container_);
+    
     auto start_time = std::chrono::high_resolution_clock::now();
 
     int max_iter = 10000;
