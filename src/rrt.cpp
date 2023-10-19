@@ -202,8 +202,8 @@ bool PRM::rrt::sampleRandomPolygonPoint(const Polygon &polygon, PRM::Pose_ &pose
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> distX(0, 1);
-    std::uniform_real_distribution<double> distY(0,1);
+    std::uniform_real_distribution<double> distX(-10, 10);
+    std::uniform_real_distribution<double> distY(-10, 10);
     std::uniform_real_distribution<double> disTheta(0, 2 * M_PI);
     
     int iter_limit_ = 100 * 100 * 100; 
@@ -215,11 +215,7 @@ bool PRM::rrt::sampleRandomPolygonPoint(const Polygon &polygon, PRM::Pose_ &pose
     geometry_msgs::PoseStamped centroid_pose_; 
     centroid_pose_.header.frame_id = "map";
     centroid_pose_.header.stamp = ros::Time::now();
-    centroid_pose_.pose.position.x = centroid.x(); 
-    centroid_pose_.pose.position.y = centroid.y(); 
-    centroid_pose_.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-    poly_centroid_pub_.publish(centroid_pose_);
-
+    
 
     float cx = centroid.x(); 
     float cy = centroid.y(); 
@@ -234,6 +230,10 @@ bool PRM::rrt::sampleRandomPolygonPoint(const Polygon &polygon, PRM::Pose_ &pose
             if(flag)
             {
                 pose = Pose_(randomPoint.x(), randomPoint.y(), disTheta(gen));
+                centroid_pose_.pose.position.x = randomPoint.x(); 
+                centroid_pose_.pose.position.y = randomPoint.y(); 
+                centroid_pose_.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+                poly_centroid_pub_.publish(centroid_pose_);
                 return true; 
             }
         }
@@ -475,7 +475,7 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         ROS_DEBUG("planned: %d", planned);
         ROS_DEBUG("======================================================================") ;
         
-        ros::Duration(10.0).sleep();    
+        ros::Duration(5.0).sleep();    
         p.repairPolygons();
 
         return planned;
@@ -697,6 +697,7 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
 
         if(iter_cnt % 2)
         {
+            //continue;
             //c1_ = st_container_; 
             //c2_= go_container_;
             setContainer(st_container_); 
@@ -705,6 +706,7 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         {
             //c1_ = go_container_;
             //c2_ = st_container_;
+            //continue;
             setContainer(go_container_);
         }
 
@@ -771,7 +773,8 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
             deleteNode(closest_node_->pose_);
             continue;
         }
-        Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, goal_pose);
+        //Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, (iter_cnt % 2 ? goal_pose: start_pose));
+        Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, nxt_pose);
         addPoseToTree(closest_pose_, closest_node_);
 
         bool can_connect_ = false; 
