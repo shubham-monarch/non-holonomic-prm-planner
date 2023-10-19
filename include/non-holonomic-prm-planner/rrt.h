@@ -141,6 +141,7 @@ namespace PRM
             bool deleteNode(const Pose_ &pose);
             bool canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd);
             void publishStartAndGoalTree();
+            void publishROSPath(const std::vector<rrt_nodePtr> &tree_);
             //setters
             //void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             //void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
@@ -182,6 +183,8 @@ namespace PRM
 
             rrt_nodePtr st_found_node_, go_found_node_;
             ros::Publisher st_tree_pub_, go_tree_pub_; 
+            std::vector<rrt_nodePtr> combined_tree_;
+            ros::Publisher ros_path_pub_;
             
     };  
 };

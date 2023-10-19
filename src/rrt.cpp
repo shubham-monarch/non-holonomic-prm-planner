@@ -1,5 +1,6 @@
 #include <non-holonomic-prm-planner/rrt.h>
 #include <non-holonomic-prm-planner/path_generator.h>
+#include <non-holonomic-prm-planner/helpers.h>
 
 #include <random>
 #include <cmath>
@@ -38,6 +39,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
 
     st_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("st_tree", 1, true); 
     go_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("go_tree", 1, true);
+    ros_path_pub_ = nh_.advertise<nav_msgs::Path>("ros_path", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -144,7 +146,7 @@ void PRM::rrt::reset()
     curr_dmap_ = std::make_shared<DMap>();
 
     rrt_tree_.poses.clear();
-
+    combined_tree_.clear();
     //start_rtree_.clear(); 
     //goal_rtree_.clear(); 
     //start_rrt_map_.clear(); 
@@ -478,7 +480,7 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         ROS_DEBUG("planned: %d", planned);
         ROS_DEBUG("======================================================================") ;
         
-        ros::Duration(5.0).sleep();    
+        ros::Duration(7.0).sleep();    
         p.repairPolygons();
 
         return planned;
@@ -589,6 +591,28 @@ bool PRM::rrt::canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &
     return(canConnect(pose, other_pose_, fwd));    
 }
 
+
+void PRM::rrt::publishROSPath(const std::vector<rrt_nodePtr> &tree)
+{
+
+    std::vector<PRM::Node3d> path_; 
+    for(auto t : tree)
+    {
+
+        Node3d node_{t->pose_.x, t->pose_.y, t->pose_.theta};
+        path_.push_back(node_);
+    }
+
+    nav_msgs::Path ros_path_ = nav_msgs::Path(); 
+    ros_path_.header.frame_id = "map"; 
+    ros_path_.header.stamp = ros::Time::now(); 
+    ros_path_pub_.publish(ros_path_);
+
+    ros_path_ = Utils::generateROSPath(path_);
+   ros_path_pub_.publish(ros_path_);
+
+}
+
 void PRM::rrt::publishStartAndGoalTree()
 {
     ROS_INFO("Inside publishStartAndGoalTree()!");
@@ -596,21 +620,31 @@ void PRM::rrt::publishStartAndGoalTree()
     st_tree_arr_.header.frame_id = "map";
     st_tree_arr_.header.stamp = ros::Time::now();
 
+    
+    std::vector<rrt_nodePtr> v; 
+
     while(st_found_node_ != nullptr) 
     {
+        v.push_back(st_found_node_);
         st_tree_arr_.poses.push_back(poseFromPose_(st_found_node_->pose_));
         st_found_node_ = st_found_node_->parent_;
     }
     st_tree_pub_.publish(st_tree_arr_); 
 
+    std::reverse(v.begin(), v.end()); 
+    for(auto t: v) {combined_tree_.push_back(t) ;}
+    v.clear();
     go_tree_arr_.header.frame_id = "map";
     go_tree_arr_.header.stamp = ros::Time::now();
     while(go_found_node_ != nullptr)
-    {
+    {   
+        v.push_back(go_found_node_);
         go_tree_arr_.poses.push_back(poseFromPose_(go_found_node_->pose_));
         go_found_node_ = go_found_node_->parent_;
     }
     go_tree_pub_.publish(go_tree_arr_);
+    for(auto t: v) {combined_tree_.push_back(t); }
+    publishROSPath(combined_tree_);
 }
 
 
