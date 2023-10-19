@@ -122,25 +122,36 @@ void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
 }
 
 void PRM::rrt::reset()
-{
+{   
+
+    ROS_WARN("==================================================");
+    ROS_WARN("============== RESET CALLED ======================");
+    ROS_WARN("==================================================");
+    
+    
     goal_pose_set_ = false; 
     start_pose_set_ = false;
-    //polygon_set_ = false;
+    polygon_set_ = false;
 
     //st_rtree_ = std::make_shared<RTree>();
     //go_rtree_ = std::make_shared<RTree>();
-    curr_rtree_ = std::make_shared<RTree>();
+    //curr_rtree_ = std::make_shared<RTree>();
     
     //st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
     //go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
-    curr_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+    //curr_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
     
-    st_dmap_ = std::make_shared<DMap>();
-    go_dmap_ = std::make_shared<DMap>();
-    curr_dmap_ = std::make_shared<DMap>();
+    //st_dmap_ = std::make_shared<DMap>();
+    //go_dmap_ = std::make_shared<DMap>();
+    //curr_dmap_ = std::make_shared<DMap>();
 
-    rrt_tree_.poses.clear();
+    //rrt_tree_.poses.clear();
+    rrt_tree_ = geometry_msgs::PoseArray();
+    rrt_tree_.header.frame_id = "map"; 
+    rrt_tree_.header.stamp = ros::Time::now();
+    rrt_tree_pub_.publish(rrt_tree_);
 
+    ros::Duration(2.0).sleep(); 
     //start_rtree_.clear(); 
     //goal_rtree_.clear(); 
     //start_rrt_map_.clear(); 
@@ -361,7 +372,7 @@ bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent)
     
     rrt_tree_.header.frame_id ="map";
     rrt_tree_.header.stamp = ros::Time::now();
-    rrt_tree_.poses.push_back(poseFromPose_(pose));    
+    rrt_tree_.poses.push_back(poseFromPose_(pose));     
     rrt_tree_pub_.publish(rrt_tree_);
     return true;
 }
@@ -397,18 +408,26 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         if(!isFree(start)) { ROS_ERROR("start is not free!"); return false; }
         if(!isFree(goal)) { ROS_ERROR("goal is not free!"); return false; } 
 
-        while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
+        /*while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
         {   
             
             ROS_ERROR("polygon_set or start_pose_set or goal_pose_set is false!");
             ROS_INFO("polygon_set: %d start_pose_set: %d goal_pose_set: %d", polygon_set_, start_pose_set_, goal_pose_set_);
             ros::Duration(1.0).sleep(); 
             ros::spinOnce();
+        }*/
+
+        while(ros::ok() && !polygon_set_)
+        {
+            ROS_ERROR("polygon not set!");
+            ros::Duration(0.1).sleep(); 
+            ros::spinOnce();
         }
 
         //bool planned = plan(test_start_pose_, test_goal_pose_);
-        bool planned = biDirectionalPlan(test_start_pose_, test_goal_pose_);
-        
+        //bool planned = biDirectionalPlan(test_start_pose_, test_goal_pose_);
+        bool planned = biDirectionalPlan(start, goal);
+
         ROS_DEBUG("======================================================================") ;
         ROS_DEBUG("planned: %d", planned);
         ROS_DEBUG("======================================================================") ;
@@ -548,13 +567,14 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     ROS_INFO("start: (%f,%f) goal: (%f,%f)", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
     reset();
 
-    //===================== TESTING ===========
+    /*//===================== TESTING ===========
     ROS_WARN("After reset()!"); 
     ROS_WARN("curr_dmap_.size(): %d",curr_dmap_->size());
     ROS_WARN("curr_pose_to_node_map_.size(): %d", curr_pose_to_node_map_->size());
     ROS_WARN("curr_rtree_.size(): %d", curr_rtree_->size());
     //=========================================
-    
+    */
+
     Polygon polygon_ = rrt_polygon_;
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
     bool index_found = p.selectCurrentIndex(Point_t(start.pose.position.x, start.pose.position.y), \
@@ -623,7 +643,7 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     {   
         ROS_WARN("=========================================================================");
         ROS_WARN("iter_cnt: %d", iter_cnt);
-        ROS_WARN("curr_pose_to_node_map_.size(): %d curr_rtree_.size(): %d", (int)curr_pose_to_node_map_->size(), (int)curr_rtree_->size());
+       // ROS_WARN("curr_pose_to_node_map_.size(): %d curr_rtree_.size(): %d", (int)curr_pose_to_node_map_->size(), (int)curr_rtree_->size());
         ROS_WARN("=========================================================================");
 
         iter_cnt++; 
@@ -634,13 +654,16 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         }
 
         if(iter_cnt % 2)
-        {
+        {   
+            ROS_DEBUG("C1");
+
             //c1_ = st_container_; 
             //c2_= go_container_;
             setContainer(st_container_); 
         }
         else
-        {
+        {   
+            ROS_DEBUG("C2");
             //c1_ = go_container_;
             //c2_ = st_container_;
             setContainer(go_container_);
