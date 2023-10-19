@@ -140,7 +140,7 @@ namespace PRM
             bool canConnect(const Pose_ &a, const Pose_ &b, const bool fwd); 
             bool deleteNode(const Pose_ &pose);
             bool canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd);
-
+            void publishStartAndGoalTree();
             //setters
             //void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             //void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
@@ -179,6 +179,9 @@ namespace PRM
             ros::Publisher closest_points_pub_;
             geometry_msgs::PoseArray rrt_tree_;
             ros::Publisher poly_centroid_pub_;
+
+            rrt_nodePtr st_found_node_, go_found_node_;
+            ros::Publisher st_tree_pub_, go_tree_pub_; 
             
     };  
 };

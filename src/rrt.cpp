@@ -35,6 +35,9 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     rrt_service_ = nh_.advertiseService("rrt_service", &rrt::getPathService, this);
     closest_points_pub_ = nh_.advertise<geometry_msgs::PoseArray>("closest_points", 1, true);
     poly_centroid_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("poly_centroid", 1, true);
+
+    st_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("st_tree", 1, true); 
+    go_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("go_tree", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -479,24 +482,6 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         p.repairPolygons();
 
         return planned;
-
-        /*auto start_obb_ = robot_->getOBB({start.pose.position.x, start.pose.position.y}, tf::getYaw(start.pose.orientation));
-        auto goal_obb_ = robot_->getOBB({goal.pose.position.x, goal.pose.position.y}, tf::getYaw(goal.pose.orientation));
-        ROS_INFO("start_collision: %d", robot_->isConfigurationFree(start_obb_));
-        ROS_INFO("goal_collision: %d", robot_->isConfigurationFree(goal_obb_));
-
-        while(ros::ok() && !polygon_set_) 
-        {
-            ROS_ERROR("polygon_set is false!");
-            ros::Duration(0.1).sleep(); 
-            ros::spinOnce();
-        }
-
-        bool planned = plan(start, goal);
-        ROS_INFO("planned: %d", planned);
-        ros::Duration(10.0).sleep();
-        p.repairPolygons();
-        return planned;*/
     }
     return false;
 }
@@ -602,6 +587,30 @@ bool PRM::rrt::canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &
     const Pose_ other_pose_ = itr->second->pose_;
 
     return(canConnect(pose, other_pose_, fwd));    
+}
+
+void PRM::rrt::publishStartAndGoalTree()
+{
+    ROS_INFO("Inside publishStartAndGoalTree()!");
+    geometry_msgs::PoseArray st_tree_arr_, go_tree_arr_;
+    st_tree_arr_.header.frame_id = "map";
+    st_tree_arr_.header.stamp = ros::Time::now();
+
+    while(st_found_node_ != nullptr) 
+    {
+        st_tree_arr_.poses.push_back(poseFromPose_(st_found_node_->pose_));
+        st_found_node_ = st_found_node_->parent_;
+    }
+    st_tree_pub_.publish(st_tree_arr_); 
+
+    go_tree_arr_.header.frame_id = "map";
+    go_tree_arr_.header.stamp = ros::Time::now();
+    while(go_found_node_ != nullptr)
+    {
+        go_tree_arr_.poses.push_back(poseFromPose_(go_found_node_->pose_));
+        go_found_node_ = go_found_node_->parent_;
+    }
+    go_tree_pub_.publish(go_tree_arr_);
 }
 
 
@@ -744,26 +753,6 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
             return false;
         }
         
-        closest_points_.poses.push_back(poseFromPose_(closest_node_->pose_));
-        closest_points_pub_.publish(closest_points_);
-        
-        /*if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
-        {
-            ROS_WARN("Goal is within max_res_");
-            if(canConnect(closest_node_->pose_, goal_pose, false))
-            {
-                publishRRTPath(closest_node_);
-                goal_reached = true;
-                break;
-                //return true; 
-            }
-            else
-            {
-                ROS_ERROR("Unable to connect to the goal pose! ==> deleting closest node");
-                deleteNode(closest_node_->pose_);
-            }
-        }*/
-        
         std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, (iter_cnt % 2 ? true : false));   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
@@ -788,8 +777,37 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         }
 
         if(can_connect_)
-        {
+        {   
+
             ROS_DEBUG("Two RRTs are converging!"); 
+            std::vector<point_t> v;
+            point_t st_pt, go_pt;
+            
+            if(iter_cnt % 2) 
+            {   
+                point_t st_pt{closest_pose_.x, closest_pose_.y};
+                auto itr = st_container_->pose_to_node_map_->find(st_pt);
+                st_found_node_= itr->second;
+                
+                go_container_->rtree_->query(bgi::nearest(st_pt, 1), std::back_inserter(v));
+                go_pt = v[0];
+                itr = go_container_->pose_to_node_map_->find(go_pt);
+                go_found_node_ = itr->second;    
+
+            }
+            else
+            {
+                point_t go_pt{closest_pose_.x, closest_pose_.y};
+                auto itr = go_container_->pose_to_node_map_->find(go_pt);
+                go_found_node_= itr->second;
+
+                st_container_->rtree_->query(bgi::nearest(go_pt, 1), std::back_inserter(v));
+                st_pt = v[0];
+                itr = st_container_->pose_to_node_map_->find(st_pt);
+                st_found_node_ = itr->second;
+                
+            }
+            publishStartAndGoalTree();
             goal_reached = true; 
             break; 
         }
@@ -806,175 +824,5 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     return goal_reached; 
 }
 
-
-/*
-bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal)
-{   
-    ROS_INFO("start: (%f,%f) goal: (%f,%f)", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
-    reset();
-
-    //===================== TESTING ===========
-    ROS_WARN("After reset()!"); 
-    ROS_WARN("curr_dmap_.size(): %d",curr_dmap_->size());
-    ROS_WARN("curr_pose_to_node_map_.size(): %d", curr_pose_to_node_map_->size());
-    ROS_WARN("curr_rtree_.size(): %d", curr_rtree_->size());
-    //=========================================
-    
-    Polygon polygon_ = rrt_polygon_;
-    CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
-    bool index_found = p.selectCurrentIndex(Point_t(start.pose.position.x, start.pose.position.y), \
-                                            Point_t(goal.pose.position.x, goal.pose.position.y));
-
-    if(!index_found) 
-    {
-        ROS_ERROR("unable to select current index!");
-        return false;
-    }
-
-    Pose_ goal_pose{goal};
-    Pose_ start_pose{start};
-
-    point_t start_pt{start_pose.x, start_pose.y};
-    point_t goal_pt{goal_pose.x, goal_pose.y};
-
-    // =======================================================================================
-    // ============================ RRT FROM START POSE ======================================
-    // =======================================================================================
-    rrt_nodePtr start_node = std::make_shared<rrt_node>();  //first node of start rrt
-    start_node->parent_ = nullptr; 
-    start_node->pose_ = start_pose;
-    start_node->cost_ = 0 ;  
-    
-    RTreePtr st_rtree_ = std::make_shared<RTree>();  
-    st_rtree_->insert(start_pt); //rtree
-    
-    PoseToNodeMapPtr st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();  
-    st_pose_to_node_map_->insert({start_pt, start_node}); //map
-    
-    rrt_containerPtr st_rrt_container_ = std::make_shared<rrt_container>(st_pose_to_node_map_, st_rtree_, st_dmap_);
-
-    // =======================================================================================
-    // ============================ RRT FROM GOAL POSE =======================================
-    // =======================================================================================
-    rrt_nodePtr go_node = std::make_shared<rrt_node>();  //first node of start rrt
-    go_node->parent_ = nullptr; 
-    go_node->pose_ = start_pose;
-    go_node->cost_ = 0 ;    
-    
-    RTreePtr go_rtree_ = std::make_shared<RTree>();
-    go_rtree_->insert(start_pt); //rtree
-    
-    PoseToNodeMapPtr go_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
-    go_pose_to_node_map_->insert({start_pt, go_node}); //map
-    
-    rrt_containerPtr go_rrt_container_ = std::make_shared<rrt_container>(go_pose_to_node_map_, go_rtree_, go_dmap_);
-    //=========================================================================================
-    
-
-    // === setting curr vars ======
-    setRtree(go_rtree_);
-    setPoseToNodeMap(go_pose_to_node_map_);
-    setDMap(go_dmap_);
-    // ============================
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    int max_iter = 10000;
-    int iter_cnt = 0;
-
-    geometry_msgs::PoseArray closest_points_; 
-    closest_points_.header.frame_id = "map";
-    closest_points_.header.stamp = ros::Time::now();
-
-    bool goal_reached = false; 
-
-    while(ros::ok() )
-    {   
-        ROS_WARN("=========================================================================");
-        ROS_WARN("iter_cnt: %d", iter_cnt);
-        ROS_WARN("curr_pose_to_node_map_.size(): %d curr_rtree_.size(): %d", (int)curr_pose_to_node_map_->size(), (int)curr_rtree_->size());
-        ROS_WARN("=========================================================================");
-
-        iter_cnt++; 
-        if(iter_cnt >= max_iter) 
-        {
-            ROS_ERROR("======== REACHED MAX_ITER ========="); 
-            break; 
-        }
-
-        if((int)curr_pose_to_node_map_->size() != (int)curr_rtree_->size())
-        {   
-            //ROS_INFO("start_rrt_map_.size(): %d", (int)start_rrt_map_.size());
-            //ROS_INFO("start_rtree_.size(): %d", (int)start_rtree_.size());
-            //ROS_INFO("iter_cnt: %d", iter_cnt);
-            ROS_ERROR("Size mismatch found ==> Something is wrong!");
-            return false;
-        }
-
-        if(curr_pose_to_node_map_->empty())
-        {
-            ROS_ERROR("curr_pose_to_node_map is empty==> No node left to exapand!");
-            return false;
-        }
-
-        Pose_ nxt_pose; 
-        bool found; 
-        found = sampleRandomPoint(polygon_, nxt_pose);   
-        if(!found)
-        {
-            ROS_ERROR(" === Could not sample a random point ==> Trying again === "); 
-            return false;
-        }
-
-        rrt_nodePtr closest_node_; 
-        found = getNearestNodeToSampledPoint(nxt_pose, closest_node_);
-        if(!found) {
-            ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
-            return false;
-        }
-        
-        closest_points_.poses.push_back(poseFromPose_(closest_node_->pose_));
-        closest_points_pub_.publish(closest_points_);
-        
-        if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
-        {
-            ROS_WARN("Goal is within max_res_");
-            if(canConnect(closest_node_->pose_, goal_pose, false))
-            {
-                publishRRTPath(closest_node_);
-                goal_reached = true;
-                break;
-                //return true; 
-            }
-            else
-            {
-                ROS_ERROR("Unable to connect to the goal pose! ==> deleting closest node");
-                deleteNode(closest_node_->pose_);
-            }
-        }
-        
-        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, false);   
-        //TO-DO ==> Add node-deletion logic
-        if(node_extensions_.empty()) 
-        {   
-            //publishRRTPath(closest_node_);
-            ROS_ERROR("No node extensions found! ==> CLOSEST NODE IS A DEAD-END ==> deleting!"); 
-            deleteNode(closest_node_->pose_);
-            continue;
-        }
-        Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, goal_pose);
-        addPoseToTree(closest_pose_, closest_node_);
-    }
-
-    auto end_time = std::chrono::system_clock::now();
-    auto elapsed  = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
-    
-    ROS_DEBUG("================================================================================") ;
-    ROS_DEBUG("RRT converged in %d seconds", elapsed.count());
-    ROS_DEBUG("================================================================================") ;
-    
-    return goal_reached; 
-}
-
-*/
 
 
