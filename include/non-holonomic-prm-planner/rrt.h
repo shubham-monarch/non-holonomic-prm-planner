@@ -94,9 +94,12 @@ namespace PRM
         PoseToNodeMapPtr pose_to_node_map_;
         RTreePtr rtree_;
         DMapPtr dmap_;
-        rrt_container(): pose_to_node_map_(nullptr), rtree_(nullptr), dmap_(nullptr){}
-        rrt_container(PoseToNodeMapPtr &pose_to_node_map, RTreePtr &rtree, DMapPtr &dmap):  pose_to_node_map_(pose_to_node_map), \
-                                                                                            rtree_(rtree), dmap_(dmap){}
+        rrt_container()
+        {
+            pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
+            rtree_ = std::make_shared<RTree>();
+            dmap_ = std::make_shared<DMap>();
+        }
     };
 
     using rrt_containerPtr = std::shared_ptr<rrt_container>;
@@ -140,6 +143,7 @@ namespace PRM
             void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
             void setDMap(const DMapPtr &dmap) {curr_dmap_ = dmap; }
+            void setRRTContainer(const rrt_containerPtr &container) {curr_container_ = container;}
             
 
         private: 
@@ -159,7 +163,7 @@ namespace PRM
             RTreePtr curr_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMapPtr curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
             DMapPtr st_dmap_, go_dmap_, curr_dmap_; //mapping for deleted points
-
+            rrt_containerPtr curr_container_;
 
             //publishers and subsribers
             ros::Publisher circle_pose_pub_;
