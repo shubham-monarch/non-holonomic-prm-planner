@@ -129,8 +129,8 @@ void PRM::rrt::reset()
     start_pose_set_ = false;
     //polygon_set_ = false;
 
-    start_rtree_ = std::make_shared<RTree>();
-    goal_rtree_ = std::make_shared<RTree>();
+    st_rtree_ = std::make_shared<RTree>();
+    go_rtree_ = std::make_shared<RTree>();
     curr_rtree_ = std::make_shared<RTree>();
     
     st_pose_to_node_map_ = std::make_shared<PoseToNodeMap>();
@@ -220,14 +220,14 @@ void PRM::rrt::publishRRTPath(const rrt_nodePtr &node)
 bool PRM::rrt::getClosestNode(const Pose_ &pose, rrt_nodePtr &closest_node)
 {
     std::vector<point_t> closest_points_;
-    start_rtree_->query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
+    curr_rtree_->query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
     if(closest_points_.size() == 0) { 
         ROS_ERROR("No closest point found in rtree!");
         return false; 
     }
     point_t closest_point_ = closest_points_[0];
-    auto closest_node_ = st_pose_to_node_map_->find(closest_point_);
-    if(closest_node_ == st_pose_to_node_map_->end()) { 
+    auto closest_node_ = curr_pose_to_node_map_->find(closest_point_);
+    if(closest_node_ == curr_pose_to_node_map_->end()) { 
         ROS_ERROR("No closest node found in pose_to_node_map! ==> Something is wrong!");
         return false; 
     }
@@ -258,6 +258,7 @@ Eigen::Matrix3f PRM::rrt::getHomogeneousMatrixFromPose(const Pose_ &pose)
 //returns the end points for the nearest node after extendinf it by arc_len 
 std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len)
 {   
+    ROS_INFO("Generating node extension for (%f,%f)", nearest_node->pose_.x, nearest_node->pose_.y);
     // ============== TESTING ====================================
     geometry_msgs::PoseArray arc_end_points; 
     arc_end_points.header.frame_id = "map";
@@ -287,6 +288,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 float yr = -sqrt(pow(r, 2) - pow(xr + a2,2)) + sqrt(pow(r,2 ) - pow(a2, 2));
                 if(std::isnan(yr)) {break;}
                 if(de <0) {yr *= -1.f ;}
+                if(norm(xr,yr) > Constants::Planner::max_res_) {break;}
                 float thetar = Utils::getThetaC(xr, yr, yr);
                 //robot pose in world frame
                 const Eigen::Matrix3f  &M_wr = Utils::getHomogeneousTransformationMatrix(Eigen::Vector2f( nearest_node->pose_.x , nearest_node->pose_.y), \
@@ -303,11 +305,13 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                     collision = true;
                     break;
                 }
-                if(norm(xr,yr) > Constants::Planner::max_res_) {break;}
                 if(!ros::ok()) {break;}
             }
-            if(collision) {continue;}
-            if(st_dmap_->count({node_extension.x, node_extension.y})) {
+            if(collision) {
+                ROS_ERROR("Collision was detected!");
+                continue;
+            }
+            if(curr_dmap_->count({node_extension.x, node_extension.y})) {
                 ROS_WARN("Already deleted node was generated again!");
                 deleted_cnt++; 
                 continue;
@@ -321,6 +325,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
         }
     }
     arc_end_points_pub_.publish(arc_end_points);
+    ROS_INFO("Generated %d node extensions", node_extensions_.size());
     return node_extensions_; 
 }
 
@@ -345,7 +350,7 @@ bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent)
 {   
     ROS_INFO("Adding (%f,%f) to the tree", pose.x, pose.y);
     point_t pt{pose.x, pose.y};
-    if(st_pose_to_node_map_->count(pt) > 0) {
+    if(curr_pose_to_node_map_->count(pt) > 0) {
         ROS_WARN("Point already present in tree!");
         return false; 
     }
@@ -353,8 +358,8 @@ bool PRM::rrt::addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent)
     node->pose_ = pose;
     node->parent_ = parent;
     parent->children_.push_back(node);
-    start_rtree_->insert(pt);
-    st_pose_to_node_map_->insert({point_t{pose.x, pose.y}, node}); //updating map
+    curr_rtree_->insert(pt);
+    curr_pose_to_node_map_->insert({point_t{pose.x, pose.y}, node}); //updating map
     
     rrt_tree_.header.frame_id ="map";
     rrt_tree_.header.stamp = ros::Time::now();
@@ -388,14 +393,11 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
     if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
     {
-        if (!req.start_runway.empty())
-        {
-            p.carveRunway(req.start_runway[0],req.start_runway[1],true);
-        } 
-        if (!req.goal_runway.empty())
-        {
-            p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);
-        }
+        if (!req.start_runway.empty()){ p.carveRunway(req.start_runway[0],req.start_runway[1],true); } 
+        if (!req.goal_runway.empty()) { p.carveRunway(req.goal_runway[0],req.goal_runway[1],false);  }
+
+        if(!isFree(start)) { ROS_ERROR("start is not free!"); return false; }
+        if(!isFree(goal)) { ROS_ERROR("goal is not free!"); return false; } 
 
         while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
         {   
@@ -438,6 +440,12 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
     return false;
 }
 
+bool PRM::rrt::isFree(const geometry_msgs::PoseStamped &pose)
+{
+    auto obb_ = robot_->getOBB({pose.pose.position.x, pose.pose.position.y}, tf::getYaw(pose.pose.orientation));
+    return robot_->isConfigurationFree(obb_);
+}
+
 bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)  
 {
     const float dis_ = euclidDis(a, b) ;
@@ -477,30 +485,30 @@ bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)
 bool PRM::rrt::deleteNode(const Pose_ &pose)
 {
     bool found;
-    found = st_pose_to_node_map_->count(point_t{pose.x, pose.y}); 
+    found = curr_pose_to_node_map_->count(point_t{pose.x, pose.y}); 
     if(!found)
     {
-        ROS_ERROR("Node not found in start_rrt_map ==> Something is wrong!");
+        ROS_ERROR("Node not found in curr_pose_to_node_map_ ==> Something is wrong!");
         return false;
     }
     
-    found = start_rtree_->count(point_t{pose.x, pose.y});
+    found = curr_rtree_->count(point_t{pose.x, pose.y});
     if(!found)
     {
-        ROS_ERROR("Node not found in start_rtree_ ==> Something is wrong!");
+        ROS_ERROR("Node not found in curr_rtree_ ==> Something is wrong!");
         return false;
     }
 
-    found = st_dmap_->count({pose.x, pose.y}); 
+    found = curr_dmap_->count({pose.x, pose.y}); 
     if(found)
     {
-        ROS_ERROR("Node found in srrt_dmap_ ==> Something is wrong!");
+        ROS_ERROR("Node found in curr_dmap_ ==> Something is wrong!");
         return false;
     }
 
-    st_pose_to_node_map_->erase(point_t{pose.x, pose.y});
-    start_rtree_->remove(point_t{pose.x,pose.y});
-    st_dmap_->insert({pose.x, pose.y});
+    curr_pose_to_node_map_->erase(point_t{pose.x, pose.y});
+    curr_rtree_->remove(point_t{pose.x,pose.y});
+    curr_dmap_->insert({pose.x, pose.y});
     return true;
 }
 
@@ -538,9 +546,14 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     start_node->parent_ = nullptr; 
     start_node->pose_ = start_pose;
     start_node->cost_ = 0 ;    
-    start_rtree_->insert(start_pt); //rtree
+    st_rtree_->insert(start_pt); //rtree
     st_pose_to_node_map_->insert({start_pt, start_node}); //map
 
+    // === setting curr vars ======
+    setRtree(st_rtree_);
+    setPoseToNodeMap(st_pose_to_node_map_);
+    setDMap(st_dmap_);
+    // ============================
     auto start_time = std::chrono::high_resolution_clock::now();
 
     int max_iter = 10000;
@@ -556,7 +569,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     {   
         ROS_WARN("=========================================================================");
         ROS_WARN("iter_cnt: %d", iter_cnt);
-        ROS_WARN("start_rrt_map.size(): %d start_rtree.size(): %d", (int)st_pose_to_node_map_->size(), (int)start_rtree_->size());
+        ROS_WARN("curr_pose_to_node_map_.size(): %d curr_rtree_.size(): %d", (int)curr_pose_to_node_map_->size(), (int)curr_rtree_->size());
         ROS_WARN("=========================================================================");
 
         iter_cnt++; 
@@ -566,7 +579,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             break; 
         }
 
-        if((int)st_pose_to_node_map_->size() != (int)start_rtree_->size())
+        if((int)curr_pose_to_node_map_->size() != (int)curr_rtree_->size())
         {   
             //ROS_INFO("start_rrt_map_.size(): %d", (int)start_rrt_map_.size());
             //ROS_INFO("start_rtree_.size(): %d", (int)start_rtree_.size());
@@ -575,7 +588,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             return false;
         }
 
-        if(st_pose_to_node_map_->empty())
+        if(curr_pose_to_node_map_->empty())
         {
             ROS_ERROR("start_rrt_map_ is empty==> No node left to exapand!");
             return false;

@@ -107,7 +107,7 @@ namespace PRM
             geometry_msgs::Pose poseFromPose_(const Pose_ pose);
             float norm(float x, float y){ return sqrt(x * x + y * y);}
             Eigen::Matrix3f getHomogeneousMatrixFromPose(const Pose_ &pose_);
-
+            bool isFree(const geometry_msgs::PoseStamped &pose);
             
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
@@ -142,7 +142,7 @@ namespace PRM
             //std::vector<rrt_nodePtr> start_rrt_, goal_rrt_; 
             
             //rrt vars
-            RTreePtr start_rtree_, goal_rtree_, curr_rtree_;  //rtree for start_rrt and goal_rrt
+            RTreePtr st_rtree_, go_rtree_, curr_rtree_;  //rtree for start_rrt and goal_rrt
             PoseToNodeMapPtr st_pose_to_node_map_, go_pose_to_node_map_, curr_pose_to_node_map_; //mapping between points in rtree and nodes in rrt 
             DMapPtr st_dmap_, go_dmap_, curr_dmap_; //mapping for deleted points
 
