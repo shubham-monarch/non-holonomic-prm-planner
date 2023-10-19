@@ -515,6 +515,34 @@ bool PRM::rrt::deleteNode(const Pose_ &pose)
     return true;
 }
 
+bool PRM::rrt::canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd)
+{
+    point_t pt{pose.x, pose.y}; 
+    bool found_; 
+    
+    const RTreePtr &rtree_ = other_container_->rtree_; 
+    const PoseToNodeMapPtr &pose_to_node_map_ = other_container_->pose_to_node_map_;
+
+    std::vector<point_t> closest_points_;
+    rtree_->query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
+    if(closest_points_.size() == 0) { 
+        ROS_ERROR("No closest point found in rtree!");
+        return false; 
+    }
+
+    point_t other_pt_ = closest_points_[0];
+    //Pose_ other_pose_; 
+    auto itr = pose_to_node_map_->find(other_pt_);
+    if(itr == curr_pose_to_node_map_->end()) { 
+        ROS_ERROR("No closest node found in pose_to_node_map! ==> Something is wrong!");
+        return false; 
+    }
+    const Pose_ other_pose_ = itr->second->pose_;
+
+    return(canConnect(pose, other_pose_, fwd));    
+}
+
+
 bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const geometry_msgs::PoseStamped &goal)
 {   
     ROS_INFO("start: (%f,%f) goal: (%f,%f)", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
@@ -562,7 +590,7 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     // =======================================================================================
     rrt_nodePtr go_node = std::make_shared<rrt_node>();  //first node of start rrt
     go_node->parent_ = nullptr; 
-    go_node->pose_ = start_pose;
+    go_node->pose_ = goal_pose;
     go_node->cost_ = 0 ;  
 
     rrt_containerPtr go_container_ = std::make_shared<rrt_container>(); 
@@ -576,8 +604,10 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
     //setPoseToNodeMap(curr_container_->pose_to_node_map_);
     //setDMap(curr_container_->dmap_);
     // ============================
-    setRRTContainer(go_container_);
+    //setRRTContainer(go_container_);
     
+    rrt_containerPtr c1_, c2_; //containers for rrts from start and goal poses
+
     auto start_time = std::chrono::high_resolution_clock::now();
 
     int max_iter = 10000;
@@ -602,6 +632,21 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
             ROS_ERROR("======== REACHED MAX_ITER ========="); 
             break; 
         }
+
+        if(iter_cnt % 2)
+        {
+            //c1_ = st_container_; 
+            //c2_= go_container_;
+            setContainer(st_container_); 
+        }
+        else
+        {
+            //c1_ = go_container_;
+            //c2_ = st_container_;
+            setContainer(go_container_);
+        }
+
+        //setContainer(c1_);
 
         if((int)curr_pose_to_node_map_->size() != (int)curr_rtree_->size())
         {   
@@ -637,7 +682,7 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         closest_points_.poses.push_back(poseFromPose_(closest_node_->pose_));
         closest_points_pub_.publish(closest_points_);
         
-        if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
+        /*if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
         {
             ROS_WARN("Goal is within max_res_");
             if(canConnect(closest_node_->pose_, goal_pose, false))
@@ -652,9 +697,9 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
                 ROS_ERROR("Unable to connect to the goal pose! ==> deleting closest node");
                 deleteNode(closest_node_->pose_);
             }
-        }
+        }*/
         
-        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, false);   
+        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, (iter_cnt % 2 ? true : false));   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
         {   
@@ -665,6 +710,24 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         }
         Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, goal_pose);
         addPoseToTree(closest_pose_, closest_node_);
+
+        bool can_connect_ = false; 
+        if(iter_cnt % 2)
+        {
+            can_connect_ = canConnectToOtherTree(closest_pose_, go_container_, true);
+        }
+        else
+        {
+            can_connect_ = canConnectToOtherTree(closest_pose_, st_container_, false);
+        }
+
+        if(can_connect_)
+        {
+            ROS_DEBUG("Two RRTs are converging!"); 
+            goal_reached = true; 
+            break; 
+        }
+
     }
 
     auto end_time = std::chrono::system_clock::now();

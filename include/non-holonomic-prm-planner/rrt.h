@@ -138,12 +138,13 @@ namespace PRM
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
             bool canConnect(const Pose_ &a, const Pose_ &b, const bool fwd); 
             bool deleteNode(const Pose_ &pose);
-            
+            bool canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd);
+
             //setters
             //void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             //void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
             //void setDMap(const DMapPtr &dmap) {curr_dmap_ = dmap; }
-            void setRRTContainer(const rrt_containerPtr &container)
+            void setContainer(const rrt_containerPtr &container)
             {
                 curr_pose_to_node_map_ = container->pose_to_node_map_;
                 curr_rtree_ = container->rtree_; 
