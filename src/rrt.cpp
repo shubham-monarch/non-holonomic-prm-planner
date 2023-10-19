@@ -38,7 +38,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
 {
-    ROS_WARN("========== START POSE RECEIVED ==============");     
+    ROS_WARN("========== START POSE => (%f,%f) RECEIVED ==============", pose_->pose.pose.position.x, pose_->pose.pose.position.y);     
     //setting start index in collision detection polygon for testing
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
     bool flag = p.selectCurrentIndex(Point_t{test_start_pose_.pose.position.x, test_start_pose_.pose.position.y}, \
@@ -56,14 +56,12 @@ void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr po
     start_pose_set_ = true; 
     start_pose_pub_.publish(test_start_pose_);
 
-    //point_t center = getCircleCenter(Pose_{test_start_pose_}, 3.f, true);
-    /*geometry_msgs::PoseStamped circle_pose_;
-    circle_pose_.header.frame_id = "map";
-    circle_pose_.header.stamp = ros::Time::now();
-    circle_pose_.pose.position.x = bg::get<0>(center);
-    circle_pose_.pose.position.y = bg::get<1>(center);
-    circle_pose_.pose.orientation = test_start_pose_.pose.orientation;
-    circle_pose_pub_.publish(circle_pose_);
+    /*//====== TESTING ======
+    ROS_INFO("Starting testing!");
+    rrt_nodePtr st_node_ = std::make_shared<rrt_node>();
+    st_node_->pose_ = test_start_pose_;
+    getNodeExtensions(st_node_, Constants::Planner::max_res_, false);
+    //=====================
     */
 }
 
@@ -141,6 +139,8 @@ void PRM::rrt::reset()
     go_dmap_ = std::make_shared<DMap>();
     curr_dmap_ = std::make_shared<DMap>();
 
+    rrt_tree_.poses.clear();
+
     //start_rtree_.clear(); 
     //goal_rtree_.clear(); 
     //start_rrt_map_.clear(); 
@@ -217,7 +217,7 @@ void PRM::rrt::publishRRTPath(const rrt_nodePtr &node)
 }
 
 // returns the closest node in the rtree to the given pose
-bool PRM::rrt::getClosestNode(const Pose_ &pose, rrt_nodePtr &closest_node)
+bool PRM::rrt::getNearestNodeToSampledPoint(const Pose_ &pose, rrt_nodePtr &closest_node)
 {
     std::vector<point_t> closest_points_;
     curr_rtree_->query(bgi::nearest(point_t{pose.x, pose.y}, 1), std::back_inserter(closest_points_));
@@ -256,7 +256,7 @@ Eigen::Matrix3f PRM::rrt::getHomogeneousMatrixFromPose(const Pose_ &pose)
 }
 
 //returns the end points for the nearest node after extendinf it by arc_len 
-std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len)
+std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len, const bool fwd)
 {   
     ROS_INFO("Generating node extension for (%f,%f)", nearest_node->pose_.x, nearest_node->pose_.y);
     // ============== TESTING ====================================
@@ -269,7 +269,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
     circle_centers.header.stamp = ros::Time::now();
     // ============================================================
     
-    const float dx = 0.15;
+    const float dx = (fwd ? 1.f : -1.f) * 0.15 ;
     std::vector<Pose_> node_extensions_;  //contains end points for the node extensions
     node_extensions_.reserve(1000);
     float ddelta = 5 * M_PI / 180.0;  //step size for delta
@@ -282,7 +282,8 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
             bool collision = false; //check whether end points is collision free 
             float xr, yr, thetar; // pose in robot frame
             Pose_ node_extension; //pose of the extended node
-            for(float xr = 0; ;  xr += dx) //simulating x in robot frame
+            int num_iter = 0 ;
+            for(float xr = 0; ;  xr += dx, num_iter++) //simulating x in robot frame
             {   
                 float r = Utils::getR(de);
                 float yr = -sqrt(pow(r, 2) - pow(xr + a2,2)) + sqrt(pow(r,2 ) - pow(a2, 2));
@@ -301,16 +302,13 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
                 //bounding box for the extended node + collision check
                 const auto &obb = robot_->getOBB({node_extension.x, node_extension.y}, node_extension.theta);
                 if(!robot_->isConfigurationFree(obb)) 
-                {
+                {   
                     collision = true;
                     break;
                 }
                 if(!ros::ok()) {break;}
             }
-            if(collision) {
-                ROS_ERROR("Collision was detected!");
-                continue;
-            }
+            if(collision) { continue; }
             if(curr_dmap_->count({node_extension.x, node_extension.y})) {
                 ROS_WARN("Already deleted node was generated again!");
                 deleted_cnt++; 
@@ -329,7 +327,7 @@ std::vector<PRM::Pose_> PRM::rrt::getNodeExtensions(const rrt_nodePtr &nearest_n
     return node_extensions_; 
 }
 
-PRM::Pose_ PRM::rrt::getClosestPoseToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose)
+PRM::Pose_ PRM::rrt::getClosestNodeExtensionToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose)
 {
     float mn_dis = std::numeric_limits<float>::max();
     Pose_ closest_pose_;
@@ -389,7 +387,7 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
     
     start_pose_pub_.publish(start); 
     goal_pose_pub_.publish(goal);
-
+    
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
     if (p.selectCurrentIndex(start_t, goal_t)) //index is cleared in plan()
     {
@@ -446,7 +444,10 @@ bool PRM::rrt::isFree(const geometry_msgs::PoseStamped &pose)
     return robot_->isConfigurationFree(obb_);
 }
 
-bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)  
+//TO-DO => Add collision check
+// fwd => direction to connect
+//checks whether two poses can be connected by a collision steering curve
+bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b, const bool fwd)  
 {
     const float dis_ = euclidDis(a, b) ;
     if(dis_ > Constants::Planner::max_res_) {return false; }
@@ -468,8 +469,9 @@ bool PRM::rrt::canConnect(const Pose_ &a, const Pose_ &b)
     const float x_dash_ = P_ab_(0,2);                                       // Δx in the frame of a 
     const float y_dash_ = P_ab_(1,2);                                       // Δy in the frame of a
 
-    if(x_dash_ < 0) {return false; }
-    
+    if(x_dash_ < 0 && fwd) {return false; }
+    if(x_dash_ > 0 && !fwd) {return false; }
+
     float theta_dash_  = std::atan2(P_ab_(1,0), P_ab_(0,0));          // Δtheta in the frame of a
     if(theta_dash_ < 0) { theta_dash_ += 2 *  M_PI; }
 
@@ -522,6 +524,14 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
 
     ROS_INFO("start: (%f,%f) goal: (%f,%f)", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
     reset();
+
+    //===================== TESTING ===========
+    ROS_WARN("After reset()!"); 
+    ROS_WARN("curr_dmap_.size(): %d",curr_dmap_->size());
+    ROS_WARN("curr_pose_to_node_map_.size(): %d", curr_pose_to_node_map_->size());
+    ROS_WARN("curr_rtree_.size(): %d", curr_rtree_->size());
+    //=========================================
+    
     Polygon polygon_ = rrt_polygon_;
     CollisionDetectionPolygon &p = robot_->getCollisionPolyRef(); 
     bool index_found = p.selectCurrentIndex(Point_t(start.pose.position.x, start.pose.position.y), \
@@ -549,10 +559,22 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
     st_rtree_->insert(start_pt); //rtree
     st_pose_to_node_map_->insert({start_pt, start_node}); //map
 
+    // =======================================================================================
+    // ============================ RRT FROM GOAL POSE =======================================
+    // =======================================================================================
+    rrt_nodePtr go_node = std::make_shared<rrt_node>();  //first node of start rrt
+    go_node->parent_ = nullptr; 
+    go_node->pose_ = start_pose;
+    go_node->cost_ = 0 ;    
+    go_rtree_->insert(start_pt); //rtree
+    go_pose_to_node_map_->insert({start_pt, go_node}); //map
+    //=========================================================================================
+    
+
     // === setting curr vars ======
-    setRtree(st_rtree_);
-    setPoseToNodeMap(st_pose_to_node_map_);
-    setDMap(st_dmap_);
+    setRtree(go_rtree_);
+    setPoseToNodeMap(go_pose_to_node_map_);
+    setDMap(go_dmap_);
     // ============================
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -590,7 +612,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
 
         if(curr_pose_to_node_map_->empty())
         {
-            ROS_ERROR("start_rrt_map_ is empty==> No node left to exapand!");
+            ROS_ERROR("curr_pose_to_node_map is empty==> No node left to exapand!");
             return false;
         }
 
@@ -604,7 +626,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         }
 
         rrt_nodePtr closest_node_; 
-        found = getClosestNode(nxt_pose, closest_node_);
+        found = getNearestNodeToSampledPoint(nxt_pose, closest_node_);
         if(!found) {
             ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
             return false;
@@ -616,7 +638,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
         if(euclidDis(closest_node_->pose_, goal_pose) < Constants::Planner::max_res_)
         {
             ROS_WARN("Goal is within max_res_");
-            if(canConnect(closest_node_->pose_, goal_pose))
+            if(canConnect(closest_node_->pose_, goal_pose, false))
             {
                 publishRRTPath(closest_node_);
                 goal_reached = true;
@@ -630,7 +652,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             }
         }
         
-        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_);   
+        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, false);   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
         {   
@@ -639,7 +661,7 @@ bool PRM::rrt::plan(const geometry_msgs::PoseStamped &start, const geometry_msgs
             deleteNode(closest_node_->pose_);
             continue;
         }
-        Pose_ closest_pose_ = getClosestPoseToGoal(node_extensions_, goal_pose);
+        Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, goal_pose);
         addPoseToTree(closest_pose_, closest_node_);
     }
 

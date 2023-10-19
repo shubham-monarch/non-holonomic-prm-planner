@@ -103,23 +103,23 @@ namespace PRM
             float euclidDis(const Pose_ &a, const Pose_ &b){ return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));}
             void printNode(const rrt_nodePtr &node_);
             Polygon getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &polygon_);
-            void publishTree(const std::vector<rrt_nodePtr> &tree_);
             geometry_msgs::Pose poseFromPose_(const Pose_ pose);
             float norm(float x, float y){ return sqrt(x * x + y * y);}
             Eigen::Matrix3f getHomogeneousMatrixFromPose(const Pose_ &pose_);
             bool isFree(const geometry_msgs::PoseStamped &pose);
+            void publishRRTPath(const rrt_nodePtr &node);
+            void publishTree(const std::vector<rrt_nodePtr> &tree_);
             
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);        
             void reset();
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
-            bool getClosestNode(const Pose_ &pose, rrt_nodePtr &closest_node);
-            std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len);
-            Pose_ getClosestPoseToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
+            bool getNearestNodeToSampledPoint(const Pose_ &pose, rrt_nodePtr &closest_node);
+            std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len, const bool fwd);
+            Pose_ getClosestNodeExtensionToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
             bool addPoseToTree(const Pose_ &pose, const rrt_nodePtr &parent);
-            void publishRRTPath(const rrt_nodePtr &node);
             bool getPathService(prm_planner::PRMService::Request& req, prm_planner::PRMService::Response &res);
-            bool canConnect(const Pose_ &a, const Pose_ &b); 
+            bool canConnect(const Pose_ &a, const Pose_ &b, const bool fwd); 
             bool deleteNode(const Pose_ &pose);
 
             //setters

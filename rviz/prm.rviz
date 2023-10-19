@@ -12,6 +12,7 @@ Panels:
         - /Start Runway1
         - /test_start_pose1
         - /PoseArray2
+        - /PoseArray3
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -89,7 +90,7 @@ Visualization Manager:
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: PoseArray
@@ -99,7 +100,7 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /arc_end_points
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -200,6 +201,23 @@ Visualization Manager:
       Topic: /rrt_path
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Arrow Length: 0.30000001192092896
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /rrt_tree
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -227,7 +245,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -131.94461059570312
+      Angle: -141.29478454589844
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -237,10 +255,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 19.1384334564209
+      Scale: -11.378697395324707
       Target Frame: <Fixed Frame>
-      X: -721.7396240234375
-      Y: 250.93251037597656
+      X: -728.8715209960938
+      Y: 269.8835754394531
     Saved: ~
 Window Geometry:
   Displays:
