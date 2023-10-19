@@ -131,6 +131,7 @@ namespace PRM
             bool biDirectionalPlan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_); 
             void reset();
             bool sampleRandomPoint(const Polygon &polygon, Pose_ &pose);
+            bool sampleRandomPolygonPoint(const Polygon &polygon, Pose_ &pose);
             bool getNearestNodeToSampledPoint(const Pose_ &pose, rrt_nodePtr &closest_node);
             std::vector<Pose_> getNodeExtensions(const rrt_nodePtr &nearest_node, const float arc_len, const bool fwd);
             Pose_ getClosestNodeExtensionToGoal(const std::vector<Pose_> &poses, const Pose_ &goal_pose);
@@ -177,6 +178,7 @@ namespace PRM
             ros::ServiceServer rrt_service_;
             ros::Publisher closest_points_pub_;
             geometry_msgs::PoseArray rrt_tree_;
+            ros::Publisher poly_centroid_pub_;
             
     };  
 };

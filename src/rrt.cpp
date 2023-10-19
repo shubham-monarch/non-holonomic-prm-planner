@@ -34,6 +34,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     rrt_path_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_path", 1, true);
     rrt_service_ = nh_.advertiseService("rrt_service", &rrt::getPathService, this);
     closest_points_pub_ = nh_.advertise<geometry_msgs::PoseArray>("closest_points", 1, true);
+    poly_centroid_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("poly_centroid", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -187,6 +188,59 @@ bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
     }
     return false; 
 }
+
+bool PRM::rrt::sampleRandomPolygonPoint(const Polygon &polygon, PRM::Pose_ &pose)
+{   
+    bool is_valid_ = bg::is_valid(polygon);
+    if(!is_valid_){ 
+        ROS_ERROR("[sampleRandomPoint] => polygon is not valid!");
+        return false;
+    }
+
+    Box envelope;
+    bg::envelope(polygon, envelope);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> distX(0, 1);
+    std::uniform_real_distribution<double> distY(0,1);
+    std::uniform_real_distribution<double> disTheta(0, 2 * M_PI);
+    
+    int iter_limit_ = 100 * 100 * 100; 
+    int num_iters_  = 0 ;
+
+    point_t centroid; 
+    bg::centroid(polygon, centroid);
+
+    geometry_msgs::PoseStamped centroid_pose_; 
+    centroid_pose_.header.frame_id = "map";
+    centroid_pose_.header.stamp = ros::Time::now();
+    centroid_pose_.pose.position.x = centroid.x(); 
+    centroid_pose_.pose.position.y = centroid.y(); 
+    centroid_pose_.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+    poly_centroid_pub_.publish(centroid_pose_);
+
+
+    float cx = centroid.x(); 
+    float cy = centroid.y(); 
+
+    //CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+    while (ros::ok() && num_iters_++ < iter_limit_) 
+    {
+        point_t randomPoint(cx + distX(gen), cy + distY(gen));
+        if (bg::within(randomPoint, polygon)) {
+           
+            bool flag = robot_->getCollisionPolyRef().isConfigurationFree(randomPoint.x(), randomPoint.y());
+            if(flag)
+            {
+                pose = Pose_(randomPoint.x(), randomPoint.y(), disTheta(gen));
+                return true; 
+            }
+        }
+    }
+    return false; 
+}
+
 
 void PRM::rrt::printNode(const rrt_nodePtr &node)
 {
@@ -673,7 +727,8 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
 
         Pose_ nxt_pose; 
         bool found; 
-        found = sampleRandomPoint(polygon_, nxt_pose);   
+        //found = sampleRandomPoint(polygon_, nxt_pose);   
+        found = sampleRandomPolygonPoint(polygon_, nxt_pose);   
         if(!found)
         {
             ROS_ERROR(" === Could not sample a random point ==> Trying again === "); 
