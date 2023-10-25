@@ -455,7 +455,14 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
 
         if(!isFree(start)) { ROS_ERROR("start is not free!"); return false; }
         if(!isFree(goal)) { ROS_ERROR("goal is not free!"); return false; } 
-
+        
+        geometry_msgs::PoseStamped centroid_pose;
+        bool centroid_found_ = estimateSamplingCentroid(start, goal, centroid_pose);    
+        
+        if(!centroid_found_) {ROS_ERROR("Polygon centroid not found!");}
+        ros::Duration(5.0).sleep();
+        p.repairPolygons();
+        return centroid_found_;
         /*while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
         {   
             
@@ -487,6 +494,63 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
     }
     return false;
 }
+
+bool PRM::rrt::getPoseProjectionOnGeofence(const geometry_msgs::PoseStamped &pose, const bool fwd, geometry_msgs::PoseStamped &projected_pose )
+{
+    float x = pose.pose.position.x, y = pose.pose.position.y , theta = tf::getYaw(pose.pose.orientation); 
+    if(!fwd) {theta = theta + M_PI ;}
+    int num_iter = 0 , mx_iter = 1000 ;
+    float step_sz = 1.f;
+    bool found = false;   
+    while(ros::ok() && (num_iter++ < mx_iter))
+    {
+        x = x + step_sz * cos(theta);
+        y = y + step_sz * sin(theta);
+        if(!robot_->isConfigurationFree(robot_->getOBB({x,y}, theta)))
+        {
+            found = true; 
+            projected_pose.header.frame_id = "map";
+            projected_pose.header.stamp = ros::Time::now();
+            projected_pose.pose.position.x = x; 
+            projected_pose.pose.position.y = y;
+            projected_pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+            break;
+        }
+    }
+    if(!found) {return false; }
+    return true; 
+}
+
+
+bool PRM::rrt::estimateSamplingCentroid(const geometry_msgs::PoseStamped &start_pose_, \
+                                        const geometry_msgs::PoseStamped &goal_pose_, \
+                                        geometry_msgs::PoseStamped &centroid_pose)
+{   
+    point_t p1, p2, p3, p4, centroid; 
+    bool can_project; 
+    geometry_msgs::PoseStamped proj_pose; 
+    p1 = point_t{start_pose_.pose.position.x, start_pose_.pose.position.y};
+    can_project = getPoseProjectionOnGeofence(start_pose_, true, proj_pose);
+    if(!can_project) {return false; }
+    p2 = point_t{proj_pose.pose.position.x, proj_pose.pose.position.y};
+    can_project = getPoseProjectionOnGeofence(goal_pose_, false, proj_pose);    
+    if(!can_project) {return false; }
+    p3 = point_t{proj_pose.pose.position.x, proj_pose.pose.position.y};
+    p4 = point_t{goal_pose_.pose.position.x, goal_pose_.pose.position.y};
+    
+    float cx = (bg::get<0>(p1) + bg::get<0>(p2) + bg::get<0>(p3) + bg::get<0>(p4))/ 4.f; 
+    float cy = (0.15 * (bg::get<1>(p1) + bg::get<1>(p4)) + 0.35 * (bg::get<1>(p2) + bg::get<1>(p3)));
+    
+    centroid_pose.header.frame_id = "map";
+    centroid_pose.header.stamp = ros::Time::now();
+    centroid_pose.pose.position.x = cx; 
+    centroid_pose.pose.position.y = cy;
+    centroid_pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+    poly_centroid_pub_.publish(centroid_pose);
+    
+    return true;  
+}
+
 
 bool PRM::rrt::isFree(const geometry_msgs::PoseStamped &pose)
 {

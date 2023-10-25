@@ -142,6 +142,12 @@ namespace PRM
             bool canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd);
             void publishStartAndGoalTree();
             void publishROSPath(const std::vector<rrt_nodePtr> &tree_);
+            bool estimateSamplingCentroid(const geometry_msgs::PoseStamped &start_pose_, \
+                                        const geometry_msgs::PoseStamped &goal_pose_, \
+                                        geometry_msgs::PoseStamped &centroid_pose);
+            bool getPoseProjectionOnGeofence(   const geometry_msgs::PoseStamped &pose, const bool fwd, \
+                                                geometry_msgs::PoseStamped &projected_pose );
+
             //setters
             //void setPoseToNodeMap(const PoseToNodeMapPtr &map){ curr_pose_to_node_map_ = map;}
             //void setRtree(const RTreePtr &rtree){ curr_rtree_ = rtree;}
