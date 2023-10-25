@@ -10,10 +10,11 @@
 #include <boost/geometry/geometries/ring.hpp>
 #include <boost/geometry/algorithms/append.hpp>
 #include <boost/geometry/algorithms/for_each.hpp>
+#include <boost/geometry/geometries/linestring.hpp>
 
 extern std::shared_ptr<PRM::RobotModel> robot_;
 
-PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{false}
+PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{false}, geofence_set_{false}
 {
     //polygon_ = Polygon();
     //polygon_.outer().push_back(point_t(0, 0));
@@ -25,6 +26,8 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
 
     start_pose_sub_ = nh_.subscribe("/initialpose", 1, &rrt::initialPoseCb, this);
     goal_pose_sub_ = nh_.subscribe("/goal", 1, &rrt::goalPoseCb, this);
+    geofence_sub_ = nh_.subscribe("/geofence", 1, &rrt::geofenceCb, this);
+
     rrt_polygon_sub_ = nh_.subscribe("/rviz_polygon", 1, &rrt::polygonCb, this);
     rrt_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("rrt_tree", 1, true);
     start_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("test_start_pose", 1, true);
@@ -123,6 +126,23 @@ void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
     else
     {
         ROS_ERROR("[polygonCb] => polygon is not valid!");
+        return;
+    }
+}
+
+void PRM::rrt::geofenceCb(geometry_msgs::PolygonStampedConstPtr msg)
+{
+    ROS_WARN("========== GEOFENCE POLYGON RECEIVED ==============");  
+    Polygon polygon_ = getPolygonFromPolygonMsg(*msg);
+    ROS_INFO("geofence_polygon.size(): %d", polygon_.outer().size());
+    if(polygon_.outer().size() > 0)
+    {
+        geofence_polygon = polygon_;
+        geofence_set_ = true; 
+    }
+    else
+    {
+        ROS_ERROR("[geofenceCb] => Geofence is not valid!");
         return;
     }
 }
@@ -458,7 +478,6 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         
         geometry_msgs::PoseStamped centroid_pose;
         bool centroid_found_ = estimateSamplingCentroid(start, goal, centroid_pose);    
-        
         if(!centroid_found_) {ROS_ERROR("Polygon centroid not found!");}
         ros::Duration(5.0).sleep();
         p.repairPolygons();
@@ -501,12 +520,14 @@ bool PRM::rrt::getPoseProjectionOnGeofence(const geometry_msgs::PoseStamped &pos
     if(!fwd) {theta = theta + M_PI ;}
     int num_iter = 0 , mx_iter = 1000 ;
     float step_sz = 1.f;
-    bool found = false;   
+    bool found = false; 
+    bool prev_is_free = false, curr_is_free = false; 
     while(ros::ok() && (num_iter++ < mx_iter))
     {
         x = x + step_sz * cos(theta);
         y = y + step_sz * sin(theta);
-        if(!robot_->isConfigurationFree(robot_->getOBB({x,y}, theta)))
+        curr_is_free = robot_->isConfigurationFree(robot_->getOBB({x,y}, theta)); 
+        if(!curr_is_free && prev_is_free)
         {
             found = true; 
             projected_pose.header.frame_id = "map";
@@ -516,39 +537,65 @@ bool PRM::rrt::getPoseProjectionOnGeofence(const geometry_msgs::PoseStamped &pos
             projected_pose.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
             break;
         }
+        prev_is_free = curr_is_free;
     }
     if(!found) {return false; }
     return true; 
 }
 
+void PRM::rrt::publishPoint(const point_t pt, ros::Publisher &pub)
+{
+    geometry_msgs::PoseStamped pose_; 
+    pose_.header.frame_id = "map"; 
+    pose_.header.stamp = ros::Time::now();
+    pose_.pose.position.x = pt.x(); 
+    pose_.pose.position.y = pt.y(); 
+    pub.publish(pose_);
+}
 
-bool PRM::rrt::estimateSamplingCentroid(const geometry_msgs::PoseStamped &start_pose_, \
-                                        const geometry_msgs::PoseStamped &goal_pose_, \
-                                        geometry_msgs::PoseStamped &centroid_pose)
+geometry_msgs::PoseStamped PRM::rrt::poseFromPt(const point_t pt)
+{
+    geometry_msgs::PoseStamped pose_; 
+    pose_.header.frame_id = "map";
+    pose_.header.stamp = ros::Time::now();
+    pose_.pose.position.x = pt.x();
+    pose_.pose.position.y = pt.y();
+    pose_.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+    return pose_;
+}
+
+bool PRM::rrt::estimateSamplingCentroid(    const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
+                                            geometry_msgs::PoseStamped &centroid_pose_)
 {   
-    point_t p1, p2, p3, p4, centroid; 
-    bool can_project; 
-    geometry_msgs::PoseStamped proj_pose; 
-    p1 = point_t{start_pose_.pose.position.x, start_pose_.pose.position.y};
-    can_project = getPoseProjectionOnGeofence(start_pose_, true, proj_pose);
-    if(!can_project) {return false; }
-    p2 = point_t{proj_pose.pose.position.x, proj_pose.pose.position.y};
-    can_project = getPoseProjectionOnGeofence(goal_pose_, false, proj_pose);    
-    if(!can_project) {return false; }
-    p3 = point_t{proj_pose.pose.position.x, proj_pose.pose.position.y};
-    p4 = point_t{goal_pose_.pose.position.x, goal_pose_.pose.position.y};
-    
-    float cx = (bg::get<0>(p1) + bg::get<0>(p2) + bg::get<0>(p3) + bg::get<0>(p4))/ 4.f; 
-    float cy = (0.15 * (bg::get<1>(p1) + bg::get<1>(p4)) + 0.35 * (bg::get<1>(p2) + bg::get<1>(p3)));
-    
-    centroid_pose.header.frame_id = "map";
-    centroid_pose.header.stamp = ros::Time::now();
-    centroid_pose.pose.position.x = cx; 
-    centroid_pose.pose.position.y = cy;
-    centroid_pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
-    poly_centroid_pub_.publish(centroid_pose);
-    
-    return true;  
+    if(!geofence_set_)
+    {
+        ROS_ERROR("geofence_set_ is false! ==> can't estimste sampling centroid!"); 
+        return false; 
+    }
+    typedef bg::model::linestring<point_t> Linestring;
+    Linestring line; 
+    float x1 = start_pose_.pose.position.x, x2 = goal_pose_.pose.position.x;
+    float y1 = start_pose_.pose.position.y, y2 = goal_pose_.pose.position.y;
+    float theta = tf::getYaw(start_pose_.pose.orientation);
+    point_t p1 = point_t{(x1 + x2)/2.f, (y1 + y2)/2.f} ;
+    point_t p2 = point_t{p1.x() + 10 * cos(theta), p2.y() + 10 * sin(theta)};
+    bg::append(line, p1); 
+    bg::append(line,p2);
+    std::vector<point_t> points; 
+    bg::intersection(line, geofence_polygon, points); 
+    if(points.empty()) {return false; }
+    float cx, cy; 
+    for(auto t: points) 
+    {
+        cx += t.x(); 
+        cy += t.y(); 
+    }
+    cx = cx / (float)points.size();
+    cy = cy / (float)points.size();
+
+    centroid_pose_ = poseFromPt(point_t{cx, cy});
+    poly_centroid_pub_.publish(centroid_pose_);
+    return true; 
 }
 
 

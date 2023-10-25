@@ -114,6 +114,7 @@ namespace PRM
             void initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_);
             void goalPoseCb(geometry_msgs::PoseStampedConstPtr pose_);
             void polygonCb(geometry_msgs::PolygonStampedConstPtr polygon_);
+            void geofenceCb(geometry_msgs::PolygonStampedConstPtr polygon_);
             
             //utility functions
             float euclidDis(const Pose_ &a, const Pose_ &b){ return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));}
@@ -125,6 +126,8 @@ namespace PRM
             bool isFree(const geometry_msgs::PoseStamped &pose);
             void publishRRTPath(const rrt_nodePtr &node);
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
+            void publishPoint(const point_t pt, ros::Publisher &pub);
+            geometry_msgs::PoseStamped poseFromPt(const point_t pt);
             
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);       
@@ -142,9 +145,9 @@ namespace PRM
             bool canConnectToOtherTree(const Pose_ &pose, const rrt_containerPtr &other_container_, bool fwd);
             void publishStartAndGoalTree();
             void publishROSPath(const std::vector<rrt_nodePtr> &tree_);
-            bool estimateSamplingCentroid(const geometry_msgs::PoseStamped &start_pose_, \
-                                        const geometry_msgs::PoseStamped &goal_pose_, \
-                                        geometry_msgs::PoseStamped &centroid_pose);
+            bool estimateSamplingCentroid(  const geometry_msgs::PoseStamped &start_pose_, \
+                                            const geometry_msgs::PoseStamped &goal_pose_, \
+                                            geometry_msgs::PoseStamped &centroid_pose_);
             bool getPoseProjectionOnGeofence(   const geometry_msgs::PoseStamped &pose, const bool fwd, \
                                                 geometry_msgs::PoseStamped &projected_pose );
 
@@ -163,11 +166,13 @@ namespace PRM
         private: 
 
             Polygon rrt_polygon_;
-            bool start_pose_set_, goal_pose_set_, polygon_set_; 
+            Polygon geofence_polygon;
+            bool start_pose_set_, goal_pose_set_, polygon_set_, geofence_set_;
             geometry_msgs::PoseStamped test_start_pose_, test_goal_pose_;
             ros::Publisher rrt_tree_pub_;
             ros::Publisher start_pose_pub_, goal_pose_pub_;
             ros::Subscriber start_pose_sub_, goal_pose_sub_;
+            ros::Subscriber geofence_sub_;
             ros::Subscriber rrt_polygon_sub_;
             ros::NodeHandle nh_;
 
@@ -191,6 +196,7 @@ namespace PRM
             ros::Publisher st_tree_pub_, go_tree_pub_; 
             std::vector<rrt_nodePtr> combined_tree_;
             ros::Publisher ros_path_pub_;
+            
             
     };  
 };
