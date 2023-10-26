@@ -42,6 +42,10 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
 
     st_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("st_tree", 1, true); 
     go_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("go_tree", 1, true);
+
+    start_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("start_tree", 1, true);
+    goal_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("goal_tree", 1, true);
+
     ros_path_pub_ = nh_.advertise<nav_msgs::Path>("ros_path", 1, true);
     line_arr_pub_ = nh_.advertise<geometry_msgs::PoseArray>("line_arr", 1, true);
 }
@@ -169,6 +173,9 @@ void PRM::rrt::reset()
 
     rrt_tree_.poses.clear();
     combined_tree_.clear();
+
+    goal_tree_pts_.poses.clear(); 
+    start_tree_pts_.poses.clear();
     //start_rtree_.clear(); 
     //goal_rtree_.clear(); 
     //start_rrt_map_.clear(); 
@@ -948,6 +955,22 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
         Pose_ closest_pose_ = getClosestNodeExtensionToGoal(node_extensions_, nxt_pose);
         addPoseToTree(closest_pose_, closest_node_);
 
+
+        if(iter_cnt %2 ==0 )
+        {
+            start_tree_pts_.header.frame_id = "map";
+            start_tree_pts_.header.stamp = ros::Time::now();
+            start_tree_pts_.poses.push_back(poseFromPose_(closest_pose_));    
+            start_tree_pub_.publish(start_tree_pts_);
+        }
+        else
+        {
+            goal_tree_pts_.header.frame_id = "map";
+            goal_tree_pts_.header.stamp = ros::Time::now();
+            goal_tree_pts_.poses.push_back(poseFromPose_(closest_pose_));     
+            goal_tree_pub_.publish(goal_tree_pts_);
+        }
+        
         bool can_connect_ = false; 
         if(iter_cnt % 2)
         {

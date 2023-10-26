@@ -11,9 +11,12 @@ Panels:
         - /test_start_pose1
         - /test_goal_pose1
         - /PoseArray2
+        - /PoseArray3
+        - /PoseArray4
         - /PoseArray5
         - /Path2
         - /Pose1
+        - /Path3
       Splitter Ratio: 0.518126904964447
     Tree Height: 719
   - Class: rviz/Selection
@@ -208,7 +211,7 @@ Visualization Manager:
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: false
+      Enabled: true
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: PoseArray
@@ -216,9 +219,9 @@ Visualization Manager:
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /rrt_tree
+      Topic: /st_tree
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Arrow Length: 0.5
       Axes Length: 0.30000001192092896
@@ -293,6 +296,30 @@ Visualization Manager:
       Topic: /poly_centroid
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 252; 233; 79
+      Enabled: false
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /final_ros_path
+      Unreliable: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -320,7 +347,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -191.4801025390625
+      Angle: -207.35537719726562
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -330,10 +357,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: -16.933218002319336
+      Scale: 2.523961067199707
       Target Frame: <Fixed Frame>
-      X: -642.1310424804688
-      Y: 187.53843688964844
+      X: -607.356201171875
+      Y: 119.26871490478516
     Saved: ~
 Window Geometry:
   Displays:

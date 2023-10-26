@@ -197,10 +197,13 @@ namespace PRM
 
             rrt_nodePtr st_found_node_, go_found_node_;
             ros::Publisher st_tree_pub_, go_tree_pub_; 
+            ros::Publisher start_tree_pub_, goal_tree_pub_; //publishes points that are part of the start/goal tree
             std::vector<rrt_nodePtr> combined_tree_;
             ros::Publisher ros_path_pub_;
             ros::Publisher line_arr_pub_;
             geometry_msgs::PoseStamped poly_centroid_pose_;
+            geometry_msgs::PoseArray start_tree_pts_, goal_tree_pts_;; //contains all the points in the tree
+            
             
     };  
 };
