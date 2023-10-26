@@ -43,6 +43,7 @@ PRM::rrt::rrt():start_pose_set_{false}, goal_pose_set_{false}, polygon_set_{fals
     st_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("st_tree", 1, true); 
     go_tree_pub_ = nh_.advertise<geometry_msgs::PoseArray>("go_tree", 1, true);
     ros_path_pub_ = nh_.advertise<nav_msgs::Path>("ros_path", 1, true);
+    line_arr_pub_ = nh_.advertise<geometry_msgs::PoseArray>("line_arr", 1, true);
 }
 
 void PRM::rrt::initialPoseCb(geometry_msgs::PoseWithCovarianceStampedConstPtr pose_)
@@ -132,6 +133,7 @@ void PRM::rrt::polygonCb(geometry_msgs::PolygonStampedConstPtr msg)
 
 void PRM::rrt::geofenceCb(geometry_msgs::PolygonStampedConstPtr msg)
 {
+    if(geofence_set_) {return; }
     ROS_WARN("========== GEOFENCE POLYGON RECEIVED ==============");  
     Polygon polygon_ = getPolygonFromPolygonMsg(*msg);
     ROS_INFO("geofence_polygon.size(): %d", polygon_.outer().size());
@@ -553,7 +555,16 @@ void PRM::rrt::publishPoint(const point_t pt, ros::Publisher &pub)
     pub.publish(pose_);
 }
 
-geometry_msgs::PoseStamped PRM::rrt::poseFromPt(const point_t pt)
+geometry_msgs::Pose PRM::rrt::poseFromPt(const point_t pt)
+{
+    geometry_msgs::Pose pose_; 
+    pose_.position.x = pt.x(); 
+    pose_.position.y = pt.y();
+    pose_.orientation = tf::createQuaternionMsgFromYaw(0);
+    return pose_;
+}
+
+geometry_msgs::PoseStamped PRM::rrt::poseStampedFromPt(const point_t pt)
 {
     geometry_msgs::PoseStamped pose_; 
     pose_.header.frame_id = "map";
@@ -567,35 +578,49 @@ geometry_msgs::PoseStamped PRM::rrt::poseFromPt(const point_t pt)
 bool PRM::rrt::estimateSamplingCentroid(    const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_, \
                                             geometry_msgs::PoseStamped &centroid_pose_)
 {   
-    if(!geofence_set_)
+    while(!geofence_set_ && ros::ok())
     {
-        ROS_ERROR("geofence_set_ is false! ==> can't estimste sampling centroid!"); 
-        return false; 
+        ROS_DEBUG("waiting for geofence_set to be true!");
+        ros::spinOnce();
+        ros::Duration(0.1).sleep();
     }
     typedef bg::model::linestring<point_t> Linestring;
     Linestring line; 
     float x1 = start_pose_.pose.position.x, x2 = goal_pose_.pose.position.x;
     float y1 = start_pose_.pose.position.y, y2 = goal_pose_.pose.position.y;
-    float theta = tf::getYaw(start_pose_.pose.orientation);
+    float theta = atan2(y2 - y1, x2 - x1) + M_PI/ 2.f; 
     point_t p1 = point_t{(x1 + x2)/2.f, (y1 + y2)/2.f} ;
-    point_t p2 = point_t{p1.x() + 10 * cos(theta), p2.y() + 10 * sin(theta)};
-    bg::append(line, p1); 
+    point_t p2 = point_t{p1.x() + 10 * cos(theta), p1.y() + 10 * sin(theta)};
+    point_t p3 = point_t{p1.x() - 10 * cos(theta), p1.y() - 10 * sin(theta)};
+    
+    /*geometry_msgs::PoseArray line_arr_; 
+    line_arr_.header.frame_id = "map";
+    line_arr_.header.stamp = ros::Time::now();
+    line_arr_.poses.push_back(poseFromPt(p2));
+    line_arr_.poses.push_back(poseFromPt(p3));
+    line_arr_pub_.publish(line_arr_);
+    */
+
+    bg::append(line, p3);
     bg::append(line,p2);
     std::vector<point_t> points; 
     bg::intersection(line, geofence_polygon, points); 
-    if(points.empty()) {return false; }
-    float cx, cy; 
-    for(auto t: points) 
-    {
-        cx += t.x(); 
-        cy += t.y(); 
-    }
-    cx = cx / (float)points.size();
-    cy = cy / (float)points.size();
 
-    centroid_pose_ = poseFromPt(point_t{cx, cy});
+    if(points.size() > 1)
+    {
+        ROS_ERROR("Line segment intesection with geofence_polygon at multiple points!");
+        return false; 
+    }   
+
+    point_t centroid_pt = point_t{(0.7 * points[0].x() + 0.3 * p1.x()) , 0.7 * points[0].y() + 0.3 * p1.y()};
+    centroid_pose_ = poseStampedFromPt(centroid_pt);
+    //centroid_pose_ = poseFromPt(p3);
     poly_centroid_pub_.publish(centroid_pose_);
-    return true; 
+    //poly_centroid_pub_.publish(start_pose_);
+    
+
+   
+   return true; 
 }
 
 

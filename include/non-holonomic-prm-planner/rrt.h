@@ -127,7 +127,8 @@ namespace PRM
             void publishRRTPath(const rrt_nodePtr &node);
             void publishTree(const std::vector<rrt_nodePtr> &tree_);
             void publishPoint(const point_t pt, ros::Publisher &pub);
-            geometry_msgs::PoseStamped poseFromPt(const point_t pt);
+            geometry_msgs::PoseStamped poseStampedFromPt(const point_t pt);
+            geometry_msgs::Pose poseFromPt(const point_t pt);
             
             //rrt functions
             bool plan(const geometry_msgs::PoseStamped &start_pose_, const geometry_msgs::PoseStamped &goal_pose_);       
@@ -196,6 +197,7 @@ namespace PRM
             ros::Publisher st_tree_pub_, go_tree_pub_; 
             std::vector<rrt_nodePtr> combined_tree_;
             ros::Publisher ros_path_pub_;
+            ros::Publisher line_arr_pub_;
             
             
     };  
