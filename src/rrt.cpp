@@ -105,7 +105,7 @@ Polygon PRM::rrt::getPolygonFromPolygonMsg(const geometry_msgs::PolygonStamped &
     bg::correct(polygon_);
     if(bg::is_valid(polygon_)) {
         
-        ROS_INFO("polygon is valid!");
+        //ROS_INFO("polygon is valid!");
         return polygon_; 
     }
     else
@@ -136,7 +136,7 @@ void PRM::rrt::geofenceCb(geometry_msgs::PolygonStampedConstPtr msg)
     if(geofence_set_) {return; }
     ROS_WARN("========== GEOFENCE POLYGON RECEIVED ==============");  
     Polygon polygon_ = getPolygonFromPolygonMsg(*msg);
-    ROS_INFO("geofence_polygon.size(): %d", polygon_.outer().size());
+    //ROS_INFO("geofence_polygon.size(): %d", polygon_.outer().size());
     if(polygon_.outer().size() > 0)
     {
         geofence_polygon = polygon_;
@@ -614,6 +614,7 @@ bool PRM::rrt::estimateSamplingCentroid(    const geometry_msgs::PoseStamped &st
 
     point_t centroid_pt = point_t{(0.7 * points[0].x() + 0.3 * p1.x()) , 0.7 * points[0].y() + 0.3 * p1.y()};
     centroid_pose_ = poseStampedFromPt(centroid_pt);
+    centroid_pose_.pose.orientation = tf::createQuaternionMsgFromYaw(theta - M_PI/2.f);
     //centroid_pose_ = poseFromPt(p3);
     poly_centroid_pub_.publish(centroid_pose_);
     //poly_centroid_pub_.publish(start_pose_);
