@@ -216,6 +216,42 @@ bool PRM::rrt::sampleRandomPoint(const Polygon &polygon, PRM::Pose_ &pose)
     return false; 
 }
 
+PRM::Pose_ PRM::rrt::sampleRandomPoint(const geometry_msgs::PoseStamped &centroid)
+{   
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> distX(-10, 10);
+    std::uniform_real_distribution<double> distY(-10, 10);
+    std::uniform_real_distribution<double> disTheta(0, 2 * M_PI);
+    
+    int iter_limit_ = 100 * 100 * 100; 
+    int num_iters_  = 0 ;
+
+    geometry_msgs::PoseStamped centroid_pose_;
+    centroid_pose_.header.frame_id = "map";
+    centroid_pose_.header.stamp = ros::Time::now();
+
+    float cx = centroid.pose.position.x;  
+    float cy = centroid.pose.position.y; 
+
+    //CollisionDetectionPolygon &p = robot_->getCollisionPolyRef();
+    while (ros::ok() && num_iters_++ < iter_limit_) 
+    {
+        float x  = cx + distX(gen), y = cy + distY(gen) , theta = disTheta(gen);
+        if(robot_->isConfigurationFree(robot_->getOBB({x, y}, theta)))
+        {
+            Pose_ pose_ = Pose_(x, y, theta);
+            centroid_pose_.pose.position.x = x;  
+            centroid_pose_.pose.position.y = y; 
+            centroid_pose_.pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+            poly_centroid_pub_.publish(centroid_pose_);
+            return pose_;
+        }
+    }
+    return Pose_(); 
+}
+
+
 bool PRM::rrt::sampleRandomPolygonPoint(const Polygon &polygon, PRM::Pose_ &pose)
 {   
     bool is_valid_ = bg::is_valid(polygon);
@@ -480,28 +516,10 @@ bool PRM::rrt::getPathService(prm_planner::PRMService::Request& req, prm_planner
         
         geometry_msgs::PoseStamped centroid_pose;
         bool centroid_found_ = estimateSamplingCentroid(start, goal, centroid_pose);    
-        if(!centroid_found_) {ROS_ERROR("Polygon centroid not found!");}
-        ros::Duration(5.0).sleep();
-        p.repairPolygons();
-        return centroid_found_;
-        /*while(ros::ok() && (!polygon_set_ || !start_pose_set_ || !goal_pose_set_)) 
-        {   
-            
-            ROS_ERROR("polygon_set or start_pose_set or goal_pose_set is false!");
-            ROS_INFO("polygon_set: %d start_pose_set: %d goal_pose_set: %d", polygon_set_, start_pose_set_, goal_pose_set_);
-            ros::Duration(1.0).sleep(); 
-            ros::spinOnce();
-        }*/
-
-        while(ros::ok() && !polygon_set_ ) 
-        {   
-            ROS_ERROR("polygon_set is false!");
-            ros::Duration(1.0).sleep(); 
-            ros::spinOnce();
+        if(!centroid_found_) {
+            ROS_ERROR("Polygon centroid not found!");
+            return false; 
         }
-
-        //bool planned = plan(test_start_pose_, test_goal_pose_);
-        //bool planned = biDirectionalPlan(test_start_pose_, test_goal_pose_);
         bool planned = biDirectionalPlan(start, goal);
         
         ROS_DEBUG("======================================================================") ;
@@ -618,7 +636,7 @@ bool PRM::rrt::estimateSamplingCentroid(    const geometry_msgs::PoseStamped &st
     //centroid_pose_ = poseFromPt(p3);
     poly_centroid_pub_.publish(centroid_pose_);
     //poly_centroid_pub_.publish(start_pose_);
-    
+    poly_centroid_pose_ = centroid_pose_;
 
    
    return true; 
@@ -907,24 +925,17 @@ bool PRM::rrt::biDirectionalPlan(const geometry_msgs::PoseStamped &start, const 
             return false;
         }
 
-        Pose_ nxt_pose; 
-        bool found; 
-        //found = sampleRandomPoint(polygon_, nxt_pose);   
-        found = sampleRandomPolygonPoint(polygon_, nxt_pose);   
-        if(!found)
-        {
-            ROS_ERROR(" === Could not sample a random point ==> Trying again === "); 
-            return false;
-        }
-
+        Pose_ nxt_pose = sampleRandomPoint(poly_centroid_pose_);   
+        
         rrt_nodePtr closest_node_; 
-        found = getNearestNodeToSampledPoint(nxt_pose, closest_node_);
+        bool found = getNearestNodeToSampledPoint(nxt_pose, closest_node_);
         if(!found) {
             ROS_ERROR("No closest node found! ==> Breaking while loop!"); 
             return false;
         }
         
-        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, (iter_cnt % 2 ? true : false));   
+        //std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_, (iter_cnt % 2 ? true : false));   
+        std::vector<Pose_> node_extensions_ = getNodeExtensions(closest_node_, Constants::Planner::max_res_/2.f, (iter_cnt % 2 ? true : false));   
         //TO-DO ==> Add node-deletion logic
         if(node_extensions_.empty()) 
         {   
